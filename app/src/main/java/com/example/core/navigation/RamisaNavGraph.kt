@@ -75,7 +75,7 @@ import com.example.features.vault.VaultViewModel
 fun RamisaNavGraph(
   navController: NavHostController,
   modifier: Modifier = Modifier,
-  startDestination: String = Screen.Home.route
+  startDestination: String = Screen.Welcome.route
 ) {
   val homeViewModel: HomeViewModel = viewModel()
   val authViewModel: AuthViewModel = viewModel()

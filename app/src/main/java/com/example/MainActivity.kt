@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         Surface(modifier = Modifier.fillMaxSize()) {
           RamisaNavGraph(
             navController = navController,
-            startDestination = if (openEmergency) Screen.Emergency.route else Screen.Home.route
+            startDestination = if (openEmergency) Screen.Emergency.route else Screen.Welcome.route
           )
         }
       }

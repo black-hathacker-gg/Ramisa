@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">RAMISA</string>
+    <string name="app_full_name">RAMISA — Women\'s &amp; Children\'s Personal Safety System</string>
+    <string name="status_safe">SAFE</string>
+    <string name="status_safe_desc">All safety systems active &amp; normal</string>
+    <string name="sos_button">SOS</string>
+    <string name="sos_tap_hint">Tap for immediate emergency assistance</string>
+    <string name="nav_safe_journey">SAFE JOURNEY</string>
+    <string name="nav_emergency_contacts">EMERGENCY CONTACTS</string>
+    <string name="nav_history">HISTORY</string>
+    <string name="nav_settings">SETTINGS</string>
+    <string name="hotline_999">Bangladesh Emergency Service: 999</string>
+    <string name="hotline_109">Women &amp; Child Abuse Prevention: 109</string>
+</resources>

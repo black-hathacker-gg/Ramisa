@@ -1,0 +1,26 @@
+package com.example.core.navigation
+
+sealed class Screen(val route: String) {
+  data object Welcome : Screen("welcome")
+  data object Home : Screen("home")
+  data object Login : Screen("login")
+  data object Register : Screen("register")
+  data object Profile : Screen("profile")
+  data object EmergencyContacts : Screen("emergency_contacts")
+  data object SafeJourney : Screen("safe_journey")
+  data object Emergency : Screen("emergency")
+  data object History : Screen("history")
+  data object Settings : Screen("settings")
+  data object Vault : Screen("vault")
+  data object SafePlaces : Screen("safe_places")
+  data object FakeCall : Screen("fake_call")
+  data object SafetyGuide : Screen("safety_guide")
+  data object ThreatGuard : Screen("threat_guard")
+  data object CommunitySafety : Screen("community_safety")
+  data object HardwareTrigger : Screen("hardware_trigger")
+  data object MeshNetwork : Screen("mesh_network")
+  data object GuardianCircle : Screen("guardian_circle")
+  data object StealthMode : Screen("stealth_mode")
+  data object SirenStrobe : Screen("siren_strobe")
+  data object RideSafety : Screen("ride_safety")
+}

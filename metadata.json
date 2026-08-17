@@ -1,0 +1,6 @@
+{
+  "name": "RAMISA",
+  "description": "Women's & Children's Personal Safety System for Bangladesh",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Centered Protective Shield -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,28 C64,28 72,25 76,22 C76,46 68,64 54,74 C40,64 32,46 32,22 C36,25 44,28 54,28 Z" />
+    <!-- Heart / Emergency Beacon Emblem Inside Shield -->
+    <path
+        android:fillColor="#C5221F"
+        android:pathData="M54,40 C52,37 47,36 44,39 C41,42 41,47 44,51 L54,61 L64,51 C67,47 67,42 64,39 C61,36 56,37 54,40 Z" />
+    <!-- Center white dot for safety beacon -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,46 A2.5,2.5 0 1,1 53.9,46 Z" />
+</vector>

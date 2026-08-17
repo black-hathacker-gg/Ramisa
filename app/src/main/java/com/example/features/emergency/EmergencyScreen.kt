@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Security
@@ -195,6 +196,21 @@ fun EmergencyScreen(
               text = "Live telemetry streaming: Lat ${uiState.location.latitude}, Lng ${uiState.location.longitude}",
               style = MaterialTheme.typography.bodySmall,
               color = Color.White.copy(alpha = 0.8f)
+            )
+          }
+
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              imageVector = Icons.Default.Lock,
+              contentDescription = null,
+              tint = Color(0xFFFFB74D),
+              modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              text = "Lock Screen Guard & Offline Native SMS broadcast active (No internet required)",
+              style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+              color = Color(0xFFFFCC80)
             )
           }
         }

@@ -122,6 +122,7 @@ fun HomeScreen(
   onNavigateToSafetyTimer: () -> Unit = {},
   onNavigateToFirstAid: () -> Unit = {},
   onNavigateToChildSafety: () -> Unit = {},
+  onNavigateToLockScreenSos: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -391,6 +392,16 @@ fun HomeScreen(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
+        // LOCK SCREEN & OFFLINE SOS GUARD
+        SafetyActionCard(
+          title = "LOCK SCREEN & OFFLINE SOS",
+          subtitle = "1-Tap SOS over locked screen • Direct GSM SMS & Mesh without opening app",
+          icon = Icons.Default.Lock,
+          accentColor = SafetyRedPrimary,
+          onClick = onNavigateToLockScreenSos,
+          testTag = "btn_lockscreen_sos_guard"
+        )
+
         // SAFE JOURNEY BUTTON
         SafetyActionCard(
           title = "SAFE JOURNEY",

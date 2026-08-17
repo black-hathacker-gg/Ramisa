@@ -267,6 +267,36 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
 
+          // Lock Screen SOS Guard
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "Lock Screen SOS Guard",
+                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                  text = "1-Tap emergency button on locked screen • Send native SMS without unlocking",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+            Switch(
+              checked = true,
+              onCheckedChange = { },
+              modifier = Modifier.testTag("switch_lockscreen_guard_settings")
+            )
+          }
+
+          HorizontalDivider()
+
           // SMS Fallback Toggle
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -278,11 +308,11 @@ fun SettingsScreen(
               Spacer(modifier = Modifier.width(12.dp))
               Column {
                 Text(
-                  text = "Cellular SMS Fallback",
+                  text = "Cellular Direct SMS & Offline Mesh",
                   style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
                 )
                 Text(
-                  text = "Automatically prepare SMS when internet is unavailable",
+                  text = "Automatically dispatch direct SMS & Bluetooth mesh when zero internet",
                   style = MaterialTheme.typography.bodySmall,
                   color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

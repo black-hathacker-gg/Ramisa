@@ -54,6 +54,8 @@ import com.example.features.firstaid.FirstAidScreen
 import com.example.features.firstaid.FirstAidViewModel
 import com.example.features.child.ChildSafetyScreen
 import com.example.features.child.ChildSafetyViewModel
+import com.example.features.lockscreen.LockScreenSosScreen
+import com.example.features.lockscreen.LockScreenSosViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -102,6 +104,7 @@ fun RamisaNavGraph(
   val safetyTimerViewModel: SafetyTimerViewModel = viewModel()
   val firstAidViewModel: FirstAidViewModel = viewModel()
   val childSafetyViewModel: ChildSafetyViewModel = viewModel()
+  val lockScreenSosViewModel: LockScreenSosViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -146,6 +149,7 @@ fun RamisaNavGraph(
         onNavigateToSafetyTimer = { navController.navigate(Screen.SafetyTimer.route) },
         onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
         onNavigateToChildSafety = { navController.navigate(Screen.ChildSafety.route) },
+        onNavigateToLockScreenSos = { navController.navigate(Screen.LockScreenSos.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -438,6 +442,18 @@ fun RamisaNavGraph(
       ChildSafetyScreen(
         viewModel = childSafetyViewModel,
         onNavigateBack = { navController.popBackStack() }
+      )
+    }
+
+    // 31. Lock Screen & Offline SOS Guard
+    composable(Screen.LockScreenSos.route) {
+      LockScreenSosScreen(
+        viewModel = lockScreenSosViewModel,
+        onNavigateBack = { navController.popBackStack() },
+        onTriggerSos = {
+          emergencyViewModel.triggerSos()
+          navController.navigate(Screen.Emergency.route)
+        }
       )
     }
   }

@@ -252,11 +252,37 @@ fun EmergencyScreen(
         Spacer(modifier = Modifier.width(10.dp))
         Column {
           Text(
-            text = "CALL 109 (নারী ও শিশু নির্যাতন প্রতিরোধ সেল)",
+            text = "CALL 109 (নারী ও শিশু নির্যাতন সেল)",
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
           )
           Text(
             text = "National Helpline for Violence Against Women & Children",
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(10.dp))
+
+      // 1098 Child Protection Helpline
+      Button(
+        onClick = { dialHotline(context, "1098") },
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(52.dp)
+          .testTag("btn_call_1098"),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7B1FA2))
+      ) {
+        Icon(imageVector = Icons.Default.Phone, contentDescription = null)
+        Spacer(modifier = Modifier.width(10.dp))
+        Column {
+          Text(
+            text = "CALL 1098 (শিশু হেল্পলাইন)",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+          )
+          Text(
+            text = "National Toll-Free Child Protection & Rescue Helpline",
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
           )
         }
@@ -282,7 +308,35 @@ fun EmergencyScreen(
         )
       }
 
-      Spacer(modifier = Modifier.height(30.dp))
+      Spacer(modifier = Modifier.height(16.dp))
+
+      // Instant WhatsApp Emergency Broadcast Share
+      Button(
+        onClick = {
+          val sosMsg = "🚨 [RAMISA SOS ALERT] I am in urgent danger! My live location: https://maps.google.com/?q=${uiState.location.latitude},${uiState.location.longitude} - Please send help immediately!"
+          val sendIntent = Intent().apply {
+            action = Intent.ACTION_SEND
+            putExtra(Intent.EXTRA_TEXT, sosMsg)
+            type = "text/plain"
+          }
+          context.startActivity(Intent.createChooser(sendIntent, "Broadcast SOS via WhatsApp / SMS"))
+        },
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(50.dp)
+          .testTag("btn_broadcast_sos_share"),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366))
+      ) {
+        Icon(imageVector = Icons.Default.Sms, contentDescription = null, tint = Color.White)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+          text = "BROADCAST SOS TO WHATSAPP / SMS",
+          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White)
+        )
+      }
+
+      Spacer(modifier = Modifier.height(26.dp))
 
       // Resolve Button
       Button(

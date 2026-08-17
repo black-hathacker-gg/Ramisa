@@ -31,4 +31,5 @@ sealed class Screen(val route: String) {
   data object LegalAid : Screen("legal_aid")
   data object SafetyTimer : Screen("safety_timer")
   data object FirstAid : Screen("first_aid")
+  data object ChildSafety : Screen("child_safety")
 }

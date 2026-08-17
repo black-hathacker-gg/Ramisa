@@ -52,6 +52,8 @@ import com.example.features.timer.SafetyTimerScreen
 import com.example.features.timer.SafetyTimerViewModel
 import com.example.features.firstaid.FirstAidScreen
 import com.example.features.firstaid.FirstAidViewModel
+import com.example.features.child.ChildSafetyScreen
+import com.example.features.child.ChildSafetyViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -99,6 +101,7 @@ fun RamisaNavGraph(
   val legalAidViewModel: LegalAidViewModel = viewModel()
   val safetyTimerViewModel: SafetyTimerViewModel = viewModel()
   val firstAidViewModel: FirstAidViewModel = viewModel()
+  val childSafetyViewModel: ChildSafetyViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -142,6 +145,7 @@ fun RamisaNavGraph(
         onNavigateToLegalAid = { navController.navigate(Screen.LegalAid.route) },
         onNavigateToSafetyTimer = { navController.navigate(Screen.SafetyTimer.route) },
         onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
+        onNavigateToChildSafety = { navController.navigate(Screen.ChildSafety.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -425,6 +429,14 @@ fun RamisaNavGraph(
     composable(Screen.FirstAid.route) {
       FirstAidScreen(
         viewModel = firstAidViewModel,
+        onNavigateBack = { navController.popBackStack() }
+      )
+    }
+
+    // 30. Child & Minor Protection (Geofencing & 1098)
+    composable(Screen.ChildSafety.route) {
+      ChildSafetyScreen(
+        viewModel = childSafetyViewModel,
         onNavigateBack = { navController.popBackStack() }
       )
     }

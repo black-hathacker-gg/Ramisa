@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.AutoStories
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CellTower
+import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsWalk
@@ -120,6 +121,7 @@ fun HomeScreen(
   onNavigateToLegalAid: () -> Unit = {},
   onNavigateToSafetyTimer: () -> Unit = {},
   onNavigateToFirstAid: () -> Unit = {},
+  onNavigateToChildSafety: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -513,6 +515,16 @@ fun HomeScreen(
           accentColor = SafeGreenPrimary,
           onClick = onNavigateToCampusSafety,
           testTag = "btn_campus_safety"
+        )
+
+        // CHILD & TEEN SAFETY GEOFENCE
+        SafetyActionCard(
+          title = "CHILD & TEEN SAFETY",
+          subtitle = "Live geofence zones, battery telemetry, 1098 helpline & child SOS",
+          icon = Icons.Default.ChildCare,
+          accentColor = SafeGreenPrimary,
+          onClick = onNavigateToChildSafety,
+          testTag = "btn_child_safety"
         )
 
         // Row for SELF DEFENSE and CAMOUFLAGE CALCULATOR

@@ -19,6 +19,8 @@ data class ThreatGuardUiState(
   val autoSosTriggerThreshold: ThreatLevel = ThreatLevel.CRITICAL,
   val currentDecibels: Int = 38,
   val isAutoSosEnabled: Boolean = true,
+  val isHotwordListeningEnabled: Boolean = true,
+  val detectedHotword: String? = null,
   val audioSamplePoints: List<Float> = List(24) { 0.2f },
   val analysisResult: ThreatAnalysisResult = ThreatAnalysisResult(),
   val triggeredAutoSos: Boolean = false,
@@ -38,6 +40,31 @@ class ThreatGuardViewModel : ViewModel() {
       stopMonitoring()
     } else {
       startMonitoring()
+    }
+  }
+
+  fun toggleHotword(enabled: Boolean) {
+    _uiState.update { it.copy(isHotwordListeningEnabled = enabled) }
+  }
+
+  fun triggerHotwordSOS(phrase: String) {
+    val hotwordResult = ThreatAnalysisResult(
+      threatLevel = ThreatLevel.CRITICAL,
+      confidenceScore = 0.98f,
+      decibelLevel = 84,
+      detectedAnomalies = listOf("Emergency Hotword Triggered: '$phrase'", "Voice Panic Pattern Verified"),
+      recommendedAction = "Voice emergency hotword '$phrase' detected. Firing instant SOS broadcast!",
+      recommendedActionBn = "ভয়েস জরুরি হটওয়ার্ড '$phrase' শনাক্ত হয়েছে। তাৎক্ষণিক এসওএস পাঠানো হচ্ছে!",
+      timestamp = System.currentTimeMillis()
+    )
+
+    _uiState.update {
+      it.copy(
+        detectedHotword = phrase,
+        analysisResult = hotwordResult,
+        triggeredAutoSos = true,
+        recentDetections = (listOf(hotwordResult) + it.recentDetections).take(6)
+      )
     }
   }
 

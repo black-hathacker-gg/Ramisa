@@ -367,6 +367,78 @@ fun ThreatGuardScreen(
 
       Spacer(modifier = Modifier.height(16.dp))
 
+      // Voice-Activated SOS Hotwords Card
+      Card(
+        modifier = Modifier.fillMaxWidth().testTag("card_voice_hotword"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+      ) {
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Spacer(modifier = Modifier.width(10.dp))
+              Column {
+                Text(
+                  text = "Voice SOS Hotwords (জরুরি ভয়েস সংকেত)",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
+                Text(
+                  text = "Triggers SOS when spoken loudly or into mic",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+
+            Switch(
+              checked = uiState.isHotwordListeningEnabled,
+              onCheckedChange = { viewModel.toggleHotword(it) },
+              modifier = Modifier.testTag("switch_hotword_enabled")
+            )
+          }
+
+          HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+
+          Text(
+            text = "Supported Phrases (Tap to Test Trigger):",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
+          )
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+          ) {
+            Button(
+              onClick = { viewModel.triggerHotwordSOS("বাঁচাও (Bachao)") },
+              modifier = Modifier.weight(1f).testTag("btn_hotword_bachao"),
+              shape = RoundedCornerShape(10.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary)
+            ) {
+              Text("🗣️ \"বাঁচাও!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Button(
+              onClick = { viewModel.triggerHotwordSOS("Help Me RAMISA") },
+              modifier = Modifier.weight(1f).testTag("btn_hotword_help"),
+              shape = RoundedCornerShape(10.dp),
+              colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+              Text("🗣️ \"Help Me!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(16.dp))
+
       // Auto-SOS Escalation Toggle
       Card(
         modifier = Modifier.fillMaxWidth(),

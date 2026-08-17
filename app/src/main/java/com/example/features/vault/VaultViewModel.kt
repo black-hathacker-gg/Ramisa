@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 
 data class VaultUiState(
   val isUnlocked: Boolean = false,
+  val isDuressDecoyMode: Boolean = false,
   val enteredPin: String = "",
   val pinErrorMessage: String? = null,
   val evidenceList: List<VaultEvidence> = emptyList(),
@@ -38,6 +39,11 @@ class VaultViewModel(
     viewModelScope.launch {
       vaultRepository.isVaultUnlocked.collect { unlocked ->
         _uiState.update { it.copy(isUnlocked = unlocked) }
+      }
+    }
+    viewModelScope.launch {
+      vaultRepository.isDuressDecoyMode.collect { duress ->
+        _uiState.update { it.copy(isDuressDecoyMode = duress) }
       }
     }
     viewModelScope.launch {
@@ -82,6 +88,15 @@ class VaultViewModel(
       vaultRepository.addIncidentNote(title, content)
       _uiState.update {
         it.copy(isAddNoteDialogVisible = false, feedbackMessage = "Encrypted incident note saved")
+      }
+    }
+  }
+
+  fun capturePhotoEvidence(title: String, notes: String) {
+    viewModelScope.launch {
+      vaultRepository.capturePhotoEvidence(title, notes)
+      _uiState.update {
+        it.copy(feedbackMessage = "Forensic camera snapshot stored with SHA-256 seal")
       }
     }
   }

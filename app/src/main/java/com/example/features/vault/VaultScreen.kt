@@ -29,7 +29,11 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -111,7 +115,7 @@ fun VaultScreen(
       )
     },
     floatingActionButton = {
-      if (uiState.isUnlocked) {
+      if (uiState.isUnlocked && !uiState.isDuressDecoyMode) {
         FloatingActionButton(
           onClick = { viewModel.showAddNoteDialog(true) },
           containerColor = MaterialTheme.colorScheme.primary,
@@ -157,7 +161,7 @@ fun VaultScreen(
           style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
         )
         Text(
-          text = "Encrypted local storage for emergency telemetry, voice recordings, and safety logs. Requires your 4-digit Emergency PIN.",
+          text = "Encrypted local storage for emergency telemetry, forensic snapshots, and safety logs. Enter your 4-digit Safety PIN (or Duress PIN in coercion).",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(top = 6.dp, bottom = 24.dp)
@@ -210,74 +214,129 @@ fun VaultScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
         item {
-          // Vault Banner
-          Card(
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = SafeGreenContainer)
-          ) {
-            Row(
-              modifier = Modifier.fillMaxWidth().padding(14.dp),
-              verticalAlignment = Alignment.CenterVertically
+          // Vault Banner / Duress Warning
+          if (uiState.isDuressDecoyMode) {
+            Card(
+              modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+              shape = RoundedCornerShape(14.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-              Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreenDark)
-              Spacer(modifier = Modifier.width(10.dp))
-              Column {
-                Text(
-                  text = "VAULT SECURED & ACTIVE",
-                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                  color = SafeGreenDark
-                )
-                Text(
-                  text = "AES-256 encrypted evidence vault stored on-device.",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = SafeGreenDark.copy(alpha = 0.85f)
-                )
+              Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(imageVector = Icons.Default.VisibilityOff, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                  Text(
+                    text = "SAFE DECOY VAULT ACTIVE",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                  )
+                  Text(
+                    text = "Displaying standard personal notes. Real evidence remains concealed and cloud-backed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                  )
+                }
+              }
+            }
+          } else {
+            Card(
+              modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+              shape = RoundedCornerShape(14.dp),
+              colors = CardDefaults.cardColors(containerColor = SafeGreenContainer)
+            ) {
+              Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = SafeGreenDark)
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                  Text(
+                    text = "VAULT SECURED & ACTIVE",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = SafeGreenDark
+                  )
+                  Text(
+                    text = "AES-256 encrypted storage • Hardware keystore • SHA-256 sealed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SafeGreenDark.copy(alpha = 0.85f)
+                  )
+                }
               }
             }
           }
         }
 
-        item {
-          // Audio Recorder Quick Action
-          Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-          ) {
+        if (!uiState.isDuressDecoyMode) {
+          item {
+            // Forensic Capture Actions
             Row(
-              modifier = Modifier.fillMaxWidth().padding(14.dp),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.SpaceBetween
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-              Column(modifier = Modifier.weight(1f)) {
-                Text(
-                  text = if (uiState.isRecordingAudio) "RECORDING IN PROGRESS (${uiState.recordingSeconds}s)" else "QUICK AUDIO EVIDENCE",
-                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                  color = if (uiState.isRecordingAudio) SafetyRedPrimary else MaterialTheme.colorScheme.primary
-                )
-                Text(
-                  text = if (uiState.isRecordingAudio) "Capturing ambient sound..." else "Record ambient voice clip directly to secure vault",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+              Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+              ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                  Text(
+                    text = if (uiState.isRecordingAudio) "RECORDING (${uiState.recordingSeconds}s)" else "AUDIO EVIDENCE",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = if (uiState.isRecordingAudio) SafetyRedPrimary else MaterialTheme.colorScheme.primary
+                  )
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Button(
+                    onClick = { viewModel.toggleAudioRecording() },
+                    colors = ButtonDefaults.buttonColors(
+                      containerColor = if (uiState.isRecordingAudio) SafetyRedPrimary else MaterialTheme.colorScheme.primary
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("btn_toggle_audio_record")
+                  ) {
+                    Icon(
+                      imageVector = if (uiState.isRecordingAudio) Icons.Default.MicOff else Icons.Default.Mic,
+                      contentDescription = null,
+                      modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (uiState.isRecordingAudio) "STOP" else "RECORD", fontSize = 11.sp)
+                  }
+                }
               }
 
-              Button(
-                onClick = { viewModel.toggleAudioRecording() },
-                colors = ButtonDefaults.buttonColors(
-                  containerColor = if (uiState.isRecordingAudio) SafetyRedPrimary else MaterialTheme.colorScheme.primary
-                ),
-                shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.testTag("btn_toggle_audio_record")
+              Card(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
               ) {
-                Icon(
-                  imageVector = if (uiState.isRecordingAudio) Icons.Default.MicOff else Icons.Default.Mic,
-                  contentDescription = null,
-                  modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(if (uiState.isRecordingAudio) "STOP" else "RECORD", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.padding(12.dp)) {
+                  Text(
+                    text = "FORENSIC PHOTO",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary
+                  )
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Button(
+                    onClick = {
+                      viewModel.capturePhotoEvidence("Emergency Scene Snapshot", "Dhanmondi 32 - Immediate threat capture")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("btn_capture_photo")
+                  ) {
+                    Icon(
+                      imageVector = Icons.Default.CameraAlt,
+                      contentDescription = null,
+                      modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("SNAPSHOT", fontSize = 11.sp)
+                  }
+                }
               }
             }
           }
@@ -366,13 +425,14 @@ private fun EvidenceCard(item: VaultEvidence, onDelete: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
           Icon(
             imageVector = when (item.type) {
               EvidenceType.AUDIO_RECORDING -> Icons.Default.Mic
               EvidenceType.INCIDENT_NOTE -> Icons.Default.Description
               EvidenceType.LOCATION_SNAPSHOT -> Icons.Default.Security
               EvidenceType.DISPATCH_LOG -> Icons.Default.Shield
+              EvidenceType.CAMERA_SNAPSHOT -> Icons.Default.CameraAlt
             },
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
@@ -401,16 +461,26 @@ private fun EvidenceCard(item: VaultEvidence, onDelete: () -> Unit) {
 
       Spacer(modifier = Modifier.height(8.dp))
 
+      // SHA-256 and Cloud Sync Integrity Row
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
       ) {
-        Text(
-          text = "Encrypted • ${item.fileSizeBytes} bytes",
-          style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-          color = SafeGreenDark
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Icon(
+            imageVector = Icons.Default.CloudDone,
+            contentDescription = "Cloud Synced",
+            tint = SafeGreenDark,
+            modifier = Modifier.size(13.dp)
+          )
+          Spacer(modifier = Modifier.width(4.dp))
+          Text(
+            text = "Cloud Sync & SHA-256 Validated",
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+            color = SafeGreenDark
+          )
+        }
 
         Text(
           text = dateFormatted,

@@ -36,6 +36,10 @@ import com.example.features.siren.SirenStrobeScreen
 import com.example.features.siren.SirenStrobeViewModel
 import com.example.features.ridesafety.RideSafetyScreen
 import com.example.features.ridesafety.RideSafetyViewModel
+import com.example.features.campus.CampusSafetyScreen
+import com.example.features.campus.CampusSafetyViewModel
+import com.example.features.defense.SelfDefenseScreen
+import com.example.features.defense.SelfDefenseViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -75,6 +79,8 @@ fun RamisaNavGraph(
   val stealthModeViewModel: StealthModeViewModel = viewModel()
   val sirenStrobeViewModel: SirenStrobeViewModel = viewModel()
   val rideSafetyViewModel: RideSafetyViewModel = viewModel()
+  val campusSafetyViewModel: CampusSafetyViewModel = viewModel()
+  val selfDefenseViewModel: SelfDefenseViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -110,6 +116,8 @@ fun RamisaNavGraph(
         onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
         onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
         onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
+        onNavigateToCampusSafety = { navController.navigate(Screen.CampusSafety.route) },
+        onNavigateToSelfDefense = { navController.navigate(Screen.SelfDefense.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -309,6 +317,30 @@ fun RamisaNavGraph(
     composable(Screen.RideSafety.route) {
       RideSafetyScreen(
         viewModel = rideSafetyViewModel,
+        onNavigateBack = { navController.popBackStack() },
+        onTriggerSos = {
+          emergencyViewModel.triggerSos()
+          navController.navigate(Screen.Emergency.route)
+        }
+      )
+    }
+
+    // 22. University Campus Safe Corridors & Proctor Desk
+    composable(Screen.CampusSafety.route) {
+      CampusSafetyScreen(
+        viewModel = campusSafetyViewModel,
+        onNavigateBack = { navController.popBackStack() },
+        onTriggerSos = {
+          emergencyViewModel.triggerSos()
+          navController.navigate(Screen.Emergency.route)
+        }
+      )
+    }
+
+    // 23. Practical Self Defense Techniques
+    composable(Screen.SelfDefense.route) {
+      SelfDefenseScreen(
+        viewModel = selfDefenseViewModel,
         onNavigateBack = { navController.popBackStack() },
         onTriggerSos = {
           emergencyViewModel.triggerSos()

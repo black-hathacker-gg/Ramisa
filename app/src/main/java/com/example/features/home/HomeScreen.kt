@@ -45,6 +45,8 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
@@ -104,6 +106,8 @@ fun HomeScreen(
   onNavigateToStealthMode: () -> Unit = {},
   onNavigateToSirenStrobe: () -> Unit = {},
   onNavigateToRideSafety: () -> Unit = {},
+  onNavigateToCampusSafety: () -> Unit = {},
+  onNavigateToSelfDefense: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -489,11 +493,30 @@ fun HomeScreen(
           testTag = "btn_ride_safety"
         )
 
-        // Row for CAMOUFLAGE CALCULATOR and SAFETY VAULT
+        // CAMPUS SAFETY & ESCORT DESK
+        SafetyActionCard(
+          title = "CAMPUS SAFETY & ESCORT",
+          subtitle = "University safe corridors, proctor direct desk & volunteer escort",
+          icon = Icons.Default.School,
+          accentColor = SafeGreenPrimary,
+          onClick = onNavigateToCampusSafety,
+          testTag = "btn_campus_safety"
+        )
+
+        // Row for SELF DEFENSE and CAMOUFLAGE CALCULATOR
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+          SafetyMiniCard(
+            title = "SELF-DEFENSE",
+            subtitle = "Escape Maneuvers",
+            icon = Icons.Default.SportsMartialArts,
+            onClick = onNavigateToSelfDefense,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_self_defense"
+          )
+
           SafetyMiniCard(
             title = "STEALTH CALC",
             subtitle = "Camouflage SOS",
@@ -502,7 +525,13 @@ fun HomeScreen(
             modifier = Modifier.weight(1f),
             testTag = "btn_stealth_calc"
           )
+        }
 
+        // Row for SAFETY VAULT and INCIDENT LOGS
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
           SafetyMiniCard(
             title = "SAFETY VAULT",
             subtitle = "Encrypted Audio",
@@ -511,13 +540,7 @@ fun HomeScreen(
             modifier = Modifier.weight(1f),
             testTag = "btn_vault"
           )
-        }
 
-        // Row for INCIDENT LOGS and SAFETY GUIDE
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
           SafetyMiniCard(
             title = "INCIDENT LOGS",
             subtitle = "Beacon History",
@@ -526,7 +549,13 @@ fun HomeScreen(
             modifier = Modifier.weight(1f),
             testTag = "btn_history"
           )
+        }
 
+        // Row for LEGAL GUIDE
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
           SafetyMiniCard(
             title = "LEGAL GUIDE",
             subtitle = "Rights & Protocols",

@@ -56,6 +56,8 @@ import com.example.features.child.ChildSafetyScreen
 import com.example.features.child.ChildSafetyViewModel
 import com.example.features.lockscreen.LockScreenSosScreen
 import com.example.features.lockscreen.LockScreenSosViewModel
+import com.example.features.map.DangerMapScreen
+import com.example.features.map.DangerMapViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -105,6 +107,7 @@ fun RamisaNavGraph(
   val firstAidViewModel: FirstAidViewModel = viewModel()
   val childSafetyViewModel: ChildSafetyViewModel = viewModel()
   val lockScreenSosViewModel: LockScreenSosViewModel = viewModel()
+  val dangerMapViewModel: DangerMapViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -150,6 +153,7 @@ fun RamisaNavGraph(
         onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
         onNavigateToChildSafety = { navController.navigate(Screen.ChildSafety.route) },
         onNavigateToLockScreenSos = { navController.navigate(Screen.LockScreenSos.route) },
+        onNavigateToDangerMap = { navController.navigate(Screen.DangerMap.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -449,6 +453,18 @@ fun RamisaNavGraph(
     composable(Screen.LockScreenSos.route) {
       LockScreenSosScreen(
         viewModel = lockScreenSosViewModel,
+        onNavigateBack = { navController.popBackStack() },
+        onTriggerSos = {
+          emergencyViewModel.triggerSos()
+          navController.navigate(Screen.Emergency.route)
+        }
+      )
+    }
+
+    // 32. Danger & Sexual Harassment Incident Heatmap
+    composable(Screen.DangerMap.route) {
+      DangerMapScreen(
+        viewModel = dangerMapViewModel,
         onNavigateBack = { navController.popBackStack() },
         onTriggerSos = {
           emergencyViewModel.triggerSos()

@@ -33,4 +33,5 @@ sealed class Screen(val route: String) {
   data object FirstAid : Screen("first_aid")
   data object ChildSafety : Screen("child_safety")
   data object LockScreenSos : Screen("lock_screen_sos")
+  data object DangerMap : Screen("danger_map")
 }

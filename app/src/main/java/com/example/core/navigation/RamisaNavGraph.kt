@@ -40,6 +40,10 @@ import com.example.features.campus.CampusSafetyScreen
 import com.example.features.campus.CampusSafetyViewModel
 import com.example.features.defense.SelfDefenseScreen
 import com.example.features.defense.SelfDefenseViewModel
+import com.example.features.cyber.CyberCrimeSupportScreen
+import com.example.features.cyber.CyberCrimeViewModel
+import com.example.features.wellness.WellnessCounselingScreen
+import com.example.features.wellness.WellnessViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -81,6 +85,8 @@ fun RamisaNavGraph(
   val rideSafetyViewModel: RideSafetyViewModel = viewModel()
   val campusSafetyViewModel: CampusSafetyViewModel = viewModel()
   val selfDefenseViewModel: SelfDefenseViewModel = viewModel()
+  val cyberCrimeViewModel: CyberCrimeViewModel = viewModel()
+  val wellnessViewModel: WellnessViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -118,6 +124,8 @@ fun RamisaNavGraph(
         onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
         onNavigateToCampusSafety = { navController.navigate(Screen.CampusSafety.route) },
         onNavigateToSelfDefense = { navController.navigate(Screen.SelfDefense.route) },
+        onNavigateToCyberCrimeSupport = { navController.navigate(Screen.CyberCrimeSupport.route) },
+        onNavigateToWellness = { navController.navigate(Screen.WellnessCounseling.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -346,6 +354,22 @@ fun RamisaNavGraph(
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
         }
+      )
+    }
+
+    // 24. Cyber Harassment & PCSW Support
+    composable(Screen.CyberCrimeSupport.route) {
+      CyberCrimeSupportScreen(
+        viewModel = cyberCrimeViewModel,
+        onNavigateBack = { navController.popBackStack() }
+      )
+    }
+
+    // 25. Trauma Recovery & Counseling
+    composable(Screen.WellnessCounseling.route) {
+      WellnessCounselingScreen(
+        viewModel = wellnessViewModel,
+        onNavigateBack = { navController.popBackStack() }
       )
     }
   }

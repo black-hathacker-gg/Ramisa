@@ -47,6 +47,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SportsMartialArts
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
@@ -108,6 +110,8 @@ fun HomeScreen(
   onNavigateToRideSafety: () -> Unit = {},
   onNavigateToCampusSafety: () -> Unit = {},
   onNavigateToSelfDefense: () -> Unit = {},
+  onNavigateToCyberCrimeSupport: () -> Unit = {},
+  onNavigateToWellness: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -551,7 +555,7 @@ fun HomeScreen(
           )
         }
 
-        // Row for LEGAL GUIDE
+        // Row for LEGAL GUIDE and CYBER SUPPORT
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -564,19 +568,37 @@ fun HomeScreen(
             modifier = Modifier.weight(1f),
             testTag = "btn_safety_guide"
           )
+
+          SafetyMiniCard(
+            title = "CYBER DESK (PCSW)",
+            subtitle = "Police Cyber Unit",
+            icon = Icons.Default.SupportAgent,
+            onClick = onNavigateToCyberCrimeSupport,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_cyber_desk"
+          )
         }
 
-        // Row for SETTINGS
+        // Row for WELLNESS & TRAUMA and SETTINGS
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
           SafetyMiniCard(
+            title = "WELLNESS & CARE",
+            subtitle = "Trauma & Helplines",
+            icon = Icons.Default.Spa,
+            onClick = onNavigateToWellness,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_wellness_care"
+          )
+
+          SafetyMiniCard(
             title = "SETTINGS",
             subtitle = "PIN & Preferences",
             icon = Icons.Default.Settings,
             onClick = onNavigateToSettings,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.weight(1f),
             testTag = "btn_settings"
           )
         }

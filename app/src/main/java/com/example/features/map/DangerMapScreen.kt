@@ -281,8 +281,8 @@ fun DangerMapScreen(
             .pointerInput(uiState.filteredDangerZones) {
               detectTapGestures { offset ->
                 // Calculate closest danger zone click
-                val width = size.width
-                val height = size.height
+                val width = size.width.toFloat()
+                val height = size.height.toFloat()
                 var closest: DangerZone? = null
                 var minDist = Float.MAX_VALUE
 

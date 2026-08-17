@@ -123,6 +123,7 @@ fun HomeScreen(
   onNavigateToFirstAid: () -> Unit = {},
   onNavigateToChildSafety: () -> Unit = {},
   onNavigateToLockScreenSos: () -> Unit = {},
+  onNavigateToDangerMap: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -683,6 +684,13 @@ fun HomeScreen(
         }
       }
 
+      Spacer(modifier = Modifier.height(20.dp))
+      
+      // DANGER MAP WIDGET
+      com.example.features.map.DangerMapHomeWidget(
+        onOpenFullMap = onNavigateToDangerMap
+      )
+      
       Spacer(modifier = Modifier.height(20.dp))
 
       // Bangladesh Helpline Direct Bar

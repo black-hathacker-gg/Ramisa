@@ -44,6 +44,10 @@ import com.example.features.cyber.CyberCrimeSupportScreen
 import com.example.features.cyber.CyberCrimeViewModel
 import com.example.features.wellness.WellnessCounselingScreen
 import com.example.features.wellness.WellnessViewModel
+import com.example.features.volunteer.VolunteerEscortScreen
+import com.example.features.volunteer.VolunteerEscortViewModel
+import com.example.features.legalaid.LegalAidScreen
+import com.example.features.legalaid.LegalAidViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -87,6 +91,8 @@ fun RamisaNavGraph(
   val selfDefenseViewModel: SelfDefenseViewModel = viewModel()
   val cyberCrimeViewModel: CyberCrimeViewModel = viewModel()
   val wellnessViewModel: WellnessViewModel = viewModel()
+  val volunteerEscortViewModel: VolunteerEscortViewModel = viewModel()
+  val legalAidViewModel: LegalAidViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -126,6 +132,8 @@ fun RamisaNavGraph(
         onNavigateToSelfDefense = { navController.navigate(Screen.SelfDefense.route) },
         onNavigateToCyberCrimeSupport = { navController.navigate(Screen.CyberCrimeSupport.route) },
         onNavigateToWellness = { navController.navigate(Screen.WellnessCounseling.route) },
+        onNavigateToVolunteerEscort = { navController.navigate(Screen.VolunteerEscort.route) },
+        onNavigateToLegalAid = { navController.navigate(Screen.LegalAid.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -369,6 +377,26 @@ fun RamisaNavGraph(
     composable(Screen.WellnessCounseling.route) {
       WellnessCounselingScreen(
         viewModel = wellnessViewModel,
+        onNavigateBack = { navController.popBackStack() }
+      )
+    }
+
+    // 26. Volunteer Peer Escort Network
+    composable(Screen.VolunteerEscort.route) {
+      VolunteerEscortScreen(
+        viewModel = volunteerEscortViewModel,
+        onNavigateBack = { navController.popBackStack() },
+        onTriggerSos = {
+          emergencyViewModel.triggerSos()
+          navController.navigate(Screen.Emergency.route)
+        }
+      )
+    }
+
+    // 27. Free Legal Aid & GD Drafter
+    composable(Screen.LegalAid.route) {
+      LegalAidScreen(
+        viewModel = legalAidViewModel,
         onNavigateBack = { navController.popBackStack() }
       )
     }

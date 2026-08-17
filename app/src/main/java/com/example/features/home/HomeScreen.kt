@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PhoneCallback
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Security
@@ -112,6 +114,8 @@ fun HomeScreen(
   onNavigateToSelfDefense: () -> Unit = {},
   onNavigateToCyberCrimeSupport: () -> Unit = {},
   onNavigateToWellness: () -> Unit = {},
+  onNavigateToVolunteerEscort: () -> Unit = {},
+  onNavigateToLegalAid: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -576,6 +580,30 @@ fun HomeScreen(
             onClick = onNavigateToCyberCrimeSupport,
             modifier = Modifier.weight(1f),
             testTag = "btn_cyber_desk"
+          )
+        }
+
+        // Row for VOLUNTEER ESCORT and LEGAL AID & GD DRAFTER
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          SafetyMiniCard(
+            title = "PEER ESCORT",
+            subtitle = "Verified Walkers",
+            icon = Icons.Default.People,
+            onClick = onNavigateToVolunteerEscort,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_volunteer_escort"
+          )
+
+          SafetyMiniCard(
+            title = "LEGAL AID & GD",
+            subtitle = "16430 & Drafter",
+            icon = Icons.Default.Gavel,
+            onClick = onNavigateToLegalAid,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_legal_aid"
           )
         }
 

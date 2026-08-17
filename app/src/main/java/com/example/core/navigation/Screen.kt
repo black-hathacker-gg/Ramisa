@@ -27,4 +27,6 @@ sealed class Screen(val route: String) {
   data object SelfDefense : Screen("self_defense")
   data object CyberCrimeSupport : Screen("cyber_crime_support")
   data object WellnessCounseling : Screen("wellness_counseling")
+  data object VolunteerEscort : Screen("volunteer_escort")
+  data object LegalAid : Screen("legal_aid")
 }

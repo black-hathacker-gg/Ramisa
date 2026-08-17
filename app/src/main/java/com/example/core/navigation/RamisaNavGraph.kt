@@ -48,6 +48,10 @@ import com.example.features.volunteer.VolunteerEscortScreen
 import com.example.features.volunteer.VolunteerEscortViewModel
 import com.example.features.legalaid.LegalAidScreen
 import com.example.features.legalaid.LegalAidViewModel
+import com.example.features.timer.SafetyTimerScreen
+import com.example.features.timer.SafetyTimerViewModel
+import com.example.features.firstaid.FirstAidScreen
+import com.example.features.firstaid.FirstAidViewModel
 import com.example.features.journey.JourneyViewModel
 import com.example.features.journey.SafeJourneyScreen
 import com.example.features.places.SafePlacesScreen
@@ -93,6 +97,8 @@ fun RamisaNavGraph(
   val wellnessViewModel: WellnessViewModel = viewModel()
   val volunteerEscortViewModel: VolunteerEscortViewModel = viewModel()
   val legalAidViewModel: LegalAidViewModel = viewModel()
+  val safetyTimerViewModel: SafetyTimerViewModel = viewModel()
+  val firstAidViewModel: FirstAidViewModel = viewModel()
 
   NavHost(
     navController = navController,
@@ -134,6 +140,8 @@ fun RamisaNavGraph(
         onNavigateToWellness = { navController.navigate(Screen.WellnessCounseling.route) },
         onNavigateToVolunteerEscort = { navController.navigate(Screen.VolunteerEscort.route) },
         onNavigateToLegalAid = { navController.navigate(Screen.LegalAid.route) },
+        onNavigateToSafetyTimer = { navController.navigate(Screen.SafetyTimer.route) },
+        onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
         onTriggerSos = {
           emergencyViewModel.triggerSos()
           navController.navigate(Screen.Emergency.route)
@@ -397,6 +405,26 @@ fun RamisaNavGraph(
     composable(Screen.LegalAid.route) {
       LegalAidScreen(
         viewModel = legalAidViewModel,
+        onNavigateBack = { navController.popBackStack() }
+      )
+    }
+
+    // 28. Safety Check-in Timer (Dead Man's Switch)
+    composable(Screen.SafetyTimer.route) {
+      SafetyTimerScreen(
+        viewModel = safetyTimerViewModel,
+        onNavigateBack = { navController.popBackStack() },
+        onTriggerSos = {
+          emergencyViewModel.triggerSos()
+          navController.navigate(Screen.Emergency.route)
+        }
+      )
+    }
+
+    // 29. Offline First Aid & Triage Guide
+    composable(Screen.FirstAid.route) {
+      FirstAidScreen(
+        viewModel = firstAidViewModel,
         onNavigateBack = { navController.popBackStack() }
       )
     }

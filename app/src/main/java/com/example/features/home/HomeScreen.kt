@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PhoneCallback
@@ -51,6 +52,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
@@ -116,6 +118,8 @@ fun HomeScreen(
   onNavigateToWellness: () -> Unit = {},
   onNavigateToVolunteerEscort: () -> Unit = {},
   onNavigateToLegalAid: () -> Unit = {},
+  onNavigateToSafetyTimer: () -> Unit = {},
+  onNavigateToFirstAid: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -604,6 +608,30 @@ fun HomeScreen(
             onClick = onNavigateToLegalAid,
             modifier = Modifier.weight(1f),
             testTag = "btn_legal_aid"
+          )
+        }
+
+        // Row for SAFETY CHECK-IN TIMER and OFFLINE FIRST AID
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          SafetyMiniCard(
+            title = "SAFETY TIMER",
+            subtitle = "Dead Man's Switch",
+            icon = Icons.Default.Timer,
+            onClick = onNavigateToSafetyTimer,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_safety_timer"
+          )
+
+          SafetyMiniCard(
+            title = "FIRST AID GUIDE",
+            subtitle = "Offline Triage",
+            icon = Icons.Default.LocalHospital,
+            onClick = onNavigateToFirstAid,
+            modifier = Modifier.weight(1f),
+            testTag = "btn_first_aid"
           )
         }
 

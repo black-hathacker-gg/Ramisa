@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Security
@@ -27,6 +28,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -55,6 +57,7 @@ fun LoginScreen(
   viewModel: AuthViewModel,
   onLoginSuccess: () -> Unit,
   onNavigateToRegister: () -> Unit,
+  onContinueAsGuest: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -208,6 +211,44 @@ fun LoginScreen(
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
               )
             }
+          }
+
+          Spacer(modifier = Modifier.height(16.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+            Text(
+              text = "  OR  ",
+              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+              color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+          }
+
+          Spacer(modifier = Modifier.height(16.dp))
+
+          // Guest Login Button
+          OutlinedButton(
+            onClick = { viewModel.loginAsGuest(onLoginSuccess) },
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(48.dp)
+              .testTag("btn_login_guest"),
+            shape = RoundedCornerShape(12.dp)
+          ) {
+            Icon(
+              imageVector = Icons.Default.Person,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+              text = "CONTINUE AS GUEST",
+              style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+            )
           }
         }
       }

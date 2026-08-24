@@ -79,6 +79,21 @@ class AuthViewModel(
     }
   }
 
+  fun loginAsGuest(onSuccess: () -> Unit) {
+    viewModelScope.launch {
+      _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+      when (val result = authRepository.loginAsGuest()) {
+        is AuthResult.Success -> {
+          _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
+          onSuccess()
+        }
+        is AuthResult.Error -> {
+          _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+        }
+      }
+    }
+  }
+
   fun register(onSuccess: () -> Unit) {
     val state = _uiState.value
     if (state.name.isBlank()) {

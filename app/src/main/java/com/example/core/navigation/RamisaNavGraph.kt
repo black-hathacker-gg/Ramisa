@@ -118,7 +118,14 @@ fun RamisaNavGraph(
     composable(Screen.Welcome.route) {
       WelcomeScreen(
         onNavigateToLogin = { navController.navigate(Screen.Login.route) },
-        onNavigateToRegister = { navController.navigate(Screen.Register.route) }
+        onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+        onContinueAsGuest = {
+          authViewModel.loginAsGuest {
+            navController.navigate(Screen.Home.route) {
+              popUpTo(Screen.Welcome.route) { inclusive = true }
+            }
+          }
+        }
       )
     }
 
@@ -170,7 +177,14 @@ fun RamisaNavGraph(
             popUpTo(Screen.Login.route) { inclusive = true }
           }
         },
-        onNavigateToRegister = { navController.navigate(Screen.Register.route) }
+        onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+        onContinueAsGuest = {
+          authViewModel.loginAsGuest {
+            navController.navigate(Screen.Home.route) {
+              popUpTo(Screen.Login.route) { inclusive = true }
+            }
+          }
+        }
       )
     }
 

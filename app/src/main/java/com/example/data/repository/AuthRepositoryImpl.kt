@@ -73,6 +73,21 @@ class AuthRepositoryImpl : AuthRepository {
     return AuthResult.Success(profile)
   }
 
+  override suspend fun loginAsGuest(): AuthResult<UserProfile> {
+    val guestProfile = UserProfile(
+      id = "usr_guest_${System.currentTimeMillis() % 10000}",
+      name = "Guest User (অতিথি)",
+      phone = "+880 1700-000000",
+      ageCategory = AgeCategory.ADULT_18_PLUS,
+      userType = UserType.ADULT,
+      emergencyPin = "0000",
+      bloodGroup = "Not Specified",
+      emergencyNote = "Logged in under Guest Mode. Please set up emergency contacts in Profile when ready."
+    )
+    AppSessionManager.setUser(guestProfile)
+    return AuthResult.Success(guestProfile)
+  }
+
   override suspend fun register(
     name: String,
     phone: String,

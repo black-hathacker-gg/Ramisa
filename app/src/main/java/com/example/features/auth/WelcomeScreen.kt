@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -28,11 +29,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +56,7 @@ import com.example.ui.theme.SafetyRedPrimary
 fun WelcomeScreen(
   onNavigateToLogin: () -> Unit,
   onNavigateToRegister: () -> Unit,
+  onContinueAsGuest: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val scrollState = rememberScrollState()
@@ -168,6 +172,50 @@ fun WelcomeScreen(
       ) {
         Text(
           text = "LOG IN (সাইন ইন)",
+          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        )
+      }
+
+      Spacer(modifier = Modifier.height(16.dp))
+
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+        Text(
+          text = "  OR  ",
+          style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+      }
+
+      Spacer(modifier = Modifier.height(16.dp))
+
+      // Guest Login Button
+      Button(
+        onClick = onContinueAsGuest,
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(50.dp)
+          .testTag("btn_welcome_guest"),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+          containerColor = MaterialTheme.colorScheme.secondaryContainer,
+          contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
+      ) {
+        Icon(
+          imageVector = Icons.Default.Person,
+          contentDescription = null,
+          modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = "CONTINUE AS GUEST (অতিথি প্রবেশ)",
           style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
         )
       }

@@ -13,6 +13,12 @@ interface EmergencyContactDao {
     @Query("SELECT * FROM emergency_contacts ORDER BY priority ASC")
     fun getAllContacts(): Flow<List<EmergencyContact>>
 
+    @Query("SELECT * FROM emergency_contacts ORDER BY priority ASC")
+    suspend fun getAllContactsSync(): List<EmergencyContact>
+
+    @Query("SELECT * FROM emergency_contacts WHERE smsEnabled = 1 ORDER BY priority ASC")
+    suspend fun getSmsEnabledContactsSync(): List<EmergencyContact>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertContact(contact: EmergencyContact)
 

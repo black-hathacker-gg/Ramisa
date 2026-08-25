@@ -1,10 +1,5 @@
 package com.example.features.lockscreen
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
-import androidx.core.app.ActivityCompat
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -12,13 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
-import com.example.R
-import com.example.data.repository.AppSessionManager
-import com.example.domain.model.TriggerType
+import com.example.core.sms.EmergencySmsDispatcher
+import com.example.core.sms.SmsDispatchReport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,7 +30,7 @@ object LockScreenSosManager {
   private val _isLockScreenGuardEnabled = MutableStateFlow(true)
   val isLockScreenGuardEnabled: StateFlow<Boolean> = _isLockScreenGuardEnabled.asStateFlow()
 
-  private val _lastOfflineDispatchStatus = MutableStateFlow("Direct SMS & Offline Mesh Ready")
+  private val _lastOfflineDispatchStatus = MutableStateFlow("Direct SIM SMS & Offline Guard Ready")
   val lastOfflineDispatchStatus: StateFlow<String> = _lastOfflineDispatchStatus.asStateFlow()
 
   private val _offlineSmsSentCount = MutableStateFlow(0)
@@ -55,7 +48,7 @@ object LockScreenSosManager {
   fun createNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       val name = "RAMISA Lock Screen Safety Guard"
-      val descriptionText = "Persistent Lock Screen emergency trigger and offline SMS dispatch"
+      val descriptionText = "Persistent Lock Screen emergency trigger and offline SIM SMS dispatch"
       val importance = NotificationManager.IMPORTANCE_HIGH
       val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
         description = descriptionText
@@ -110,10 +103,10 @@ object LockScreenSosManager {
     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
       .setContentTitle("🚨 RAMISA Lock Screen Safety Guard")
-      .setContentText("Locked Device Active • Tap below for instant Offline SOS")
+      .setContentText("Direct SIM SMS Guard Active • Tap below for instant Offline SOS")
       .setStyle(
         NotificationCompat.BigTextStyle()
-          .bigText("Phone locked? Tap '🚨 TRIGGER OFFLINE SOS' to send instant emergency SMS with live GPS to guardians without unlocking or opening the app.")
+          .bigText("Phone locked or no internet? Tap '🚨 TRIGGER OFFLINE SOS' to send automated SIM SMS with live GPS to guardians without unlocking.")
       )
       .setPriority(NotificationCompat.PRIORITY_MAX)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Visible on locked lockscreen
@@ -140,69 +133,21 @@ object LockScreenSosManager {
     notificationManager.cancel(NOTIFICATION_ID)
   }
 
-
-  private fun getLastKnownLocationUrl(context: Context): String {
-    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-        ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-        return "https://maps.google.com/?q=23.7937,90.4066 (Fallback)"
-    }
-    val providers = locationManager.getProviders(true)
-    var bestLocation: Location? = null
-    for (provider in providers) {
-        val l = locationManager.getLastKnownLocation(provider) ?: continue
-        if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
-            bestLocation = l
-        }
-    }
-    return if (bestLocation != null) {
-        "https://maps.google.com/?q=${bestLocation.latitude},${bestLocation.longitude}"
-    } else {
-        "https://maps.google.com/?q=23.7937,90.4066 (Fallback)"
-    }
-  }
-
   fun triggerOfflineEmergency(context: Context, note: String = "Lock Screen Trigger") {
     CoroutineScope(Dispatchers.IO).launch {
-      // 1. Send direct offline SMS to trusted emergency contacts
-      val contacts = listOf(
-        "+8801819112233", // Mother
-        "+8801711223344", // Father
-        "+8801912334455"  // Sister
+      // 1. Dispatch SIM SMS to all database emergency contacts
+      val report: SmsDispatchReport = EmergencySmsDispatcher.dispatchEmergencySms(
+        context = context,
+        customNote = "Lock Screen Direct Trigger"
       )
-      
-      val user = AppSessionManager.currentUser.value
-      val userName = user?.name ?: "RAMISA User"
-      val mapLink = getLastKnownLocationUrl(context)
-      val sosMessage = "🚨 [RAMISA OFFLINE SOS ALERT] $userName is in urgent danger! Location: $mapLink Please send emergency help immediately!"
 
-      var sentCount = 0
-      try {
-        val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          context.getSystemService(SmsManager::class.java)
-        } else {
-          @Suppress("DEPRECATION")
-          SmsManager.getDefault()
-        }
-
-        for (phone in contacts) {
-          try {
-            val parts = smsManager.divideMessage(sosMessage)
-            smsManager.sendMultipartTextMessage(phone, null, parts, null, null)
-            sentCount++
-          } catch (e: Exception) {
-            Log.e("LockScreenSos", "Failed to send SMS to $phone: ${e.message}")
-            // Even if hardware SMS throws in emulator, count simulated success
-            sentCount++
-          }
-        }
-      } catch (e: Exception) {
-        Log.e("LockScreenSos", "SmsManager error: ${e.message}")
-        sentCount = contacts.size
+      _offlineSmsSentCount.value += report.successCount
+      val statusText = if (report.successfulContactNames.isNotEmpty()) {
+        "Dispatched SIM SMS to ${report.successfulContactNames.joinToString(", ")}"
+      } else {
+        "Dispatched SIM SMS to ${report.totalAttempted} contacts"
       }
-
-      _offlineSmsSentCount.value += sentCount
-      _lastOfflineDispatchStatus.value = "Sent $sentCount Offline SOS SMS alerts at ${System.currentTimeMillis() % 100000}"
+      _lastOfflineDispatchStatus.value = statusText
 
       // 2. Launch Emergency UI directly over lockscreen
       val launchIntent = Intent(context, MainActivity::class.java).apply {

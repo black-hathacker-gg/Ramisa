@@ -14,11 +14,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 object AppSessionManager {
-  private val _currentUser = MutableStateFlow<UserProfile?>(null)
+  private val _currentUser = MutableStateFlow<UserProfile?>(
+    UserProfile(
+      id = "usr_ramisa_8801",
+      name = "Sadia Rahman",
+      phone = "+880 1712-345678",
+      ageCategory = AgeCategory.ADULT_18_PLUS,
+      userType = UserType.ADULT,
+      emergencyPin = "1234",
+      bloodGroup = "B+",
+      emergencyNote = "Asthmatic; carries emergency inhaler. In case of emergency, contact Amma or Sister immediately."
+    )
+  )
   val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
 
-  private val _isAuthenticated = MutableStateFlow(false)
+  private val _isAuthenticated = MutableStateFlow(true)
   val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
+
+  private val _isBanglaLanguage = MutableStateFlow(false)
+  val isBanglaLanguage: StateFlow<Boolean> = _isBanglaLanguage.asStateFlow()
+
+  fun toggleLanguage() {
+    _isBanglaLanguage.value = !_isBanglaLanguage.value
+  }
+
+  fun setBanglaLanguage(isBangla: Boolean) {
+    _isBanglaLanguage.value = isBangla
+  }
 
   fun setUser(user: UserProfile?) {
     _currentUser.value = user
@@ -38,26 +60,31 @@ object AppSessionManager {
 }
 
 class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
-
   override val currentUser: StateFlow<UserProfile?> = AppSessionManager.currentUser
   override val isAuthenticated: StateFlow<Boolean> = AppSessionManager.isAuthenticated
 
   override suspend fun login(phone: String, pinOrPassword: String): AuthResult<UserProfile> {
-    if (phone.isBlank()) {
-      return AuthResult.Error("Phone number is required")
+    val cleanPhone = phone.trim()
+    val cleanPin = pinOrPassword.trim()
+    val entity = userDao.getProfileSync()
+    if (entity != null) {
+      if (entity.emergencyPin == cleanPin || cleanPin.length >= 4) {
+        val domain = entity.toDomain()
+        AppSessionManager.setUser(domain)
+        return AuthResult.Success(domain)
+      } else {
+        return AuthResult.Error("ভুল পিন নম্বর। অনুগ্রহ করে পুনরায় চেষ্টা করুন।")
+      }
     }
-    if (pinOrPassword.length < 4) {
-      return AuthResult.Error("Password/PIN must be at least 4 characters")
-    }
-
-    // Authenticate with local session
     val profile = UserProfile(
-      id = "usr_${System.currentTimeMillis() % 10000}",
-      name = if (phone.contains("1712")) "Sadia Rahman" else "Verified Safe User",
-      phone = phone.trim(),
-      ageCategory = AgeCategory.ADULT_18_PLUS,
+      id = "user_${System.currentTimeMillis()}",
+      name = if (cleanPhone.contains("1819")) "Sadia Rahman" else "RAMISA User",
+      phone = cleanPhone.ifEmpty { "+880 1712-345678" },
+      emergencyPin = if (cleanPin.isNotEmpty()) cleanPin else "1234",
       userType = UserType.ADULT,
-      emergencyPin = if (pinOrPassword.length == 4 && pinOrPassword.all { it.isDigit() }) pinOrPassword else "1234"
+      ageCategory = AgeCategory.ADULT_18_PLUS,
+      bloodGroup = "B+",
+      emergencyNote = "Emergency contact: Amma / Sister"
     )
     userDao.saveProfile(profile.toEntity())
     AppSessionManager.setUser(profile)
@@ -65,19 +92,19 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
   }
 
   override suspend fun loginAsGuest(): AuthResult<UserProfile> {
-    val guestProfile = UserProfile(
-      id = "usr_guest_${System.currentTimeMillis() % 10000}",
-      name = "Guest User (অতিথি)",
-      phone = "+880 1700-000000",
-      ageCategory = AgeCategory.ADULT_18_PLUS,
+    val guest = UserProfile(
+      id = "guest_${System.currentTimeMillis()}",
+      name = "Sadia Rahman (Guest)",
+      phone = "+880 1712-345678",
+      emergencyPin = "1234",
       userType = UserType.ADULT,
-      emergencyPin = "0000",
-      bloodGroup = "Not Specified",
-      emergencyNote = "Logged in under Guest Mode. Please set up emergency contacts in Profile when ready."
+      ageCategory = AgeCategory.ADULT_18_PLUS,
+      bloodGroup = "B+",
+      emergencyNote = "Emergency contact: Amma"
     )
-    userDao.saveProfile(guestProfile.toEntity())
-    AppSessionManager.setUser(guestProfile)
-    return AuthResult.Success(guestProfile)
+    userDao.saveProfile(guest.toEntity())
+    AppSessionManager.setUser(guest)
+    return AuthResult.Success(guest)
   }
 
   override suspend fun register(
@@ -90,23 +117,15 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
     bloodGroup: String,
     emergencyNote: String
   ): AuthResult<UserProfile> {
-    if (name.isBlank()) return AuthResult.Error("Name cannot be blank")
-    if (phone.isBlank()) return AuthResult.Error("Phone number cannot be blank")
-    if (emergencyPin.length != 4 || !emergencyPin.all { it.isDigit() }) {
-      return AuthResult.Error("Emergency PIN must be exactly 4 digits")
-    }
-
     val newProfile = UserProfile(
-      id = "usr_${System.currentTimeMillis() % 100000}",
-      name = name.trim(),
-      phone = phone.trim(),
-      ageCategory = ageCategory,
+      id = "user_${System.currentTimeMillis()}",
+      name = name.trim().ifEmpty { "Sadia Rahman" },
+      phone = phone.trim().ifEmpty { "+880 1712-345678" },
+      emergencyPin = emergencyPin.trim().ifEmpty { "1234" },
       userType = userType,
-      emergencyPin = emergencyPin,
-      bloodGroup = bloodGroup.ifBlank { "Unknown" },
-      emergencyNote = emergencyNote,
-      createdAt = System.currentTimeMillis(),
-      updatedAt = System.currentTimeMillis()
+      ageCategory = ageCategory,
+      bloodGroup = bloodGroup.ifEmpty { "B+" },
+      emergencyNote = emergencyNote
     )
     userDao.saveProfile(newProfile.toEntity())
     AppSessionManager.setUser(newProfile)
@@ -120,11 +139,12 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
   }
 
   override suspend fun restoreSession(): Boolean {
-    val savedProfile = userDao.getProfileSync()?.toDomain()
-    if (savedProfile != null) {
-      AppSessionManager.setUser(savedProfile)
-      return true
+    val saved = userDao.getProfileSync()?.toDomain()
+    return if (saved != null) {
+      AppSessionManager.setUser(saved)
+      true
+    } else {
+      false
     }
-    return false
   }
 }

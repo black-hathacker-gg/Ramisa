@@ -1,8 +1,12 @@
 package com.example.features.emergency
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -34,8 +38,10 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShareLocation
+import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -51,6 +57,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -64,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
 import com.example.ui.theme.SafetyRedLight
@@ -78,6 +86,30 @@ fun EmergencyScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
   val scrollState = rememberScrollState()
+
+  // Permission Launcher for SMS & Location
+  val permissionLauncher = rememberLauncherForActivityResult(
+    contract = ActivityResultContracts.RequestMultiplePermissions()
+  ) { permissions ->
+    val smsGranted = permissions[Manifest.permission.SEND_SMS] ?: false
+    if (smsGranted) {
+      viewModel.dispatchSimSmsAndCall(initiateCall = false)
+    }
+  }
+
+  LaunchedEffect(Unit) {
+    val hasSms = ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+    val hasLocation = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    if (!hasSms || !hasLocation) {
+      permissionLauncher.launch(
+        arrayOf(
+          Manifest.permission.SEND_SMS,
+          Manifest.permission.ACCESS_FINE_LOCATION,
+          Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+      )
+    }
+  }
 
   // Pulsing animation for emergency indicator
   val infiniteTransition = rememberInfiniteTransition(label = "emergency_pulse")
@@ -140,7 +172,57 @@ fun EmergencyScreen(
         color = SafetyRedLight
       )
 
-      Spacer(modifier = Modifier.height(24.dp))
+      Spacer(modifier = Modifier.height(20.dp))
+
+      // Permission Warning Banner if SMS Permission Missing
+      if (!uiState.isSmsPermissionGranted) {
+        Card(
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(14.dp),
+          colors = CardDefaults.cardColors(containerColor = Color(0xFF5C1D1D))
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Icon(
+              imageVector = Icons.Default.Warning,
+              contentDescription = null,
+              tint = Color(0xFFFF8A80),
+              modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = "SMS Permission Needed",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White)
+              )
+              Text(
+                text = "Grant SMS permission so emergency SMS can be sent via SIM without internet.",
+                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFFCDD2))
+              )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+              onClick = {
+                permissionLauncher.launch(
+                  arrayOf(
+                    Manifest.permission.SEND_SMS,
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                  )
+                )
+              },
+              colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary),
+              shape = RoundedCornerShape(10.dp)
+            ) {
+              Text("Grant", fontSize = 12.sp)
+            }
+          }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+      }
 
       // Status Info Card
       Card(
@@ -152,16 +234,17 @@ fun EmergencyScreen(
           modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp)
+          verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+          // GPS Location
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
               imageVector = Icons.Default.LocationOn,
               contentDescription = null,
               tint = SafetyRedLight,
-              modifier = Modifier.size(18.dp)
+              modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
               text = uiState.locationLabel,
               style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
@@ -169,46 +252,55 @@ fun EmergencyScreen(
             )
           }
 
-          Row(verticalAlignment = Alignment.CenterVertically) {
+          // Direct SIM SMS Status
+          Row(verticalAlignment = Alignment.Top) {
             Icon(
-              imageVector = Icons.Default.Sms,
+              imageVector = Icons.Default.SimCard,
               contentDescription = null,
               tint = SafeGreenPrimary,
-              modifier = Modifier.size(18.dp)
+              modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              text = "${uiState.contactsNotifiedCount} Trusted contacts notified with GPS location & battery status",
-              style = MaterialTheme.typography.bodySmall,
-              color = Color.White.copy(alpha = 0.9f)
-            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column {
+              Text(
+                text = "Automated SIM SMS (No Internet / MB Needed)",
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SafeGreenPrimary)
+              )
+              Text(
+                text = uiState.smsStatusSummary,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.9f)
+              )
+            }
           }
 
+          // Live Telemetry
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
               imageVector = Icons.Default.ShareLocation,
               contentDescription = null,
               tint = SafeGreenPrimary,
-              modifier = Modifier.size(18.dp)
+              modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
-              text = "Live telemetry streaming: Lat ${uiState.location.latitude}, Lng ${uiState.location.longitude}",
+              text = "GPS Coordinates: ${uiState.location.latitude}, ${uiState.location.longitude}",
               style = MaterialTheme.typography.bodySmall,
               color = Color.White.copy(alpha = 0.8f)
             )
           }
 
+          // Offline Resilience
           Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
               imageVector = Icons.Default.Lock,
               contentDescription = null,
               tint = Color(0xFFFFB74D),
-              modifier = Modifier.size(18.dp)
+              modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Text(
-              text = "Lock Screen Guard & Offline Native SMS broadcast active (No internet required)",
+              text = "Lock Screen Guard & Hardware Trigger Active",
               style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
               color = Color(0xFFFFCC80)
             )
@@ -216,7 +308,27 @@ fun EmergencyScreen(
         }
       }
 
-      Spacer(modifier = Modifier.height(24.dp))
+      Spacer(modifier = Modifier.height(14.dp))
+
+      // Resend SIM SMS Button
+      OutlinedButton(
+        onClick = { viewModel.dispatchSimSmsAndCall(initiateCall = false) },
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(46.dp)
+          .testTag("btn_resend_sim_sms"),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = SafeGreenPrimary)
+      ) {
+        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+          text = "RESEND SIM SMS TO ALL GUARDIANS",
+          style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+        )
+      }
+
+      Spacer(modifier = Modifier.height(20.dp))
 
       // Direct Action Buttons: Bangladesh 999 and Hotlines
       Text(
@@ -306,9 +418,13 @@ fun EmergencyScreen(
 
       Spacer(modifier = Modifier.height(10.dp))
 
-      // Call Primary Contact
+      // Call Primary Contact (Dynamic from Database)
+      val primaryContact = uiState.primaryContact
+      val primaryName = primaryContact?.name ?: "Mother (আম্মা)"
+      val primaryPhone = primaryContact?.phone ?: "+880 1819-112233"
+
       OutlinedButton(
-        onClick = { dialHotline(context, "+8801819112233") },
+        onClick = { dialHotline(context, primaryPhone) },
         modifier = Modifier
           .fillMaxWidth()
           .height(50.dp)
@@ -319,7 +435,7 @@ fun EmergencyScreen(
         Icon(imageVector = Icons.Default.Person, contentDescription = null)
         Spacer(modifier = Modifier.width(10.dp))
         Text(
-          text = "CALL PRIMARY CONTACT (আম্মা • +880 1819-112233)",
+          text = "CALL PRIMARY CONTACT ($primaryName • $primaryPhone)",
           style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
         )
       }
@@ -329,13 +445,13 @@ fun EmergencyScreen(
       // Instant WhatsApp Emergency Broadcast Share
       Button(
         onClick = {
-          val sosMsg = "🚨 [RAMISA SOS ALERT] I am in urgent danger! My live location: https://maps.google.com/?q=${uiState.location.latitude},${uiState.location.longitude} - Please send help immediately!"
+          val sosMsg = "🚨 [RAMISA SOS ALERT] আমি বিপদে আছি! My live GPS Location: https://maps.google.com/?q=${uiState.location.latitude},${uiState.location.longitude} - Please send help immediately!"
           val sendIntent = Intent().apply {
             action = Intent.ACTION_SEND
             putExtra(Intent.EXTRA_TEXT, sosMsg)
             type = "text/plain"
           }
-          context.startActivity(Intent.createChooser(sendIntent, "Broadcast SOS via WhatsApp / SMS"))
+          context.startActivity(Intent.createChooser(sendIntent, "Broadcast SOS via WhatsApp / Other Apps"))
         },
         modifier = Modifier
           .fillMaxWidth()
@@ -347,7 +463,7 @@ fun EmergencyScreen(
         Icon(imageVector = Icons.Default.Sms, contentDescription = null, tint = Color.White)
         Spacer(modifier = Modifier.width(10.dp))
         Text(
-          text = "BROADCAST SOS TO WHATSAPP / SMS",
+          text = "SHARE SOS VIA WHATSAPP / OTHER APPS",
           style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White)
         )
       }
@@ -389,10 +505,9 @@ fun EmergencyScreen(
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Text(
-            text = "Enter your 4-digit Emergency PIN to confirm you are safe and notify your contacts that the situation is resolved.",
+            text = "Enter your 4-digit Emergency PIN to confirm you are safe.",
             style = MaterialTheme.typography.bodySmall
           )
-
           OutlinedTextField(
             value = uiState.enteredPin,
             onValueChange = viewModel::onPinEntered,
@@ -402,7 +517,6 @@ fun EmergencyScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth().testTag("input_resolve_pin")
           )
-
           if (uiState.pinErrorMessage != null) {
             Text(
               text = uiState.pinErrorMessage ?: "",

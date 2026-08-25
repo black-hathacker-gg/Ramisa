@@ -1,0 +1,201 @@
+package com.example.core.sms
+
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.telephony.SmsManager
+import android.util.Log
+import androidx.core.app.ActivityCompat
+import com.example.core.location.EmergencyLocationManager
+import com.example.core.service.FusedLocationBackgroundService
+import com.example.data.local.AppDatabase
+import com.example.data.local.toDomain
+import com.example.data.repository.AppSessionManager
+import com.example.domain.model.EmergencyContact
+import com.example.domain.model.GeoLocation
+import com.example.domain.model.UserProfile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+data class SmsDispatchReport(
+    val totalAttempted: Int,
+    val successCount: Int,
+    val successfulContactNames: List<String>,
+    val failedContactNames: List<String>,
+    val messageSent: String,
+    val isPermissionGranted: Boolean,
+    val primaryContactPhone: String? = null,
+    val locationUsed: GeoLocation? = null,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+object EmergencySmsDispatcher {
+
+    private const val TAG = "EmergencySmsDispatcher"
+
+    suspend fun dispatchEmergencySms(
+        context: Context,
+        customNote: String? = null,
+        location: GeoLocation? = null
+    ): SmsDispatchReport = withContext(Dispatchers.IO) {
+        // Automatically ensure FusedLocation background service is active
+        try {
+            FusedLocationBackgroundService.startLocationService(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting FusedLocationBackgroundService: ${e.message}")
+        }
+
+        val db = AppDatabase.getDatabase(context)
+        
+        // 1. Fetch saved contacts from Room Database
+        var contacts: List<EmergencyContact> = try {
+            val enabled = db.emergencyContactDao().getSmsEnabledContactsSync()
+            if (enabled.isNotEmpty()) enabled else db.emergencyContactDao().getAllContactsSync()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error querying contacts from DB: ${e.message}")
+            emptyList()
+        }
+
+        // Fallback default contacts if database is empty
+        if (contacts.isEmpty()) {
+            contacts = listOf(
+                EmergencyContact("c1", "Mother (আম্মা)", "+8801819112233", "Mother", 1, smsEnabled = true),
+                EmergencyContact("c2", "Father (আব্বু)", "+8801711223344", "Father", 2, smsEnabled = true),
+                EmergencyContact("c3", "Sister (আপু)", "+8801912334455", "Sister", 3, smsEnabled = true)
+            )
+        }
+
+        val primaryPhone = contacts.firstOrNull()?.phone
+
+        // 2. Fetch User Profile from Database or Session
+        val userProfile: UserProfile? = try {
+            db.userDao().getProfileSync()?.toDomain() ?: AppSessionManager.currentUser.value
+        } catch (e: Exception) {
+            AppSessionManager.currentUser.value
+        }
+
+        val userName = userProfile?.name ?: "RAMISA User"
+        val bloodGroup = if (!userProfile?.bloodGroup.isNullOrBlank() && userProfile?.bloodGroup != "Unknown") {
+            " (Blood: ${userProfile.bloodGroup})"
+        } else ""
+
+        // 3. Obtain Accurate Location Coordinates using FusedLocationProviderClient
+        val targetLocation: GeoLocation = if (location != null && location.latitude != 0.0 && location.longitude != 0.0) {
+            location
+        } else {
+            EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
+        }
+
+        val lat = targetLocation.latitude
+        val lng = targetLocation.longitude
+        val mapLink = "https://maps.google.com/?q=$lat,$lng"
+        val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+        val customNoteText = if (!customNote.isNullOrBlank()) " Note: $customNote." else ""
+
+        // 4. Construct SMS Message Body with Fused Location link
+        val messageBody = "🚨 [RAMISA SOS ALERT] আমি বিপদে আছি! $userName$bloodGroup needs immediate help!$customNoteText Live GPS Location: $mapLink (at $timeStr). Please call 999 or rescue immediately!"
+
+        // 5. Check SEND_SMS Permission
+        val hasSmsPermission = ActivityCompat.checkSelfPermission(
+            context,
+            Manifest.permission.SEND_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasSmsPermission) {
+            Log.w(TAG, "SEND_SMS permission not granted. Cannot send physical SIM SMS.")
+            return@withContext SmsDispatchReport(
+                totalAttempted = contacts.size,
+                successCount = 0,
+                successfulContactNames = emptyList(),
+                failedContactNames = contacts.map { "${it.name} (SMS Permission Required)" },
+                messageSent = messageBody,
+                isPermissionGranted = false,
+                primaryContactPhone = primaryPhone,
+                locationUsed = targetLocation
+            )
+        }
+
+        // 6. Send Multipart SMS via SIM Card to ALL contacts
+        val successNames = mutableListOf<String>()
+        val failedNames = mutableListOf<String>()
+
+        try {
+            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+
+            val dividedParts = smsManager.divideMessage(messageBody)
+
+            for (contact in contacts) {
+                val cleanPhone = contact.phone.replace(Regex("[^0-9+]"), "")
+                if (cleanPhone.isNotBlank()) {
+                    try {
+                        smsManager.sendMultipartTextMessage(
+                            cleanPhone,
+                            null,
+                            dividedParts,
+                            null,
+                            null
+                        )
+                        successNames.add(contact.name)
+                        Log.d(TAG, "SMS successfully dispatched to ${contact.name} ($cleanPhone)")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to send SMS to ${contact.name} ($cleanPhone): ${e.message}")
+                        failedNames.add("${contact.name}: ${e.message ?: "Failed"}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "SmsManager error: ${e.message}")
+            failedNames.add("SmsManager Error: ${e.message}")
+        }
+
+        SmsDispatchReport(
+            totalAttempted = contacts.size,
+            successCount = successNames.size,
+            successfulContactNames = successNames,
+            failedContactNames = failedNames,
+            messageSent = messageBody,
+            isPermissionGranted = true,
+            primaryContactPhone = primaryPhone,
+            locationUsed = targetLocation
+        )
+    }
+
+    /**
+     * Initiates an immediate phone call to primary emergency contact or Bangladesh National 999.
+     */
+    fun initiateEmergencyPhoneCall(context: Context, phoneNumber: String? = null) {
+        try {
+            val targetNumber = phoneNumber?.takeIf { it.isNotBlank() } ?: "999"
+            val hasCallPermission = ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CALL_PHONE
+            ) == PackageManager.PERMISSION_GRANTED
+
+            val intent = if (hasCallPermission) {
+                Intent(Intent.ACTION_CALL).apply {
+                    data = Uri.parse("tel:$targetNumber")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+            } else {
+                Intent(Intent.ACTION_DIAL).apply {
+                    data = Uri.parse("tel:$targetNumber")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initiating emergency phone call: ${e.message}")
+        }
+    }
+}

@@ -16,15 +16,24 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.core.navigation.RamisaNavGraph
 import com.example.core.navigation.Screen
+import com.example.core.service.FusedLocationBackgroundService
+import com.example.core.service.RamisaSafetyService
 import com.example.features.lockscreen.LockScreenSosManager
 import com.example.ui.theme.RamisaTheme
 
 class MainActivity : ComponentActivity() {
-
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     configureLockScreenDisplay()
+
+    // Start RAMISA Safety and Fused Location Background Services
+    try {
+      RamisaSafetyService.startService(this)
+      FusedLocationBackgroundService.startLocationService(this)
+    } catch (e: Exception) {
+      // Background services start gracefully
+    }
 
     // Initialize Lock Screen SOS notification guard
     LockScreenSosManager.showLockScreenNotification(this)
@@ -95,5 +104,3 @@ class MainActivity : ComponentActivity() {
     }
   }
 }
-
-

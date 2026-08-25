@@ -24,6 +24,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.MyApplication">
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,7 +34,6 @@
             android:theme="@style/Theme.MyApplication">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -49,7 +49,18 @@
                 <action android:name="android.intent.action.USER_PRESENT" />
             </intent-filter>
         </receiver>
-        <service android:name=".core.service.RamisaSafetyService" android:exported="false" android:foregroundServiceType="location" />
+
+        <!-- RAMISA Safety & FusedLocation Background Services -->
+        <service 
+            android:name=".core.service.RamisaSafetyService" 
+            android:exported="false" 
+            android:foregroundServiceType="location" />
+
+        <service 
+            android:name=".core.service.FusedLocationBackgroundService" 
+            android:exported="false" 
+            android:foregroundServiceType="location" />
+
         <receiver android:name=".core.widget.RamisaWidgetProvider" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -58,6 +69,7 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/ramisa_widget_info" />
         </receiver>
+
     </application>
 
 </manifest>

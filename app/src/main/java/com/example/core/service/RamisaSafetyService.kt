@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.example.R
+import com.example.core.sensor.ShakeDetectorManager
 import com.example.features.battery.BatteryMonitorManager
 
 class RamisaSafetyService : Service() {
@@ -17,12 +18,12 @@ class RamisaSafetyService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        // Start Foreground immediately
         val notification = createPersistentNotification()
         startForeground(NOTIFICATION_ID, notification)
-        
-        // Register the battery monitor
+
+        // Register Battery and Shake Detector monitoring
         BatteryMonitorManager.registerReceiver(this)
+        ShakeDetectorManager.initialize(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -32,11 +33,10 @@ class RamisaSafetyService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         BatteryMonitorManager.unregisterReceiver(this)
+        ShakeDetectorManager.unregister()
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -45,7 +45,7 @@ class RamisaSafetyService : Service() {
                 "RAMISA Active Safety Service",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Runs in the background to monitor emergency triggers and battery levels."
+                description = "Runs in the background to monitor emergency triggers, shake sensor, and battery levels."
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
@@ -55,8 +55,8 @@ class RamisaSafetyService : Service() {
     private fun createPersistentNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("RAMISA Safety Guard")
-            .setContentText("Actively monitoring battery and emergency triggers in the background.")
-            .setSmallIcon(R.mipmap.ic_launcher) // Fallback to launcher icon if vector isn't available
+            .setContentText("Actively monitoring 3x Shake SOS, GPS coordinates, and battery triggers.")
+            .setSmallIcon(R.mipmap.ic_launcher)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
@@ -65,7 +65,7 @@ class RamisaSafetyService : Service() {
     companion object {
         const val CHANNEL_ID = "ramisa_safety_service_channel"
         const val NOTIFICATION_ID = 8001
-        
+
         fun startService(context: Context) {
             val intent = Intent(context, RamisaSafetyService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -74,7 +74,7 @@ class RamisaSafetyService : Service() {
                 context.startService(intent)
             }
         }
-        
+
         fun stopService(context: Context) {
             val intent = Intent(context, RamisaSafetyService::class.java)
             context.stopService(intent)

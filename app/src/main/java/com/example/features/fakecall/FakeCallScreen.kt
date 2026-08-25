@@ -63,11 +63,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Brush
 import com.example.domain.model.FakeCallerProfile
+import com.example.ui.theme.PinkBorderSubtle
+import com.example.ui.theme.PinkContainer
+import com.example.ui.theme.PinkPrimary
+import com.example.ui.theme.PinkPrimaryLight
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
 import com.example.ui.theme.SafetyRedDark
 import com.example.ui.theme.SafetyRedPrimary
+import com.example.ui.theme.SurfaceLight
+import com.example.ui.theme.TextPrimaryLight
+import com.example.ui.theme.TextSecondaryLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +123,10 @@ fun FakeCallScreen(
               }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-              containerColor = MaterialTheme.colorScheme.background
+              containerColor = MaterialTheme.colorScheme.primary,
+              titleContentColor = Color.White,
+              navigationIconContentColor = Color.White,
+              actionIconContentColor = Color.White
             )
           )
         },
@@ -324,7 +336,7 @@ private fun IncomingCallUi(
   Box(
     modifier = Modifier
       .fillMaxSize()
-      .background(Color(0xFF0F172A))
+      .background(Brush.verticalGradient(listOf(SurfaceLight, PinkContainer)))
       .padding(32.dp)
       .testTag("incoming_call_screen"),
     contentAlignment = Alignment.Center
@@ -341,8 +353,8 @@ private fun IncomingCallUi(
       ) {
         Text(
           text = "INCOMING CALL",
-          style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp),
-          color = Color(0xFF94A3B8)
+          style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 2.sp, fontWeight = FontWeight.Bold),
+          color = PinkPrimary
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -357,18 +369,20 @@ private fun IncomingCallUi(
               .size(130.dp)
               .scale(pulseScale)
               .clip(CircleShape)
-              .background(SafeGreenPrimary.copy(alpha = 0.25f))
+              .background(PinkPrimaryLight.copy(alpha = 0.35f))
           )
           Surface(
             modifier = Modifier.size(100.dp),
             shape = CircleShape,
-            color = Color(0xFF1E293B)
+            color = Color.White,
+            shadowElevation = 4.dp,
+            border = BorderStroke(2.dp, PinkBorderSubtle)
           ) {
             Box(contentAlignment = Alignment.Center) {
               Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
-                tint = Color.White,
+                tint = PinkPrimary,
                 modifier = Modifier.size(54.dp)
               )
             }
@@ -380,13 +394,13 @@ private fun IncomingCallUi(
         Text(
           text = profile.name,
           style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-          color = Color.White
+          color = TextPrimaryLight
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
           text = profile.phoneNumber,
           style = MaterialTheme.typography.bodyLarge,
-          color = Color(0xFF94A3B8)
+          color = TextSecondaryLight
         )
       }
 
@@ -407,14 +421,15 @@ private fun IncomingCallUi(
               .clickable(onClick = onDecline)
               .testTag("btn_decline_fake_call"),
             shape = CircleShape,
-            color = SafetyRedPrimary
+            color = Color(0xFFE53935),
+            shadowElevation = 4.dp
           ) {
             Box(contentAlignment = Alignment.Center) {
               Icon(imageVector = Icons.Default.CallEnd, contentDescription = "Decline", tint = Color.White, modifier = Modifier.size(30.dp))
             }
           }
           Spacer(modifier = Modifier.height(8.dp))
-          Text("Decline", color = Color.White, fontSize = 13.sp)
+          Text("Decline", color = TextSecondaryLight, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
 
         // Accept
@@ -426,14 +441,15 @@ private fun IncomingCallUi(
               .clickable(onClick = onAccept)
               .testTag("btn_accept_fake_call"),
             shape = CircleShape,
-            color = SafeGreenPrimary
+            color = PinkPrimary,
+            shadowElevation = 4.dp
           ) {
             Box(contentAlignment = Alignment.Center) {
               Icon(imageVector = Icons.Default.Call, contentDescription = "Accept", tint = Color.White, modifier = Modifier.size(30.dp))
             }
           }
           Spacer(modifier = Modifier.height(8.dp))
-          Text("Accept", color = Color.White, fontSize = 13.sp)
+          Text("Accept", color = TextSecondaryLight, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
       }
     }
@@ -453,7 +469,7 @@ private fun ConnectedCallUi(
   Box(
     modifier = Modifier
       .fillMaxSize()
-      .background(Color(0xFF240618))
+      .background(Brush.verticalGradient(listOf(SurfaceLight, PinkContainer)))
       .padding(32.dp)
       .testTag("connected_call_screen"),
     contentAlignment = Alignment.Center
@@ -470,13 +486,13 @@ private fun ConnectedCallUi(
         Text(
           text = profile.name,
           style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-          color = Color.White
+          color = TextPrimaryLight
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
           text = durationFormatted,
           style = MaterialTheme.typography.titleMedium,
-          color = Color(0xFFFF6090)
+          color = PinkPrimary
         )
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -484,8 +500,10 @@ private fun ConnectedCallUi(
         // Audio Prompt / Speaking Script Card (Guidance for User)
         Card(
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(16.dp),
-          colors = CardDefaults.cardColors(containerColor = Color(0xFF381028))
+          shape = RoundedCornerShape(18.dp),
+          colors = CardDefaults.cardColors(containerColor = Color.White),
+          border = BorderStroke(1.dp, PinkBorderSubtle),
+          elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
           Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -494,17 +512,17 @@ private fun ConnectedCallUi(
             Text(
               text = "CALL SCRIPT (বলার জন্য নমুনা উত্তর)",
               style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-              color = Color(0xFFFF6090)
+              color = PinkPrimary
             )
             Text(
               text = "• \"হ্যাঁ বাবা, আমি এইমাত্র গাড়িতে উঠছি। ২ মিনিটে চলে আসছি।\"",
               style = MaterialTheme.typography.bodyMedium,
-              color = Color.White
+              color = TextPrimaryLight
             )
             Text(
               text = "• \"Yes, I'm right outside. I see you waiting, coming now.\"",
               style = MaterialTheme.typography.bodySmall,
-              color = Color(0xFF94A3B8)
+              color = TextSecondaryLight
             )
           }
         }
@@ -520,10 +538,10 @@ private fun ConnectedCallUi(
           horizontalArrangement = Arrangement.SpaceEvenly
         ) {
           IconButton(onClick = {}) {
-            Icon(imageVector = Icons.Default.Mic, contentDescription = "Mute", tint = Color.White)
+            Icon(imageVector = Icons.Default.Mic, contentDescription = "Mute", tint = PinkPrimary)
           }
           IconButton(onClick = {}) {
-            Icon(imageVector = Icons.Default.VolumeUp, contentDescription = "Speaker", tint = Color.White)
+            Icon(imageVector = Icons.Default.VolumeUp, contentDescription = "Speaker", tint = PinkPrimary)
           }
         }
 
@@ -537,7 +555,8 @@ private fun ConnectedCallUi(
             .clickable(onClick = onEndCall)
             .testTag("btn_end_fake_call"),
           shape = CircleShape,
-          color = SafetyRedPrimary
+          color = Color(0xFFE53935),
+          shadowElevation = 4.dp
         ) {
           Box(contentAlignment = Alignment.Center) {
             Icon(imageVector = Icons.Default.CallEnd, contentDescription = "End Call", tint = Color.White, modifier = Modifier.size(30.dp))

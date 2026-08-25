@@ -1,6 +1,13 @@
 package com.example.features.emergency
 
-import androidx.lifecycle.ViewModel
+import android.Manifest
+import android.app.Application
+import android.content.Context
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.repository.AppSessionManager
 import com.example.data.repository.EmergencyRepositoryImpl
@@ -23,7 +30,7 @@ data class EmergencyUiState(
   val emergencyEventId: String = "EMG-1001",
   val elapsedSeconds: Int = 0,
   val location: GeoLocation = GeoLocation(),
-  val locationLabel: String = "Road 11, Banani, Dhaka, Bangladesh (GPS Active)",
+  val locationLabel: String = "Locating... (GPS Active)",
   val contactsNotifiedCount: Int = 3,
   val isSmsFallbackQueued: Boolean = true,
   val enteredPin: String = "",
@@ -35,8 +42,10 @@ data class EmergencyUiState(
 )
 
 class EmergencyViewModel(
+  application: Application
+) : AndroidViewModel(application) {
+
   private val emergencyRepository: EmergencyRepository = EmergencyRepositoryImpl()
-) : ViewModel() {
 
   private val _uiState = MutableStateFlow(EmergencyUiState())
   val uiState: StateFlow<EmergencyUiState> = _uiState.asStateFlow()
@@ -44,17 +53,49 @@ class EmergencyViewModel(
   private var timerJob: Job? = null
 
   init {
-    viewModelScope.launch {
-      emergencyRepository.currentLocation.collect { loc ->
-        _uiState.update {
-          it.copy(
-            location = loc,
-            locationLabel = "${loc.addressName} (Accuracy ±${loc.accuracyMeters}m)"
-          )
-        }
-      }
-    }
+    updateWithRealLocation()
     startEmergencyTimer()
+  }
+
+  private fun updateWithRealLocation() {
+    val context = getApplication<Application>()
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    var bestLocation: Location? = null
+    
+    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        val providers = locationManager.getProviders(true)
+        for (provider in providers) {
+            val l = locationManager.getLastKnownLocation(provider) ?: continue
+            if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
+                bestLocation = l
+            }
+        }
+    }
+    
+    val currentLoc = if (bestLocation != null) {
+      GeoLocation(
+        latitude = bestLocation.latitude,
+        longitude = bestLocation.longitude,
+        addressName = "Actual GPS Location",
+        accuracyMeters = bestLocation.accuracy
+      )
+    } else {
+      // Fallback if permission not granted
+      GeoLocation(
+        latitude = 23.7937,
+        longitude = 90.4066,
+        addressName = "Fallback Location (Permission required)",
+        accuracyMeters = 10.0f
+      )
+    }
+    
+    _uiState.update {
+      it.copy(
+        location = currentLoc,
+        locationLabel = "${currentLoc.addressName} (Accuracy ±${currentLoc.accuracyMeters}m)"
+      )
+    }
   }
 
   private fun startEmergencyTimer() {
@@ -68,11 +109,11 @@ class EmergencyViewModel(
   }
 
   fun triggerSos(triggerType: TriggerType = TriggerType.SOS_BUTTON, note: String = "") {
+    updateWithRealLocation()
     viewModelScope.launch {
       val res = emergencyRepository.triggerSos(triggerType, customNote = note)
       val event = res.getOrNull()
       val eventId = event?.id ?: "EMG-${System.currentTimeMillis() % 10000}"
-
       _uiState.update {
         it.copy(
           status = EmergencyStatus.SOS_ACTIVE,
@@ -82,8 +123,6 @@ class EmergencyViewModel(
           pinErrorMessage = null
         )
       }
-
-      // Dispatch alert network & SMS simulation
       emergencyRepository.dispatchAlerts(eventId, _uiState.value.contactsNotifiedCount, _uiState.value.location)
     }
     startEmergencyTimer()

@@ -1,7 +1,9 @@
 package com.example.features.contacts
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.local.AppDatabase
 import com.example.data.repository.EmergencyContactRepositoryImpl
 import com.example.domain.model.EmergencyContact
 import com.example.domain.repository.EmergencyContactRepository
@@ -19,8 +21,12 @@ data class ContactsUiState(
 )
 
 class ContactsViewModel(
-  private val repository: EmergencyContactRepository = EmergencyContactRepositoryImpl()
-) : ViewModel() {
+  application: Application
+) : AndroidViewModel(application) {
+
+  private val repository: EmergencyContactRepository = EmergencyContactRepositoryImpl(
+      AppDatabase.getDatabase(application).emergencyContactDao()
+  )
 
   private val _uiState = MutableStateFlow(ContactsUiState())
   val uiState: StateFlow<ContactsUiState> = _uiState.asStateFlow()

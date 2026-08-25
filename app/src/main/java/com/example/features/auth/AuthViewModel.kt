@@ -1,7 +1,9 @@
 package com.example.features.auth
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.local.AppDatabase
 import com.example.data.repository.AuthRepositoryImpl
 import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
@@ -26,18 +28,26 @@ data class AuthUiState(
   val ageCategory: AgeCategory = AgeCategory.ADULT_18_PLUS,
   val isLoading: Boolean = false,
   val errorMessage: String? = null,
-  val isAuthenticated: Boolean = true
+  val isAuthenticated: Boolean = false
 )
 
 class AuthViewModel(
-  private val authRepository: AuthRepository = AuthRepositoryImpl()
-) : ViewModel() {
+  application: Application
+) : AndroidViewModel(application) {
+
+  private val authRepository: AuthRepository = AuthRepositoryImpl(
+      AppDatabase.getDatabase(application).userDao()
+  )
 
   private val _uiState = MutableStateFlow(AuthUiState())
   val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
   init {
     viewModelScope.launch {
+      // Attempt to restore session on init
+      val restored = authRepository.restoreSession()
+      _uiState.update { it.copy(isAuthenticated = restored) }
+      
       authRepository.isAuthenticated.collect { authed ->
         _uiState.update { it.copy(isAuthenticated = authed) }
       }

@@ -1,8 +1,10 @@
 package com.example.features.lockscreen
 
+import android.app.Application
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.local.AppDatabase
 import com.example.data.repository.AppSessionManager
 import com.example.data.repository.EmergencyContactRepositoryImpl
 import com.example.domain.model.EmergencyContact
@@ -24,13 +26,17 @@ data class LockScreenSosUiState(
   val offlineSmsDispatchedCount: Int = 0,
   val emergencyContacts: List<EmergencyContact> = emptyList(),
   val userPin: String = "1234",
-  val customSosMessage: String = "🚨 [RAMISA OFFLINE SOS] I am in urgent danger! Location: https://maps.google.com/?q=23.7937,90.4066 (Banani, Dhaka). Please send help immediately!",
+  val customSosMessage: String = "🚨 [RAMISA OFFLINE SOS] I am in urgent danger! My live GPS location will be attached. Please send help immediately!",
   val showSuccessDialog: Boolean = false
 )
 
 class LockScreenSosViewModel(
-  private val contactRepository: EmergencyContactRepository = EmergencyContactRepositoryImpl()
-) : ViewModel() {
+  application: Application
+) : AndroidViewModel(application) {
+
+  private val contactRepository: EmergencyContactRepository = EmergencyContactRepositoryImpl(
+      AppDatabase.getDatabase(application).emergencyContactDao()
+  )
 
   private val _uiState = MutableStateFlow(LockScreenSosUiState())
   val uiState: StateFlow<LockScreenSosUiState> = _uiState.asStateFlow()

@@ -126,7 +126,10 @@ fun ThreatGuardScreen(
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.background
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },

@@ -1,5 +1,7 @@
 package com.example.data.repository
 
+import com.example.data.local.UserDao
+import com.example.data.local.toEntity
 import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
 import com.example.domain.model.UserType
@@ -7,9 +9,8 @@ import com.example.domain.repository.ProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
-class ProfileRepositoryImpl : ProfileRepository {
+class ProfileRepositoryImpl(private val userDao: UserDao) : ProfileRepository {
 
   private val _profile = MutableStateFlow(
     AppSessionManager.currentUser.value ?: UserProfile()
@@ -38,6 +39,7 @@ class ProfileRepositoryImpl : ProfileRepository {
       updatedAt = System.currentTimeMillis()
     )
     _profile.value = updated
+    userDao.saveProfile(updated.toEntity())
     AppSessionManager.setUser(updated)
     return Result.success(updated)
   }
@@ -49,11 +51,13 @@ class ProfileRepositoryImpl : ProfileRepository {
     if (newPin.length != 4 || !newPin.all { it.isDigit() }) {
       return Result.failure(IllegalArgumentException("New PIN must be exactly 4 digits"))
     }
+
     val updated = _profile.value.copy(
       emergencyPin = newPin,
       updatedAt = System.currentTimeMillis()
     )
     _profile.value = updated
+    userDao.saveProfile(updated.toEntity())
     AppSessionManager.setUser(updated)
     return Result.success(true)
   }
@@ -67,6 +71,7 @@ class ProfileRepositoryImpl : ProfileRepository {
       updatedAt = System.currentTimeMillis()
     )
     _profile.value = updated
+    userDao.saveProfile(updated.toEntity())
     AppSessionManager.setUser(updated)
     return Result.success(enabled)
   }

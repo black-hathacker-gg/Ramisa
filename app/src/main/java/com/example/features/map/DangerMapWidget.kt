@@ -55,11 +55,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import com.example.domain.model.DangerZone
 import com.example.domain.model.RiskLevel
+import com.example.ui.theme.PinkBorderSubtle
+import com.example.ui.theme.PinkContainer
+import com.example.ui.theme.PinkPrimary
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafetyRedDark
 import com.example.ui.theme.SafetyRedPrimary
+import com.example.ui.theme.SurfaceLight
+import com.example.ui.theme.TextPrimaryLight
+import com.example.ui.theme.TextSecondaryLight
 
 @Composable
 fun DangerMapHomeWidget(
@@ -70,10 +78,10 @@ fun DangerMapHomeWidget(
 
   // Sample prominent documented hotspots to display on the mini preview
   val sampleHotspots = listOf(
-    Pair("Gabtoli Bus Terminal", "78 Harassment Cases • Critical Danger"),
+    Pair("Gabtoli Inter-District Bus Terminal", "78 Verified Harassment Incidents • Critical Danger"),
+    Pair("Sayedabad Transit Terminal Underpass", "83 Harassment Reports • Severe Night Risk"),
     Pair("Kuril Flyover Dark Loop", "64 Incidents • Unlit Expressway Ramp"),
-    Pair("Sayedabad Alleys", "83 Cases • Severe Night Risk"),
-    Pair("Farmgate Overbridge", "115 Harassment Reports • High Risk")
+    Pair("Farmgate Foot Overbridge", "115 Harassment Reports • High Risk")
   )
 
   Card(
@@ -168,7 +176,8 @@ fun DangerMapHomeWidget(
           .fillMaxWidth()
           .height(160.dp)
           .clip(RoundedCornerShape(14.dp))
-          .background(Color(0xFF0F172A))
+          .background(SurfaceLight)
+          .border(1.dp, PinkBorderSubtle, RoundedCornerShape(14.dp))
           .clickable(onClick = onOpenFullMap)
           .testTag("preview_danger_map_canvas")
       ) {
@@ -197,13 +206,13 @@ fun DangerMapHomeWidget(
           val h = size.height
 
           // Grid roads
-          drawLine(Color(0xFF1E293B), Offset(0f, h * 0.5f), Offset(w, h * 0.5f), strokeWidth = 2f)
-          drawLine(Color(0xFF1E293B), Offset(w * 0.35f, 0f), Offset(w * 0.35f, h), strokeWidth = 2f)
-          drawLine(Color(0xFF1E293B), Offset(w * 0.65f, 0f), Offset(w * 0.65f, h), strokeWidth = 2f)
+          drawLine(Color(0xFFFDE7EF), Offset(0f, h * 0.5f), Offset(w, h * 0.5f), strokeWidth = 2f)
+          drawLine(Color(0xFFFDE7EF), Offset(w * 0.35f, 0f), Offset(w * 0.35f, h), strokeWidth = 2f)
+          drawLine(Color(0xFFFDE7EF), Offset(w * 0.65f, 0f), Offset(w * 0.65f, h), strokeWidth = 2f)
 
           // Major arterial roads
-          drawLine(Color(0xFF334155), Offset(w * 0.3f, 0f), Offset(w * 0.45f, h), strokeWidth = 4f)
-          drawLine(Color(0xFF334155), Offset(0f, h * 0.65f), Offset(w, h * 0.6f), strokeWidth = 4f)
+          drawLine(Color(0xFFF8BBD0), Offset(w * 0.3f, 0f), Offset(w * 0.45f, h), strokeWidth = 4f)
+          drawLine(Color(0xFFF8BBD0), Offset(0f, h * 0.65f), Offset(w, h * 0.6f), strokeWidth = 4f)
 
           // Danger heat spots (Gabtoli, Kuril, Sayedabad, Suhrawardy)
           val spots = listOf(
@@ -230,15 +239,16 @@ fun DangerMapHomeWidget(
 
           // User center GPS pin (Dhanmondi axis)
           val userPos = Offset(w * 0.45f, h * 0.52f)
-          drawCircle(Color(0xFF00E5FF).copy(alpha = pulseAlpha), radius = radarRadius, center = userPos, style = Stroke(width = 2f))
+          drawCircle(PinkPrimary.copy(alpha = pulseAlpha), radius = radarRadius, center = userPos, style = Stroke(width = 2f))
           drawCircle(Color.White, radius = 6f, center = userPos)
-          drawCircle(Color(0xFF00B0FF), radius = 4f, center = userPos)
+          drawCircle(PinkPrimary, radius = 4f, center = userPos)
         }
 
         // Tap to expand overlay indicator
         Surface(
           shape = RoundedCornerShape(8.dp),
-          color = Color(0xFF1E293B).copy(alpha = 0.85f),
+          color = Color.White.copy(alpha = 0.9f),
+          border = BorderStroke(1.dp, PinkBorderSubtle),
           modifier = Modifier
             .align(Alignment.BottomEnd)
             .padding(8.dp)
@@ -247,9 +257,9 @@ fun DangerMapHomeWidget(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Icon(imageVector = Icons.Default.OpenInFull, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+            Icon(imageVector = Icons.Default.OpenInFull, contentDescription = null, tint = PinkPrimary, modifier = Modifier.size(12.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Open Interactive Map", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text("Open Interactive Map", color = PinkPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
           }
         }
       }

@@ -105,12 +105,15 @@ fun VaultScreen(
         actions = {
           if (uiState.isUnlocked) {
             IconButton(onClick = { viewModel.lockVault() }) {
-              Icon(imageVector = Icons.Default.Lock, contentDescription = "Lock Vault")
+              Icon(imageVector = Icons.Default.Lock, contentDescription = "Lock Vault", tint = Color.White)
             }
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.background
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },

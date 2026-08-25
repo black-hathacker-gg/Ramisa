@@ -91,13 +91,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
 import com.example.domain.model.DangerCategory
 import com.example.domain.model.DangerZone
 import com.example.domain.model.RiskLevel
+import com.example.ui.theme.PinkBorderSubtle
+import com.example.ui.theme.PinkContainer
+import com.example.ui.theme.PinkPrimary
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
 import com.example.ui.theme.SafetyRedDark
 import com.example.ui.theme.SafetyRedPrimary
+import com.example.ui.theme.SurfaceLight
+import com.example.ui.theme.TextPrimaryLight
+import com.example.ui.theme.TextSecondaryLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,12 +147,15 @@ fun DangerMapScreen(
             Icon(
               imageVector = Icons.Default.AddLocation,
               contentDescription = "Report Unsafe Spot",
-              tint = SafetyRedPrimary
+              tint = Color.White
             )
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.background
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },
@@ -251,7 +261,8 @@ fun DangerMapScreen(
           .height(340.dp)
           .padding(horizontal = 16.dp)
           .clip(RoundedCornerShape(20.dp))
-          .background(Color(0xFF0F172A)) // Night map navy canvas
+          .background(SurfaceLight) // Soft Rose-White Map Canvas
+          .border(1.dp, PinkBorderSubtle, RoundedCornerShape(20.dp))
           .testTag("canvas_danger_heatmap")
       ) {
         val infiniteTransition = rememberInfiniteTransition(label = "pulse_radar")
@@ -391,35 +402,40 @@ fun DangerMapScreen(
           // Zoom In
           Surface(
             shape = CircleShape,
-            color = Color(0xFF1E293B).copy(alpha = 0.9f),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            border = BorderStroke(1.dp, PinkBorderSubtle),
             modifier = Modifier
               .size(36.dp)
               .clickable { viewModel.zoomIn() }
               .testTag("btn_map_zoom_in")
           ) {
             Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.ZoomIn, contentDescription = "Zoom In", tint = Color.White, modifier = Modifier.size(18.dp))
+              Icon(imageVector = Icons.Default.ZoomIn, contentDescription = "Zoom In", tint = PinkPrimary, modifier = Modifier.size(18.dp))
             }
           }
 
           // Zoom Out
           Surface(
             shape = CircleShape,
-            color = Color(0xFF1E293B).copy(alpha = 0.9f),
+            color = Color.White,
+            shadowElevation = 2.dp,
+            border = BorderStroke(1.dp, PinkBorderSubtle),
             modifier = Modifier
               .size(36.dp)
               .clickable { viewModel.zoomOut() }
               .testTag("btn_map_zoom_out")
           ) {
             Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.ZoomOut, contentDescription = "Zoom Out", tint = Color.White, modifier = Modifier.size(18.dp))
+              Icon(imageVector = Icons.Default.ZoomOut, contentDescription = "Zoom Out", tint = PinkPrimary, modifier = Modifier.size(18.dp))
             }
           }
 
           // Center on User
           Surface(
             shape = CircleShape,
-            color = Color(0xFF0284C7).copy(alpha = 0.95f),
+            color = PinkPrimary,
+            shadowElevation = 2.dp,
             modifier = Modifier
               .size(36.dp)
               .clickable { viewModel.centerOnUser() }
@@ -433,12 +449,13 @@ fun DangerMapScreen(
 
         // Bottom Map Legend Strip
         Surface(
-          color = Color(0xFF0F172A).copy(alpha = 0.90f),
+          color = Color.White.copy(alpha = 0.95f),
+          border = BorderStroke(1.dp, PinkBorderSubtle),
           modifier = Modifier
             .fillMaxWidth()
             .align(Alignment.BottomCenter)
             .padding(8.dp),
-          shape = RoundedCornerShape(8.dp)
+          shape = RoundedCornerShape(10.dp)
         ) {
           Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -448,17 +465,17 @@ fun DangerMapScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
               Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFEF4444)))
               Spacer(modifier = Modifier.width(4.dp))
-              Text("Critical Assault/Harassment", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+              Text("Critical Alert", color = TextSecondaryLight, fontSize = 10.sp, fontWeight = FontWeight.Medium)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
               Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF10B981)))
               Spacer(modifier = Modifier.width(4.dp))
-              Text("Safe Corridors", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+              Text("Safe Corridors", color = TextSecondaryLight, fontSize = 10.sp, fontWeight = FontWeight.Medium)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-              Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF00E5FF)))
+              Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(PinkPrimary))
               Spacer(modifier = Modifier.width(4.dp))
-              Text("Your GPS", color = Color(0xFFCBD5E1), fontSize = 10.sp)
+              Text("Your GPS", color = TextSecondaryLight, fontSize = 10.sp, fontWeight = FontWeight.Medium)
             }
           }
         }
@@ -847,8 +864,8 @@ private fun ReportUnsafeSpotDialog(
 
 // Canvas Helpers for Road Network & Safe Corridors
 private fun DrawScope.drawCityRoadGrid(width: Float, height: Float) {
-  val roadColor = Color(0xFF334155)
-  val minorRoadColor = Color(0xFF1E293B)
+  val roadColor = Color(0xFFF8BBD0) // Soft rose arterial roads
+  val minorRoadColor = Color(0xFFFDE7EF) // Light blush grid
 
   // Minor grid lines
   for (i in 1..8) {
@@ -892,7 +909,7 @@ private fun DrawScope.drawCityRoadGrid(width: Float, height: Float) {
 
   // Hatirjheel Circular Water Ring
   drawCircle(
-    color = Color(0xFF0369A1).copy(alpha = 0.35f),
+    color = Color(0xFFFF80AB).copy(alpha = 0.35f),
     radius = 35f,
     center = Offset(width * 0.65f, height * 0.45f),
     style = Stroke(width = 4f)

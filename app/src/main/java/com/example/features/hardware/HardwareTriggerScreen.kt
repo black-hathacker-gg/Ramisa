@@ -94,7 +94,12 @@ fun HardwareTriggerScreen(
             Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
           }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+        colors = TopAppBarDefaults.topAppBarColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
+        )
       )
     },
     modifier = modifier.fillMaxSize(),

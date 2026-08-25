@@ -1,5 +1,8 @@
 package com.example.data.repository
 
+import com.example.data.local.UserDao
+import com.example.data.local.toDomain
+import com.example.data.local.toEntity
 import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
 import com.example.domain.model.UserType
@@ -11,24 +14,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 object AppSessionManager {
-  private val _currentUser = MutableStateFlow<UserProfile?>(
-    UserProfile(
-      id = "usr_ramisa_8801",
-      name = "Sadia Rahman",
-      phone = "+880 1712-345678",
-      ageCategory = AgeCategory.ADULT_18_PLUS,
-      userType = UserType.ADULT,
-      emergencyPin = "1234",
-      bloodGroup = "B+",
-      emergencyNote = "Asthmatic; carries emergency inhaler. In case of emergency, contact Amma or Sister immediately.",
-      isChildModeActive = false,
-      guardianName = "Rahman Ali (Father)",
-      guardianPhone = "+880 1711-223344"
-    )
-  )
+  private val _currentUser = MutableStateFlow<UserProfile?>(null)
   val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
 
-  private val _isAuthenticated = MutableStateFlow(true)
+  private val _isAuthenticated = MutableStateFlow(false)
   val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
   fun setUser(user: UserProfile?) {
@@ -48,7 +37,8 @@ object AppSessionManager {
   }
 }
 
-class AuthRepositoryImpl : AuthRepository {
+class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
+
   override val currentUser: StateFlow<UserProfile?> = AppSessionManager.currentUser
   override val isAuthenticated: StateFlow<Boolean> = AppSessionManager.isAuthenticated
 
@@ -69,6 +59,7 @@ class AuthRepositoryImpl : AuthRepository {
       userType = UserType.ADULT,
       emergencyPin = if (pinOrPassword.length == 4 && pinOrPassword.all { it.isDigit() }) pinOrPassword else "1234"
     )
+    userDao.saveProfile(profile.toEntity())
     AppSessionManager.setUser(profile)
     return AuthResult.Success(profile)
   }
@@ -84,6 +75,7 @@ class AuthRepositoryImpl : AuthRepository {
       bloodGroup = "Not Specified",
       emergencyNote = "Logged in under Guest Mode. Please set up emergency contacts in Profile when ready."
     )
+    userDao.saveProfile(guestProfile.toEntity())
     AppSessionManager.setUser(guestProfile)
     return AuthResult.Success(guestProfile)
   }
@@ -116,16 +108,23 @@ class AuthRepositoryImpl : AuthRepository {
       createdAt = System.currentTimeMillis(),
       updatedAt = System.currentTimeMillis()
     )
+    userDao.saveProfile(newProfile.toEntity())
     AppSessionManager.setUser(newProfile)
     return AuthResult.Success(newProfile)
   }
 
   override suspend fun logout(): Boolean {
+    userDao.clearProfile()
     AppSessionManager.logout()
     return true
   }
 
   override suspend fun restoreSession(): Boolean {
-    return AppSessionManager.isAuthenticated.value
+    val savedProfile = userDao.getProfileSync()?.toDomain()
+    if (savedProfile != null) {
+      AppSessionManager.setUser(savedProfile)
+      return true
+    }
+    return false
   }
 }

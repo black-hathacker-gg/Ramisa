@@ -1,7 +1,11 @@
 package com.example.domain.model
 
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "emergency_contacts")
 data class EmergencyContact(
-  val id: String,
+  @PrimaryKey val id: String,
   val name: String,
   val phone: String,
   val relationship: String,

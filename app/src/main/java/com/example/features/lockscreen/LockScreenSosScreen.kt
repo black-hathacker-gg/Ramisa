@@ -71,7 +71,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import com.example.ui.theme.PinkBorderSubtle
+import com.example.ui.theme.PinkContainer
 import com.example.ui.theme.SafetyRedPrimary
+import com.example.ui.theme.SurfaceLight
+import com.example.ui.theme.TextPrimaryLight
+import com.example.ui.theme.TextSecondaryLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,7 +112,10 @@ fun LockScreenSosScreen(
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.surface
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },
@@ -210,9 +219,9 @@ fun LockScreenSosScreen(
           Box(
             modifier = Modifier
               .fillMaxWidth()
-              .clip(RoundedCornerShape(14.dp))
-              .background(Brush.verticalGradient(listOf(Color(0xFF0F172A), Color(0xFF1E293B))))
-              .border(1.dp, Color(0xFF334155), RoundedCornerShape(14.dp))
+              .clip(RoundedCornerShape(18.dp))
+              .background(Brush.verticalGradient(listOf(SurfaceLight, PinkContainer)))
+              .border(1.dp, PinkBorderSubtle, RoundedCornerShape(18.dp))
               .padding(16.dp)
           ) {
             Column(
@@ -224,13 +233,13 @@ fun LockScreenSosScreen(
                 text = "08:45",
                 style = MaterialTheme.typography.displayMedium.copy(
                   fontWeight = FontWeight.Light,
-                  color = Color.White,
+                  color = TextPrimaryLight,
                   letterSpacing = 2.sp
                 )
               )
               Text(
                 text = "Monday, August 17 • Dhaka",
-                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFF94A3B8))
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondaryLight)
               )
 
               Spacer(modifier = Modifier.height(20.dp))
@@ -240,8 +249,10 @@ fun LockScreenSosScreen(
                 modifier = Modifier
                   .fillMaxWidth()
                   .testTag("simulated_notification_banner"),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF334155))
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = BorderStroke(1.dp, PinkBorderSubtle),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
               ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                   Row(
@@ -262,23 +273,23 @@ fun LockScreenSosScreen(
                       Spacer(modifier = Modifier.width(8.dp))
                       Text(
                         text = "RAMISA Safety Guard",
-                        style = MaterialTheme.typography.labelMedium.copy(color = Color.White, fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.labelMedium.copy(color = TextPrimaryLight, fontWeight = FontWeight.Bold)
                       )
                     }
                     Text(
                       text = "NOW",
-                      style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF94A3B8), fontSize = 10.sp)
+                      style = MaterialTheme.typography.labelSmall.copy(color = TextSecondaryLight, fontSize = 10.sp)
                     )
                   }
 
                   Spacer(modifier = Modifier.height(6.dp))
                   Text(
                     text = "🔒 Phone Locked • 1-Tap Offline SOS Ready",
-                    style = MaterialTheme.typography.bodySmall.copy(color = Color.White, fontWeight = FontWeight.SemiBold)
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextPrimaryLight, fontWeight = FontWeight.SemiBold)
                   )
                   Text(
                     text = "Direct GSM SMS to ${uiState.emergencyContacts.size.coerceAtLeast(3)} guardians with GPS link (No internet needed).",
-                    style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFCBD5E1), fontSize = 11.sp)
+                    style = MaterialTheme.typography.labelSmall.copy(color = TextSecondaryLight, fontSize = 11.sp)
                   )
 
                   Spacer(modifier = Modifier.height(12.dp))

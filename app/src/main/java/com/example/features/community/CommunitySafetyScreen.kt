@@ -121,10 +121,15 @@ fun CommunitySafetyScreen(
         },
         actions = {
           IconButton(onClick = { viewModel.toggleReportingDialog(true) }) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Report Safety")
+            Icon(imageVector = Icons.Default.Add, contentDescription = "Report Safety", tint = Color.White)
           }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+        colors = TopAppBarDefaults.topAppBarColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
+        )
       )
     },
     modifier = modifier.fillMaxSize(),

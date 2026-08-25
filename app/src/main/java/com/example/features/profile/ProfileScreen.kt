@@ -115,19 +115,22 @@ fun ProfileScreen(
               onClick = { viewModel.setEditing(true) },
               modifier = Modifier.testTag("btn_edit_profile")
             ) {
-              Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Profile")
+              Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit Profile", tint = Color.White)
             }
           } else {
             IconButton(
               onClick = { viewModel.saveProfile() },
               modifier = Modifier.testTag("btn_save_profile")
             ) {
-              Icon(imageVector = Icons.Default.Save, contentDescription = "Save Profile", tint = SafeGreenPrimary)
+              Icon(imageVector = Icons.Default.Save, contentDescription = "Save Profile", tint = Color.White)
             }
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.background
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },

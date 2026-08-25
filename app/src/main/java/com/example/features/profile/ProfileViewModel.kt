@@ -1,7 +1,9 @@
 package com.example.features.profile
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.data.local.AppDatabase
 import com.example.data.repository.ProfileRepositoryImpl
 import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
@@ -30,8 +32,12 @@ data class ProfileUiState(
 )
 
 class ProfileViewModel(
-  private val profileRepository: ProfileRepository = ProfileRepositoryImpl()
-) : ViewModel() {
+  application: Application
+) : AndroidViewModel(application) {
+
+  private val profileRepository: ProfileRepository = ProfileRepositoryImpl(
+      AppDatabase.getDatabase(application).userDao()
+  )
 
   private val _uiState = MutableStateFlow(ProfileUiState())
   val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -94,7 +100,6 @@ class ProfileViewModel(
       _uiState.update { it.copy(errorMessage = "Phone number cannot be empty") }
       return
     }
-
     viewModelScope.launch {
       _uiState.update { it.copy(isLoading = true, errorMessage = null) }
       val result = profileRepository.updateProfile(

@@ -30,21 +30,32 @@ class MainActivity : ComponentActivity() {
     LockScreenSosManager.showLockScreenNotification(this)
 
     val openEmergency = intent?.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false) ?: false
+    val openFakeCall = intent?.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false) ?: false
+    val openSafeJourney = intent?.getBooleanExtra("EXTRA_OPEN_SAFE_JOURNEY", false) ?: false
 
     setContent {
       RamisaTheme {
         val navController = rememberNavController()
 
-        LaunchedEffect(openEmergency) {
+        LaunchedEffect(openEmergency, openFakeCall, openSafeJourney) {
           if (openEmergency) {
             navController.navigate(Screen.Emergency.route)
+          } else if (openFakeCall) {
+            navController.navigate(Screen.FakeCall.route)
+          } else if (openSafeJourney) {
+            navController.navigate(Screen.SafeJourney.route)
           }
         }
 
         Surface(modifier = Modifier.fillMaxSize()) {
           RamisaNavGraph(
             navController = navController,
-            startDestination = if (openEmergency) Screen.Emergency.route else Screen.Welcome.route
+            startDestination = when {
+              openEmergency -> Screen.Emergency.route
+              openFakeCall -> Screen.FakeCall.route
+              openSafeJourney -> Screen.SafeJourney.route
+              else -> Screen.Welcome.route
+            }
           )
         }
       }
@@ -55,8 +66,15 @@ class MainActivity : ComponentActivity() {
     super.onNewIntent(intent)
     setIntent(intent)
     val openEmergency = intent.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false)
+    val openFakeCall = intent.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false)
+    val openSafeJourney = intent.getBooleanExtra("EXTRA_OPEN_SAFE_JOURNEY", false)
+    
     if (openEmergency) {
       configureLockScreenDisplay()
+    }
+    
+    if (openEmergency || openFakeCall || openSafeJourney) {
+      recreate() // Simple way to force compose to pick up the new intent
     }
   }
 

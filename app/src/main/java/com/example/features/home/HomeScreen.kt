@@ -1,11 +1,13 @@
 package com.example.features.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,7 +15,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +23,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,42 +39,42 @@ import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hub
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LocalHospital
-import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PhoneCallback
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.SportsMartialArts
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -85,12 +88,29 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.SafeGreenContainer
+import com.example.ui.theme.PinkAccentLilac
+import com.example.ui.theme.PinkBorderSubtle
+import com.example.ui.theme.PinkContainer
+import com.example.ui.theme.PinkHeaderGradientEnd
+import com.example.ui.theme.PinkHeaderGradientStart
+import com.example.ui.theme.PinkPrimary
+import com.example.ui.theme.PinkPrimaryDark
+import com.example.ui.theme.PinkPrimaryLight
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
 import com.example.ui.theme.SafetyRedDark
 import com.example.ui.theme.SafetyRedLight
 import com.example.ui.theme.SafetyRedPrimary
+import com.example.ui.theme.TextPrimaryLight
+import com.example.ui.theme.TextSecondaryLight
+
+enum class SafetyCategoryTab(val label: String, val icon: ImageVector) {
+  OVERVIEW("Overview", Icons.Default.Shield),
+  EMERGENCY("Emergency", Icons.Default.Lock),
+  NAVIGATION("Navigation", Icons.Default.DirectionsWalk),
+  SENSORS("Shield & AI", Icons.Default.Sensors),
+  COMMUNITY("Care & Legal", Icons.Default.Group)
+}
 
 @Composable
 fun HomeScreen(
@@ -128,6 +148,7 @@ fun HomeScreen(
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val scrollState = rememberScrollState()
+  var selectedTab by remember { mutableStateOf(SafetyCategoryTab.OVERVIEW) }
 
   // Pulsing animation for the SOS halo
   val infiniteTransition = rememberInfiniteTransition(label = "sos_halo")
@@ -149,174 +170,189 @@ fun HomeScreen(
       modifier = Modifier
         .fillMaxSize()
         .verticalScroll(scrollState)
-        .padding(horizontal = 20.dp, vertical = 16.dp),
+        .padding(horizontal = 18.dp, vertical = 14.dp),
       horizontalAlignment = Alignment.CenterHorizontally
     ) {
-      // Top Header: App Title & Profile / Hotline
-      Row(
+      // 1. TOP HEADER: Clean Branded Banner & Hotlines
+      Surface(
         modifier = Modifier
           .fillMaxWidth()
-          .padding(top = 8.dp, bottom = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+          .padding(bottom = 12.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.Transparent
       ) {
-        Column {
-          Text(
-            text = "RAMISA",
-            style = MaterialTheme.typography.headlineMedium.copy(
-              fontWeight = FontWeight.Black,
-              letterSpacing = 1.5.sp
-            ),
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.testTag("app_logo_title")
-          )
-          Text(
-            text = "Women & Child Personal Safety",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-        }
-
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Box(
+          modifier = Modifier
+            .fillMaxWidth()
+            .background(
+              Brush.horizontalGradient(
+                colors = listOf(PinkHeaderGradientStart, PinkHeaderGradientEnd)
+              ),
+              shape = RoundedCornerShape(20.dp)
+            )
+            .padding(horizontal = 18.dp, vertical = 14.dp)
         ) {
-          // National Emergency Hotline Quick Pill
-          Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = SafetyRedLight.copy(alpha = 0.15f),
-            modifier = Modifier.testTag("badge_hotline_999")
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
           ) {
-            Row(
-              modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Icon(
-                imageVector = Icons.Default.Call,
-                contentDescription = "999 Hotline",
-                tint = SafetyRedDark,
-                modifier = Modifier.size(14.dp)
-              )
-              Spacer(modifier = Modifier.width(4.dp))
+            Column {
               Text(
-                text = "999",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = SafetyRedDark
+                text = "RAMISA",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                  fontWeight = FontWeight.Black,
+                  letterSpacing = 2.sp
+                ),
+                color = Color.White,
+                modifier = Modifier.testTag("app_logo_title")
+              )
+              Text(
+                text = "Women & Child Personal Safety",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                color = Color.White.copy(alpha = 0.92f)
               )
             }
-          }
 
-          // User Profile Avatar Button
-          IconButton(
-            onClick = onNavigateToProfile,
-            modifier = Modifier
-              .size(38.dp)
-              .clip(CircleShape)
-              .background(MaterialTheme.colorScheme.primaryContainer)
-              .testTag("btn_home_profile")
-          ) {
-            Text(
-              text = "SR",
-              style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-              color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+              // Essential App Status (Active Background Service notification)
+              Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White.copy(alpha = 0.22f),
+                modifier = Modifier.testTag("badge_background_service")
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                  verticalAlignment = Alignment.CenterVertically
+                ) {
+                  Box(
+                    modifier = Modifier
+                      .size(6.dp)
+                      .clip(CircleShape)
+                      .background(Color(0xFF4CAF50))
+                  )
+                  Spacer(modifier = Modifier.width(6.dp))
+                  Text(
+                    text = "Service Active",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                    color = Color.White
+                  )
+                }
+              }
+
+              // User Profile Avatar
+              IconButton(
+                onClick = onNavigateToProfile,
+                modifier = Modifier
+                  .size(36.dp)
+                  .clip(CircleShape)
+                  .background(Color.White)
+                  .testTag("btn_home_profile")
+              ) {
+                Text(
+                  text = "SR",
+                  style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                  color = PinkPrimaryDark
+                )
+              }
+            }
           }
         }
       }
 
-      Spacer(modifier = Modifier.height(12.dp))
-
-      // Safety Status Banner
+      // 2. STATUS BANNER (Compact & Clean)
       Card(
         modifier = Modifier
           .fillMaxWidth()
           .testTag("safety_status_card"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-          containerColor = SafeGreenContainer
-        )
+        colors = CardDefaults.cardColors(containerColor = PinkContainer),
+        border = BorderStroke(1.dp, PinkBorderSubtle)
       ) {
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
           verticalAlignment = Alignment.CenterVertically
         ) {
           Box(
             modifier = Modifier
-              .size(40.dp)
+              .size(36.dp)
               .clip(CircleShape)
-              .background(SafeGreenPrimary),
+              .background(PinkPrimary),
             contentAlignment = Alignment.Center
           ) {
             Icon(
               imageVector = Icons.Outlined.CheckCircle,
               contentDescription = "Status Safe",
               tint = Color.White,
-              modifier = Modifier.size(24.dp)
+              modifier = Modifier.size(20.dp)
             )
           }
 
-          Spacer(modifier = Modifier.width(14.dp))
+          Spacer(modifier = Modifier.width(12.dp))
 
           Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
               Text(
-                text = "STATUS: SAFE",
-                style = MaterialTheme.typography.titleMedium.copy(
+                text = "SHIELD ACTIVE",
+                style = MaterialTheme.typography.labelLarge.copy(
                   fontWeight = FontWeight.Bold,
-                  letterSpacing = 1.sp
+                  letterSpacing = 0.8.sp
                 ),
-                color = SafeGreenDark,
+                color = PinkPrimaryDark,
                 modifier = Modifier.testTag("status_text")
               )
               Spacer(modifier = Modifier.width(6.dp))
               Box(
                 modifier = Modifier
-                  .size(8.dp)
+                  .size(7.dp)
                   .clip(CircleShape)
-                  .background(SafeGreenPrimary)
+                  .background(SafeGreenDark)
               )
             }
             Text(
-              text = "All protection systems active • ${uiState.activeContactCount} trusted contacts ready",
-              style = MaterialTheme.typography.bodySmall,
-              color = SafeGreenDark.copy(alpha = 0.85f)
+              text = "Live Protection • ${uiState.activeContactCount} Trusted Guardians Ready",
+              style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+              color = MaterialTheme.colorScheme.onSurfaceVariant
             )
           }
         }
       }
 
-      Spacer(modifier = Modifier.height(28.dp))
+      Spacer(modifier = Modifier.height(20.dp))
 
-      // Central Prominent SOS Button
+      // 3. CENTRAL SOS BUTTON (Large, Distinct Pink Floating Action Button - SOS - PRESS FOR HELP)
       Box(
         modifier = Modifier
-          .size(220.dp)
+          .size(200.dp)
           .testTag("sos_button_container"),
         contentAlignment = Alignment.Center
       ) {
-        // Outer glowing halo
+        // Outer radiant pulse
         Box(
           modifier = Modifier
-            .size(210.dp)
+            .size(195.dp)
             .scale(pulseScale)
             .clip(CircleShape)
             .background(
               Brush.radialGradient(
                 colors = listOf(
-                  SafetyRedLight.copy(alpha = 0.35f),
-                  SafetyRedPrimary.copy(alpha = 0.15f),
+                  PinkPrimaryLight.copy(alpha = 0.45f),
+                  PinkPrimary.copy(alpha = 0.2f),
                   Color.Transparent
                 )
               )
             )
         )
 
-        // Main Circular Button
+        // Distinct Pink SOS Floating Action Button
         Surface(
           modifier = Modifier
-            .size(175.dp)
+            .size(165.dp)
             .shadow(16.dp, CircleShape)
             .clip(CircleShape)
             .clickable(
@@ -333,378 +369,241 @@ fun HomeScreen(
               .fillMaxSize()
               .background(
                 Brush.verticalGradient(
-                  colors = listOf(SafetyRedLight, SafetyRedDark)
+                  colors = listOf(PinkPrimaryLight, PinkPrimaryDark)
                 )
               )
-              .border(3.dp, Color.White.copy(alpha = 0.4f), CircleShape),
+              .border(4.dp, Color.White.copy(alpha = 0.8f), CircleShape),
             contentAlignment = Alignment.Center
           ) {
             Column(
               horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.Center
+              verticalArrangement = Arrangement.Center,
+              modifier = Modifier.padding(horizontal = 8.dp)
             ) {
               Text(
-                text = "🔴 SOS",
-                style = MaterialTheme.typography.displaySmall.copy(
+                text = "SOS",
+                style = MaterialTheme.typography.headlineLarge.copy(
                   fontWeight = FontWeight.Black,
-                  letterSpacing = 2.sp
+                  letterSpacing = 3.sp
                 ),
                 color = Color.White
               )
               Spacer(modifier = Modifier.height(4.dp))
               Text(
                 text = "PRESS FOR HELP",
-                style = MaterialTheme.typography.labelSmall.copy(
-                  fontWeight = FontWeight.Bold,
-                  letterSpacing = 1.sp
+                style = MaterialTheme.typography.labelMedium.copy(
+                  fontWeight = FontWeight.ExtraBold,
+                  letterSpacing = 1.2.sp
                 ),
-                color = Color.White.copy(alpha = 0.9f)
+                color = Color.White
               )
             }
           }
         }
       }
 
-      Spacer(modifier = Modifier.height(8.dp))
-      Text(
-        text = "Instantly alerts your trusted contacts & prepares location fallback",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = 24.dp)
-      )
+      Spacer(modifier = Modifier.height(18.dp))
 
-      Spacer(modifier = Modifier.height(28.dp))
-
-      // Main Navigation Action Grid
+      // 4. IMMEDIATE EMERGENCY SHORTCUTS (4 Core Priority Tools)
       Text(
-        text = "SAFETY CONTROLS",
-        style = MaterialTheme.typography.labelMedium.copy(
+        text = "PRIORITY EMERGENCY CONTROLS",
+        style = MaterialTheme.typography.labelSmall.copy(
           fontWeight = FontWeight.Bold,
-          letterSpacing = 1.2.sp
+          letterSpacing = 1.sp
         ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(bottom = 12.dp)
+        modifier = Modifier.fillMaxWidth()
       )
 
-      Column(
+      Spacer(modifier = Modifier.height(8.dp))
+
+      Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
       ) {
-        // LOCK SCREEN & OFFLINE SOS GUARD
-        SafetyActionCard(
-          title = "LOCK SCREEN & OFFLINE SOS",
-          subtitle = "1-Tap SOS over locked screen • Direct GSM SMS & Mesh without opening app",
+        QuickEmergencyPill(
+          title = "LockScreen SOS",
           icon = Icons.Default.Lock,
           accentColor = SafetyRedPrimary,
           onClick = onNavigateToLockScreenSos,
+          modifier = Modifier.weight(1f),
           testTag = "btn_lockscreen_sos_guard"
         )
 
-        // SAFE JOURNEY BUTTON
-        SafetyActionCard(
-          title = "SAFE JOURNEY",
-          subtitle = "Track route, arrival estimate & proactive safety check",
-          icon = Icons.Default.DirectionsWalk,
-          accentColor = MaterialTheme.colorScheme.primary,
-          onClick = onNavigateToSafeJourney,
-          testTag = "btn_safe_journey"
+        QuickEmergencyPill(
+          title = "Fake Call",
+          icon = Icons.Default.PhoneCallback,
+          accentColor = PinkPrimary,
+          onClick = onNavigateToFakeCall,
+          modifier = Modifier.weight(1f),
+          testTag = "btn_fake_call"
         )
 
-        // EMERGENCY CONTACTS BUTTON
-        SafetyActionCard(
-          title = "EMERGENCY CONTACTS",
-          subtitle = "Manage up to 7 trusted contacts for instant SOS alert",
-          icon = Icons.Default.Contacts,
-          accentColor = SafeGreenPrimary,
-          onClick = onNavigateToContacts,
-          testTag = "btn_emergency_contacts"
-        )
-
-        // Row for SAFE PLACES RADAR & FAKE ESCAPE CALL
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          // SAFE PLACES RADAR
-          SafetyMiniCard(
-            title = "SAFE PLACES",
-            subtitle = "Thanas & Hospitals",
-            icon = Icons.Default.Place,
-            onClick = onNavigateToSafePlaces,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_safe_places"
-          )
-
-          // FAKE ESCAPE CALL
-          SafetyMiniCard(
-            title = "FAKE CALL",
-            subtitle = "Discreet escape call",
-            icon = Icons.Default.PhoneCallback,
-            onClick = onNavigateToFakeCall,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_fake_call"
-          )
-        }
-
-        // AI THREAT GUARD & ACOUSTIC MONITOR
-        SafetyActionCard(
-          title = "AI THREAT GUARD",
-          subtitle = "Acoustic scream & shock sensor with auto-SOS trigger",
-          icon = Icons.Default.Sensors,
-          accentColor = Color(0xFFE65100),
-          onClick = onNavigateToThreatGuard,
-          testTag = "btn_threat_guard"
-        )
-
-        // COMMUNITY SAFETY ZONES & LIVE SHARING
-        SafetyActionCard(
-          title = "COMMUNITY ZONES & LIVE SHARE",
-          subtitle = "Dhaka safety heatmap ratings & shareable guardian link",
-          icon = Icons.Default.Share,
-          accentColor = SafeGreenPrimary,
-          onClick = onNavigateToCommunitySafety,
-          testTag = "btn_community_safety"
-        )
-
-        // HARDWARE & WEARABLE TRIGGERS
-        SafetyActionCard(
-          title = "HARDWARE & WEARABLE TRIGGERS",
-          subtitle = "Power 3x press, discreet volume hold, & BLE Smart Band SOS",
-          icon = Icons.Default.FlashOn,
-          accentColor = SafeGreenPrimary,
-          onClick = onNavigateToHardwareTrigger,
-          testTag = "btn_hardware_triggers"
-        )
-
-        // ZERO-INTERNET OFFLINE MESH SOS
-        SafetyActionCard(
-          title = "ZERO-INTERNET OFFLINE MESH",
-          subtitle = "Multi-hop peer-to-peer Wi-Fi Aware & Bluetooth distress beacon",
-          icon = Icons.Default.Hub,
-          accentColor = MaterialTheme.colorScheme.primary,
-          onClick = onNavigateToMeshNetwork,
-          testTag = "btn_mesh_network"
-        )
-
-        // GUARDIAN CIRCLES LIVE MONITOR
-        SafetyActionCard(
-          title = "GUARDIAN CIRCLES & NIGHT TIMER",
-          subtitle = "Live peer safety monitor, battery health & interval check-in",
-          icon = Icons.Default.Group,
-          accentColor = SafeGreenPrimary,
-          onClick = onNavigateToGuardianCircle,
-          testTag = "btn_guardian_circles"
-        )
-
-        // EMERGENCY SIREN & DEFENSE STROBE
-        SafetyActionCard(
-          title = "EMERGENCY SIREN & STROBE",
-          subtitle = "High-decibel acoustic whistle, police siren & disorienting 8Hz strobe",
+        QuickEmergencyPill(
+          title = "Siren / Strobe",
           icon = Icons.Default.VolumeUp,
-          accentColor = SafeGreenPrimary,
+          accentColor = PinkPrimary,
           onClick = onNavigateToSirenStrobe,
+          modifier = Modifier.weight(1f),
           testTag = "btn_siren_strobe"
         )
 
-        // RICKSHAW & PUBLIC TRANSIT GUARD
-        SafetyActionCard(
-          title = "RICKSHAW & TRANSIT GUARD",
-          subtitle = "Vehicle plate logger, ride timer & route deviation detection",
-          icon = Icons.Default.DirectionsBus,
-          accentColor = MaterialTheme.colorScheme.primary,
-          onClick = onNavigateToRideSafety,
-          testTag = "btn_ride_safety"
+        QuickEmergencyPill(
+          title = "Safe Journey",
+          icon = Icons.Default.DirectionsWalk,
+          accentColor = PinkPrimary,
+          onClick = onNavigateToSafeJourney,
+          modifier = Modifier.weight(1f),
+          testTag = "btn_safe_journey"
         )
+      }
 
-        // CAMPUS SAFETY & ESCORT DESK
-        SafetyActionCard(
-          title = "CAMPUS SAFETY & ESCORT",
-          subtitle = "University safe corridors, proctor direct desk & volunteer escort",
-          icon = Icons.Default.School,
-          accentColor = SafeGreenPrimary,
-          onClick = onNavigateToCampusSafety,
-          testTag = "btn_campus_safety"
-        )
+      Spacer(modifier = Modifier.height(20.dp))
 
-        // CHILD & TEEN SAFETY GEOFENCE
-        SafetyActionCard(
-          title = "CHILD & TEEN SAFETY",
-          subtitle = "Live geofence zones, battery telemetry, 1098 helpline & child SOS",
-          icon = Icons.Default.ChildCare,
-          accentColor = SafeGreenPrimary,
-          onClick = onNavigateToChildSafety,
-          testTag = "btn_child_safety"
-        )
-
-        // Row for SELF DEFENSE and CAMOUFLAGE CALCULATOR
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          SafetyMiniCard(
-            title = "SELF-DEFENSE",
-            subtitle = "Escape Maneuvers",
-            icon = Icons.Default.SportsMartialArts,
-            onClick = onNavigateToSelfDefense,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_self_defense"
-          )
-
-          SafetyMiniCard(
-            title = "STEALTH CALC",
-            subtitle = "Camouflage SOS",
-            icon = Icons.Default.Calculate,
-            onClick = onNavigateToStealthMode,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_stealth_calc"
-          )
-        }
-
-        // Row for SAFETY VAULT and INCIDENT LOGS
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          SafetyMiniCard(
-            title = "SAFETY VAULT",
-            subtitle = "Encrypted Audio",
-            icon = Icons.Default.Lock,
-            onClick = onNavigateToVault,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_vault"
-          )
-
-          SafetyMiniCard(
-            title = "INCIDENT LOGS",
-            subtitle = "Beacon History",
-            icon = Icons.Default.History,
-            onClick = onNavigateToHistory,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_history"
-          )
-        }
-
-        // Row for LEGAL GUIDE and CYBER SUPPORT
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          SafetyMiniCard(
-            title = "LEGAL GUIDE",
-            subtitle = "Rights & Protocols",
-            icon = Icons.Default.AutoStories,
-            onClick = onNavigateToSafetyGuide,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_safety_guide"
-          )
-
-          SafetyMiniCard(
-            title = "CYBER DESK (PCSW)",
-            subtitle = "Police Cyber Unit",
-            icon = Icons.Default.SupportAgent,
-            onClick = onNavigateToCyberCrimeSupport,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_cyber_desk"
-          )
-        }
-
-        // Row for VOLUNTEER ESCORT and LEGAL AID & GD DRAFTER
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          SafetyMiniCard(
-            title = "PEER ESCORT",
-            subtitle = "Verified Walkers",
-            icon = Icons.Default.People,
-            onClick = onNavigateToVolunteerEscort,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_volunteer_escort"
-          )
-
-          SafetyMiniCard(
-            title = "LEGAL AID & GD",
-            subtitle = "16430 & Drafter",
-            icon = Icons.Default.Gavel,
-            onClick = onNavigateToLegalAid,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_legal_aid"
-          )
-        }
-
-        // Row for SAFETY CHECK-IN TIMER and OFFLINE FIRST AID
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          SafetyMiniCard(
-            title = "SAFETY TIMER",
-            subtitle = "Dead Man's Switch",
-            icon = Icons.Default.Timer,
-            onClick = onNavigateToSafetyTimer,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_safety_timer"
-          )
-
-          SafetyMiniCard(
-            title = "FIRST AID GUIDE",
-            subtitle = "Offline Triage",
-            icon = Icons.Default.LocalHospital,
-            onClick = onNavigateToFirstAid,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_first_aid"
-          )
-        }
-
-        // Row for WELLNESS & TRAUMA and SETTINGS
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          SafetyMiniCard(
-            title = "WELLNESS & CARE",
-            subtitle = "Trauma & Helplines",
-            icon = Icons.Default.Spa,
-            onClick = onNavigateToWellness,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_wellness_care"
-          )
-
-          SafetyMiniCard(
-            title = "SETTINGS",
-            subtitle = "PIN & Preferences",
-            icon = Icons.Default.Settings,
-            onClick = onNavigateToSettings,
-            modifier = Modifier.weight(1f),
-            testTag = "btn_settings"
+      // 5. STRUCTURED CATEGORY TABS (Removes Visual Clutter & Long Random Scrolls)
+      LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+      ) {
+        items(SafetyCategoryTab.values()) { tab ->
+          val isSelected = selectedTab == tab
+          FilterChip(
+            selected = isSelected,
+            onClick = { selectedTab = tab },
+            label = {
+              Text(
+                text = tab.label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                )
+              )
+            },
+            leadingIcon = {
+              Icon(
+                imageVector = tab.icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = if (isSelected) PinkPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            },
+            colors = FilterChipDefaults.filterChipColors(
+              selectedContainerColor = PinkContainer,
+              selectedLabelColor = PinkPrimaryDark,
+              containerColor = MaterialTheme.colorScheme.surface,
+              labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+            ),
+            border = FilterChipDefaults.filterChipBorder(
+              enabled = true,
+              selected = isSelected,
+              borderColor = PinkBorderSubtle,
+              selectedBorderColor = PinkPrimary,
+              borderWidth = 1.dp
+            ),
+            shape = RoundedCornerShape(12.dp)
           )
         }
       }
 
-      Spacer(modifier = Modifier.height(20.dp))
-      
-      // DANGER MAP WIDGET
-      com.example.features.map.DangerMapHomeWidget(
-        onOpenFullMap = onNavigateToDangerMap
-      )
-      
-      Spacer(modifier = Modifier.height(20.dp))
+      Spacer(modifier = Modifier.height(16.dp))
 
-      // Bangladesh Helpline Direct Bar
+      // 6. CATEGORIZED CONTROL PANELS
+      when (selectedTab) {
+        SafetyCategoryTab.OVERVIEW -> {
+          OverviewSection(
+            onNavigateToContacts = onNavigateToContacts,
+            onNavigateToSafePlaces = onNavigateToSafePlaces,
+            onNavigateToDangerMap = onNavigateToDangerMap,
+            onNavigateToThreatGuard = onNavigateToThreatGuard,
+            onNavigateToGuardianCircle = onNavigateToGuardianCircle,
+            onNavigateToHardwareTrigger = onNavigateToHardwareTrigger,
+            onNavigateToMeshNetwork = onNavigateToMeshNetwork,
+            onNavigateToRideSafety = onNavigateToRideSafety,
+            onNavigateToCampusSafety = onNavigateToCampusSafety,
+            onNavigateToChildSafety = onNavigateToChildSafety,
+            onNavigateToVault = onNavigateToVault,
+            onNavigateToHistory = onNavigateToHistory,
+            onNavigateToCommunitySafety = onNavigateToCommunitySafety,
+            onNavigateToSelfDefense = onNavigateToSelfDefense,
+            onNavigateToStealthMode = onNavigateToStealthMode,
+            onNavigateToSafetyGuide = onNavigateToSafetyGuide,
+            onNavigateToCyberCrimeSupport = onNavigateToCyberCrimeSupport,
+            onNavigateToVolunteerEscort = onNavigateToVolunteerEscort,
+            onNavigateToLegalAid = onNavigateToLegalAid,
+            onNavigateToSafetyTimer = onNavigateToSafetyTimer,
+            onNavigateToFirstAid = onNavigateToFirstAid,
+            onNavigateToWellness = onNavigateToWellness,
+            onNavigateToSettings = onNavigateToSettings,
+            onNavigateToFakeCall = onNavigateToFakeCall,
+            onNavigateToSirenStrobe = onNavigateToSirenStrobe,
+            onNavigateToSafeJourney = onNavigateToSafeJourney
+          )
+        }
+
+        SafetyCategoryTab.EMERGENCY -> {
+          EmergencyTabSection(
+            onNavigateToLockScreenSos = onNavigateToLockScreenSos,
+            onNavigateToFakeCall = onNavigateToFakeCall,
+            onNavigateToSirenStrobe = onNavigateToSirenStrobe,
+            onNavigateToContacts = onNavigateToContacts,
+            onNavigateToMeshNetwork = onNavigateToMeshNetwork,
+            onNavigateToHardwareTrigger = onNavigateToHardwareTrigger,
+            onNavigateToSafetyTimer = onNavigateToSafetyTimer
+          )
+        }
+
+        SafetyCategoryTab.NAVIGATION -> {
+          NavigationTabSection(
+            onNavigateToSafeJourney = onNavigateToSafeJourney,
+            onNavigateToDangerMap = onNavigateToDangerMap,
+            onNavigateToSafePlaces = onNavigateToSafePlaces,
+            onNavigateToRideSafety = onNavigateToRideSafety,
+            onNavigateToCommunitySafety = onNavigateToCommunitySafety
+          )
+        }
+
+        SafetyCategoryTab.SENSORS -> {
+          SensorsTabSection(
+            onNavigateToThreatGuard = onNavigateToThreatGuard,
+            onNavigateToHardwareTrigger = onNavigateToHardwareTrigger,
+            onNavigateToStealthMode = onNavigateToStealthMode,
+            onNavigateToVault = onNavigateToVault,
+            onNavigateToSafetyTimer = onNavigateToSafetyTimer
+          )
+        }
+
+        SafetyCategoryTab.COMMUNITY -> {
+          CommunityTabSection(
+            onNavigateToGuardianCircle = onNavigateToGuardianCircle,
+            onNavigateToCampusSafety = onNavigateToCampusSafety,
+            onNavigateToChildSafety = onNavigateToChildSafety,
+            onNavigateToVolunteerEscort = onNavigateToVolunteerEscort,
+            onNavigateToLegalAid = onNavigateToLegalAid,
+            onNavigateToSafetyGuide = onNavigateToSafetyGuide,
+            onNavigateToCyberCrimeSupport = onNavigateToCyberCrimeSupport,
+            onNavigateToFirstAid = onNavigateToFirstAid,
+            onNavigateToWellness = onNavigateToWellness,
+            onNavigateToHistory = onNavigateToHistory,
+            onNavigateToSelfDefense = onNavigateToSelfDefense,
+            onNavigateToSettings = onNavigateToSettings
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(18.dp))
+
+      // 7. BANGLADESH NATIONAL HELPLINE DIRECT BAR
       Surface(
         modifier = Modifier
           .fillMaxWidth()
           .testTag("hotline_info_bar"),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant
+        shape = RoundedCornerShape(14.dp),
+        color = PinkContainer,
+        border = BorderStroke(1.dp, PinkBorderSubtle)
       ) {
         Row(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
           horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
@@ -712,14 +611,14 @@ fun HomeScreen(
             Icon(
               imageVector = Icons.Default.Shield,
               contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
+              tint = PinkPrimary,
               modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-              text = "Women & Child Helpline: 109",
+              text = "Women Helpline: 109 • Child Helpline: 1098",
               style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+              color = PinkPrimaryDark
             )
           }
 
@@ -732,6 +631,484 @@ fun HomeScreen(
       }
 
       Spacer(modifier = Modifier.height(16.dp))
+    }
+  }
+}
+
+// -------------------------------------------------------------
+// TAB CONTENT IMPLEMENTATIONS (Clean, Standardized 2-Column Grid)
+// -------------------------------------------------------------
+
+@Composable
+private fun OverviewSection(
+  onNavigateToContacts: () -> Unit,
+  onNavigateToSafePlaces: () -> Unit,
+  onNavigateToDangerMap: () -> Unit,
+  onNavigateToThreatGuard: () -> Unit,
+  onNavigateToGuardianCircle: () -> Unit,
+  onNavigateToHardwareTrigger: () -> Unit,
+  onNavigateToMeshNetwork: () -> Unit,
+  onNavigateToRideSafety: () -> Unit,
+  onNavigateToCampusSafety: () -> Unit,
+  onNavigateToChildSafety: () -> Unit,
+  onNavigateToVault: () -> Unit,
+  onNavigateToHistory: () -> Unit,
+  onNavigateToCommunitySafety: () -> Unit,
+  onNavigateToSelfDefense: () -> Unit,
+  onNavigateToStealthMode: () -> Unit,
+  onNavigateToSafetyGuide: () -> Unit,
+  onNavigateToCyberCrimeSupport: () -> Unit,
+  onNavigateToVolunteerEscort: () -> Unit,
+  onNavigateToLegalAid: () -> Unit,
+  onNavigateToSafetyTimer: () -> Unit,
+  onNavigateToFirstAid: () -> Unit,
+  onNavigateToWellness: () -> Unit,
+  onNavigateToSettings: () -> Unit,
+  onNavigateToFakeCall: () -> Unit,
+  onNavigateToSirenStrobe: () -> Unit,
+  onNavigateToSafeJourney: () -> Unit
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    // Interactive Map Radar Preview
+    com.example.features.map.DangerMapHomeWidget(
+      onOpenFullMap = onNavigateToDangerMap
+    )
+
+    // Standardized 2-Column Safety Controls Grid (Max 6 Core Emergency Cards)
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+      SafetyMiniCard(
+        title = "Fake Escape Call",
+        subtitle = "Discreet escape call simulator",
+        icon = Icons.Default.PhoneCallback,
+        onClick = onNavigateToFakeCall,
+        modifier = Modifier.weight(1f),
+        testTag = "btn_fake_call"
+      )
+
+      SafetyMiniCard(
+        title = "Safe Journey",
+        subtitle = "Live GPS route tracking",
+        icon = Icons.Default.DirectionsWalk,
+        onClick = onNavigateToSafeJourney,
+        modifier = Modifier.weight(1f),
+        testTag = "btn_safe_journey"
+      )
+    }
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+      SafetyMiniCard(
+        title = "Safe Places Radar",
+        subtitle = "Thanas & 24/7 hospitals",
+        icon = Icons.Default.Place,
+        onClick = onNavigateToSafePlaces,
+        modifier = Modifier.weight(1f),
+        testTag = "btn_safe_places"
+      )
+
+      SafetyMiniCard(
+        title = "Emergency Siren",
+        subtitle = "110dB alarm & strobe",
+        icon = Icons.Default.VolumeUp,
+        onClick = onNavigateToSirenStrobe,
+        modifier = Modifier.weight(1f),
+        testTag = "btn_siren_strobe"
+      )
+    }
+
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+      SafetyMiniCard(
+        title = "Offline Mesh",
+        subtitle = "Zero-net distress beacon",
+        icon = Icons.Default.Hub,
+        onClick = onNavigateToMeshNetwork,
+        modifier = Modifier.weight(1f),
+        testTag = "btn_mesh_network"
+      )
+
+      SafetyMiniCard(
+        title = "Hardware 3x SOS",
+        subtitle = "Power button triggers",
+        icon = Icons.Default.FlashOn,
+        onClick = onNavigateToHardwareTrigger,
+        modifier = Modifier.weight(1f),
+        testTag = "btn_hardware_triggers"
+      )
+    }
+  }
+}
+
+@Composable
+private fun EmergencyTabSection(
+  onNavigateToLockScreenSos: () -> Unit,
+  onNavigateToFakeCall: () -> Unit,
+  onNavigateToSirenStrobe: () -> Unit,
+  onNavigateToContacts: () -> Unit,
+  onNavigateToMeshNetwork: () -> Unit,
+  onNavigateToHardwareTrigger: () -> Unit,
+  onNavigateToSafetyTimer: () -> Unit
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SafetyActionCard(
+      title = "LOCK SCREEN & OFFLINE SOS",
+      subtitle = "1-Tap SOS over locked screen • Direct GSM SMS & Mesh without opening app",
+      icon = Icons.Default.Lock,
+      accentColor = SafetyRedPrimary,
+      onClick = onNavigateToLockScreenSos,
+      testTag = "btn_lockscreen_sos_guard"
+    )
+
+    SafetyActionCard(
+      title = "EMERGENCY CONTACTS",
+      subtitle = "Manage up to 7 trusted contacts with instant SOS SMS broadcast",
+      icon = Icons.Default.Contacts,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToContacts,
+      testTag = "btn_emergency_contacts"
+    )
+
+    SafetyActionCard(
+      title = "DISCREET FAKE ESCAPE CALL",
+      subtitle = "Simulate realistic incoming call with speaking guidance",
+      icon = Icons.Default.PhoneCallback,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToFakeCall,
+      testTag = "btn_fake_call"
+    )
+
+    SafetyActionCard(
+      title = "EMERGENCY SIREN & 8HZ STROBE",
+      subtitle = "110dB high acoustic whistle & disorienting defense strobe",
+      icon = Icons.Default.VolumeUp,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSirenStrobe,
+      testTag = "btn_siren_strobe"
+    )
+
+    SafetyActionCard(
+      title = "OFFLINE MESH NETWORK",
+      subtitle = "Peer-to-peer Wi-Fi Aware distress broadcast without mobile data",
+      icon = Icons.Default.Hub,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToMeshNetwork,
+      testTag = "btn_mesh_network"
+    )
+
+    SafetyActionCard(
+      title = "HARDWARE & POWER BUTTON SOS",
+      subtitle = "Triple press power key or volume key trigger",
+      icon = Icons.Default.FlashOn,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToHardwareTrigger,
+      testTag = "btn_hardware_triggers"
+    )
+
+    SafetyActionCard(
+      title = "SAFETY CHECK-IN TIMER",
+      subtitle = "Dead Man's countdown switch with auto alert on expiry",
+      icon = Icons.Default.Timer,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSafetyTimer,
+      testTag = "btn_safety_timer"
+    )
+  }
+}
+
+@Composable
+private fun NavigationTabSection(
+  onNavigateToSafeJourney: () -> Unit,
+  onNavigateToDangerMap: () -> Unit,
+  onNavigateToSafePlaces: () -> Unit,
+  onNavigateToRideSafety: () -> Unit,
+  onNavigateToCommunitySafety: () -> Unit
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    com.example.features.map.DangerMapHomeWidget(
+      onOpenFullMap = onNavigateToDangerMap
+    )
+
+    SafetyActionCard(
+      title = "SAFE JOURNEY TRACKER",
+      subtitle = "Live path monitoring, estimated arrival & safety checks",
+      icon = Icons.Default.DirectionsWalk,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSafeJourney,
+      testTag = "btn_safe_journey"
+    )
+
+    SafetyActionCard(
+      title = "SAFE PLACES RADAR",
+      subtitle = "Verified Thanas, 24/7 Hospitals & Women Support booths",
+      icon = Icons.Default.Place,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSafePlaces,
+      testTag = "btn_safe_places"
+    )
+
+    SafetyActionCard(
+      title = "RICKSHAW & TRANSIT GUARD",
+      subtitle = "Vehicle plate logger, ride timer & route deviation detection",
+      icon = Icons.Default.DirectionsBus,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToRideSafety,
+      testTag = "btn_ride_safety"
+    )
+
+    SafetyActionCard(
+      title = "COMMUNITY SAFETY ZONES",
+      subtitle = "Crowdsourced incident ratings and live guardian sharing",
+      icon = Icons.Default.Share,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToCommunitySafety,
+      testTag = "btn_community_safety"
+    )
+  }
+}
+
+@Composable
+private fun SensorsTabSection(
+  onNavigateToThreatGuard: () -> Unit,
+  onNavigateToHardwareTrigger: () -> Unit,
+  onNavigateToStealthMode: () -> Unit,
+  onNavigateToVault: () -> Unit,
+  onNavigateToSafetyTimer: () -> Unit
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SafetyActionCard(
+      title = "AI ACOUSTIC THREAT GUARD",
+      subtitle = "Automated scream, physical impact & high-frequency shock detection",
+      icon = Icons.Default.Sensors,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToThreatGuard,
+      testTag = "btn_threat_guard"
+    )
+
+    SafetyActionCard(
+      title = "HARDWARE & WEARABLE TRIGGERS",
+      subtitle = "Power button 3x, discreet volume hold, & BLE Smart Band SOS",
+      icon = Icons.Default.FlashOn,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToHardwareTrigger,
+      testTag = "btn_hardware_triggers"
+    )
+
+    SafetyActionCard(
+      title = "CAMOUFLAGE CALCULATOR",
+      subtitle = "Stealth calculator PIN interface for hidden SOS activation",
+      icon = Icons.Default.Calculate,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToStealthMode,
+      testTag = "btn_stealth_calc"
+    )
+
+    SafetyActionCard(
+      title = "ENCRYPTED EVIDENCE VAULT",
+      subtitle = "Tamper-proof AES-256 audio and incident recording vault",
+      icon = Icons.Default.Lock,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToVault,
+      testTag = "btn_vault"
+    )
+
+    SafetyActionCard(
+      title = "DEAD MAN'S SAFETY TIMER",
+      subtitle = "Proactive timeout countdown before venturing into isolated areas",
+      icon = Icons.Default.Timer,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSafetyTimer,
+      testTag = "btn_safety_timer"
+    )
+  }
+}
+
+@Composable
+private fun CommunityTabSection(
+  onNavigateToGuardianCircle: () -> Unit,
+  onNavigateToCampusSafety: () -> Unit,
+  onNavigateToChildSafety: () -> Unit,
+  onNavigateToVolunteerEscort: () -> Unit,
+  onNavigateToLegalAid: () -> Unit,
+  onNavigateToSafetyGuide: () -> Unit,
+  onNavigateToCyberCrimeSupport: () -> Unit,
+  onNavigateToFirstAid: () -> Unit,
+  onNavigateToWellness: () -> Unit,
+  onNavigateToHistory: () -> Unit,
+  onNavigateToSelfDefense: () -> Unit,
+  onNavigateToSettings: () -> Unit
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SafetyActionCard(
+      title = "GUARDIAN CIRCLES",
+      subtitle = "Real-time peer network, battery health & mutual check-ins",
+      icon = Icons.Default.Group,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToGuardianCircle,
+      testTag = "btn_guardian_circles"
+    )
+
+    SafetyActionCard(
+      title = "CAMPUS SAFETY & ESCORT",
+      subtitle = "University safe corridors, proctor desk & student escort",
+      icon = Icons.Default.School,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToCampusSafety,
+      testTag = "btn_campus_safety"
+    )
+
+    SafetyActionCard(
+      title = "CHILD & TEEN SAFETY",
+      subtitle = "Live geofence zones, battery telemetry & 1098 helpline",
+      icon = Icons.Default.ChildCare,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToChildSafety,
+      testTag = "btn_child_safety"
+    )
+
+    SafetyActionCard(
+      title = "VERIFIED VOLUNTEER ESCORTS",
+      subtitle = "Community walking partners for late-night safety",
+      icon = Icons.Default.People,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToVolunteerEscort,
+      testTag = "btn_volunteer_escort"
+    )
+
+    SafetyActionCard(
+      title = "LEGAL AID & POLICE GD DRAFTER",
+      subtitle = "Bangladesh legal rights, automated GD generator & 16430 aid",
+      icon = Icons.Default.Gavel,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToLegalAid,
+      testTag = "btn_legal_aid"
+    )
+
+    SafetyActionCard(
+      title = "POLICE CYBER SUPPORT (PCSW)",
+      subtitle = "Direct unit for online harassment, blackmail & digital safety",
+      icon = Icons.Default.SupportAgent,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToCyberCrimeSupport,
+      testTag = "btn_cyber_desk"
+    )
+
+    SafetyActionCard(
+      title = "SELF-DEFENSE TECHNIQUES",
+      subtitle = "Visual step-by-step physical defense and escape maneuvers",
+      icon = Icons.Default.SportsMartialArts,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSelfDefense,
+      testTag = "btn_self_defense"
+    )
+
+    SafetyActionCard(
+      title = "OFFLINE FIRST AID GUIDE",
+      subtitle = "Immediate medical emergency instructions and triage",
+      icon = Icons.Default.LocalHospital,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToFirstAid,
+      testTag = "btn_first_aid"
+    )
+
+    SafetyActionCard(
+      title = "WELLNESS & TRAUMA COUNSELING",
+      subtitle = "24/7 mental health support, Kaan Pete Roi (01779554391)",
+      icon = Icons.Default.Spa,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToWellness,
+      testTag = "btn_wellness_care"
+    )
+
+    SafetyActionCard(
+      title = "LEGAL SAFETY HANDBOOK",
+      subtitle = "Women's rights under Bangladesh Penal Code & prevention acts",
+      icon = Icons.Default.AutoStories,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSafetyGuide,
+      testTag = "btn_safety_guide"
+    )
+
+    SafetyActionCard(
+      title = "INCIDENT HISTORY LOGS",
+      subtitle = "Timestamped history of SOS alerts and test beacons",
+      icon = Icons.Default.History,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToHistory,
+      testTag = "btn_history"
+    )
+
+    SafetyActionCard(
+      title = "APPLICATION SETTINGS",
+      subtitle = "Manage security PIN, sensitivity thresholds & preferences",
+      icon = Icons.Default.Settings,
+      accentColor = PinkPrimary,
+      onClick = onNavigateToSettings,
+      testTag = "btn_settings"
+    )
+  }
+}
+
+// -------------------------------------------------------------
+// REUSABLE COMPONENTS
+// -------------------------------------------------------------
+
+@Composable
+private fun QuickEmergencyPill(
+  title: String,
+  icon: ImageVector,
+  accentColor: Color,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  testTag: String
+) {
+  Card(
+    modifier = modifier
+      .testTag(testTag)
+      .clickable(onClick = onClick),
+    shape = RoundedCornerShape(14.dp),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    border = BorderStroke(1.dp, PinkBorderSubtle),
+    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 10.dp, horizontal = 6.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
+    ) {
+      Box(
+        modifier = Modifier
+          .size(34.dp)
+          .clip(CircleShape)
+          .background(PinkAccentLilac.copy(alpha = 0.65f)),
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          imageVector = icon,
+          contentDescription = null,
+          tint = PinkPrimary,
+          modifier = Modifier.size(18.dp)
+        )
+      }
+      Spacer(modifier = Modifier.height(6.dp))
+      Text(
+        text = title,
+        style = MaterialTheme.typography.labelSmall.copy(
+          fontWeight = FontWeight.Bold,
+          fontSize = 11.sp
+        ),
+        color = TextPrimaryLight,
+        textAlign = TextAlign.Center,
+        maxLines = 1
+      )
     }
   }
 }
@@ -751,48 +1128,47 @@ private fun SafetyActionCard(
       .fillMaxWidth()
       .testTag(testTag)
       .clickable(onClick = onClick),
-    shape = RoundedCornerShape(14.dp),
-    colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surface
-    ),
-    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    shape = RoundedCornerShape(16.dp),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    border = BorderStroke(1.dp, PinkBorderSubtle),
+    elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
   ) {
     Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 14.dp),
+        .padding(horizontal = 14.dp, vertical = 12.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
       Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = accentColor.copy(alpha = 0.12f),
-        modifier = Modifier.size(44.dp)
+        shape = RoundedCornerShape(12.dp),
+        color = PinkAccentLilac.copy(alpha = 0.7f),
+        modifier = Modifier.size(42.dp)
       ) {
         Box(contentAlignment = Alignment.Center) {
           Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = accentColor,
-            modifier = Modifier.size(24.dp)
+            tint = PinkPrimary,
+            modifier = Modifier.size(22.dp)
           )
         }
       }
 
-      Spacer(modifier = Modifier.width(14.dp))
+      Spacer(modifier = Modifier.width(12.dp))
 
       Column(modifier = Modifier.weight(1f)) {
         Text(
           text = title,
-          style = MaterialTheme.typography.titleMedium.copy(
+          style = MaterialTheme.typography.titleSmall.copy(
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.8.sp
+            letterSpacing = 0.4.sp
           ),
-          color = MaterialTheme.colorScheme.onSurface
+          color = TextPrimaryLight
         )
         Text(
           text = subtitle,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant
+          style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+          color = TextSecondaryLight
         )
       }
     }
@@ -810,39 +1186,51 @@ private fun SafetyMiniCard(
 ) {
   Card(
     modifier = modifier
+      .height(100.dp)
       .testTag(testTag)
       .clickable(onClick = onClick),
-    shape = RoundedCornerShape(14.dp),
-    colors = CardDefaults.cardColors(
-      containerColor = MaterialTheme.colorScheme.surface
-    ),
-    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    shape = RoundedCornerShape(16.dp),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    border = BorderStroke(1.dp, PinkBorderSubtle),
+    elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
   ) {
     Column(
       modifier = Modifier
-        .fillMaxWidth()
-        .padding(14.dp)
+        .fillMaxSize()
+        .padding(12.dp),
+      verticalArrangement = Arrangement.SpaceBetween
     ) {
-      Icon(
-        imageVector = icon,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.size(22.dp)
-      )
-      Spacer(modifier = Modifier.height(8.dp))
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall.copy(
-          fontWeight = FontWeight.Bold,
-          letterSpacing = 0.5.sp
-        ),
-        color = MaterialTheme.colorScheme.onSurface
-      )
-      Text(
-        text = subtitle,
-        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-      )
+      Surface(
+        shape = CircleShape,
+        color = PinkAccentLilac.copy(alpha = 0.7f),
+        modifier = Modifier.size(32.dp)
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = PinkPrimary,
+            modifier = Modifier.size(17.dp)
+          )
+        }
+      }
+      Column {
+        Text(
+          text = title,
+          style = MaterialTheme.typography.titleSmall.copy(
+            fontWeight = FontWeight.Bold,
+            fontSize = 12.sp
+          ),
+          color = TextPrimaryLight,
+          maxLines = 1
+        )
+        Text(
+          text = subtitle,
+          style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+          color = TextSecondaryLight,
+          maxLines = 1
+        )
+      }
     }
   }
 }

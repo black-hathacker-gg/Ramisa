@@ -82,12 +82,15 @@ fun HistoryScreen(
         actions = {
           if (uiState.events.isNotEmpty()) {
             IconButton(onClick = { viewModel.clearHistory() }) {
-              Icon(imageVector = Icons.Default.Delete, contentDescription = "Clear History")
+              Icon(imageVector = Icons.Default.Delete, contentDescription = "Clear History", tint = Color.White)
             }
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.background
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },

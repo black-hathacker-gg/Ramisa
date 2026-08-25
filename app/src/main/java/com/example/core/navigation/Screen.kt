@@ -3,6 +3,9 @@ package com.example.core.navigation
 sealed class Screen(val route: String) {
   data object Welcome : Screen("welcome")
   data object Home : Screen("home")
+  data object ToolsHub : Screen("tools_hub")
+  data object BatteryPing : Screen("battery_ping")
+  data object OfflineMaps : Screen("offline_maps")
   data object Login : Screen("login")
   data object Register : Screen("register")
   data object Profile : Screen("profile")

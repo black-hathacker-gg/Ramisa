@@ -1,5 +1,10 @@
 package com.example.features.lockscreen
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationManager
+import androidx.core.app.ActivityCompat
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -135,6 +140,28 @@ object LockScreenSosManager {
     notificationManager.cancel(NOTIFICATION_ID)
   }
 
+
+  private fun getLastKnownLocationUrl(context: Context): String {
+    val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+        ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        return "https://maps.google.com/?q=23.7937,90.4066 (Fallback)"
+    }
+    val providers = locationManager.getProviders(true)
+    var bestLocation: Location? = null
+    for (provider in providers) {
+        val l = locationManager.getLastKnownLocation(provider) ?: continue
+        if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
+            bestLocation = l
+        }
+    }
+    return if (bestLocation != null) {
+        "https://maps.google.com/?q=${bestLocation.latitude},${bestLocation.longitude}"
+    } else {
+        "https://maps.google.com/?q=23.7937,90.4066 (Fallback)"
+    }
+  }
+
   fun triggerOfflineEmergency(context: Context, note: String = "Lock Screen Trigger") {
     CoroutineScope(Dispatchers.IO).launch {
       // 1. Send direct offline SMS to trusted emergency contacts
@@ -146,10 +173,8 @@ object LockScreenSosManager {
       
       val user = AppSessionManager.currentUser.value
       val userName = user?.name ?: "RAMISA User"
-      val lat = 23.7937
-      val lng = 90.4066
-      val mapLink = "https://maps.google.com/?q=$lat,$lng"
-      val sosMessage = "🚨 [RAMISA OFFLINE SOS ALERT] $userName is in urgent danger! Location: $mapLink (Road 11, Banani, Dhaka). Please send emergency help immediately!"
+      val mapLink = getLastKnownLocationUrl(context)
+      val sosMessage = "🚨 [RAMISA OFFLINE SOS ALERT] $userName is in urgent danger! Location: $mapLink Please send emergency help immediately!"
 
       var sentCount = 0
       try {

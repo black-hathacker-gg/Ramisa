@@ -120,7 +120,10 @@ fun SirenStrobeScreen(
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = if (uiState.isStrobeActive) strobeColor else MaterialTheme.colorScheme.background
+          containerColor = if (uiState.isStrobeActive) strobeColor else MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },

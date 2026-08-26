@@ -98,8 +98,17 @@ object EmergencySmsDispatcher {
         val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
         val customNoteText = if (!customNote.isNullOrBlank()) " Note: $customNote." else ""
 
+        // Fetch battery level
+        val batteryLevel = try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+            val pct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 80
+            " [Battery: $pct%]"
+        } catch (e: Exception) {
+            ""
+        }
+
         // 4. Construct SMS Message Body with Fused Location link
-        val messageBody = "🚨 [RAMISA SOS ALERT] আমি বিপদে আছি! $userName$bloodGroup needs immediate help!$customNoteText Live GPS Location: $mapLink (at $timeStr). Please call 999 or rescue immediately!"
+        val messageBody = "🚨 [RAMISA SOS ALERT] আমি বিপদে আছি! $userName$bloodGroup needs immediate help!$customNoteText$batteryLevel Live GPS: $mapLink (at $timeStr, ±${String.format("%.0f", targetLocation.accuracyMeters)}m). Please call 999 or rescue immediately!"
 
         // 5. Check SEND_SMS Permission
         val hasSmsPermission = ActivityCompat.checkSelfPermission(
@@ -196,6 +205,53 @@ object EmergencySmsDispatcher {
             context.startActivity(intent)
         } catch (e: Exception) {
             Log.e(TAG, "Error initiating emergency phone call: ${e.message}")
+        }
+    }
+
+    /**
+     * Sends automatic "Reached Safely" (আলহামদুলিল্লাহ নিরাপদে পৌঁছেছি) notification SMS to primary guardians.
+     */
+    suspend fun dispatchSafeArrivalSms(
+        context: Context,
+        destination: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val hasSmsPermission = ActivityCompat.checkSelfPermission(
+            context,
+            Manifest.permission.SEND_SMS
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasSmsPermission) return@withContext false
+
+        try {
+            val db = AppDatabase.getDatabase(context)
+            val contacts = db.emergencyContactDao().getSmsEnabledContactsSync()
+                .ifEmpty { db.emergencyContactDao().getAllContactsSync() }
+            
+            if (contacts.isEmpty()) return@withContext false
+
+            val userProfile = db.userDao().getProfileSync()?.toDomain() ?: AppSessionManager.currentUser.value
+            val userName = userProfile?.name ?: "RAMISA User"
+            val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
+
+            val message = "🟢 [RAMISA Safe Arrival] আলহামদুলিল্লাহ, $userName নিরাপদে $destination -এ পৌঁছেছেন (at $timeStr)। ধন্যবাদ!"
+
+            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+
+            for (c in contacts.take(2)) {
+                val cleanPhone = c.phone.replace(Regex("[^0-9+]"), "")
+                if (cleanPhone.isNotBlank()) {
+                    smsManager.sendTextMessage(cleanPhone, null, message, null, null)
+                }
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send safe arrival SMS: ${e.message}")
+            false
         }
     }
 }

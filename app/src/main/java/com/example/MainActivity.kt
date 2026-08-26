@@ -6,6 +6,10 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
+import android.view.KeyEvent
+import android.widget.Toast
+import android.os.Vibrator
+import android.os.VibrationEffect
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +26,10 @@ import com.example.features.lockscreen.LockScreenSosManager
 import com.example.ui.theme.RamisaTheme
 
 class MainActivity : ComponentActivity() {
+
+  private var volumeClickCount = 0
+  private var lastVolumeClickTime = 0L
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
@@ -40,8 +48,11 @@ class MainActivity : ComponentActivity() {
     // Initialize Lock Screen SOS notification guard
     LockScreenSosManager.showLockScreenNotification(this)
 
-    val openEmergency = intent?.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false) ?: false
-    val openFakeCall = intent?.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false) ?: false
+    val action = intent?.action
+    val openEmergency = intent?.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false) == true ||
+        action == "com.example.ACTION_TRIGGER_QUICK_SOS"
+    val openFakeCall = intent?.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false) == true ||
+        action == "com.example.ACTION_TRIGGER_QUICK_FAKECALL"
     val openSafeJourney = intent?.getBooleanExtra("EXTRA_OPEN_SAFE_JOURNEY", false) ?: false
 
     setContent {
@@ -73,11 +84,55 @@ class MainActivity : ComponentActivity() {
     }
   }
 
+  override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+      val now = System.currentTimeMillis()
+      if (now - lastVolumeClickTime < 1800) {
+        volumeClickCount++
+        if (volumeClickCount >= 3) {
+          volumeClickCount = 0
+          triggerHardwareSos()
+          return true
+        }
+      } else {
+        volumeClickCount = 1
+      }
+      lastVolumeClickTime = now
+    }
+    return super.onKeyDown(keyCode, event)
+  }
+
+  private fun triggerHardwareSos() {
+    try {
+      val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 200, 300, 200, 500), -1))
+      } else {
+        @Suppress("DEPRECATION")
+        vibrator?.vibrate(longArrayOf(0, 300, 200, 300, 200, 500), -1)
+      }
+      Toast.makeText(this, "🚨 Volume Trigger SOS Activated!", Toast.LENGTH_SHORT).show()
+      
+      // Dispatch emergency SMS immediately
+      com.example.core.service.FusedLocationBackgroundService.startLocationService(this)
+      val intent = Intent(this, MainActivity::class.java).apply {
+        action = "com.example.ACTION_TRIGGER_QUICK_SOS"
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+      }
+      startActivity(intent)
+    } catch (e: Exception) {
+      // Graceful handling
+    }
+  }
+
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    val openEmergency = intent.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false)
-    val openFakeCall = intent.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false)
+    val action = intent.action
+    val openEmergency = intent.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false) ||
+        action == "com.example.ACTION_TRIGGER_QUICK_SOS"
+    val openFakeCall = intent.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false) ||
+        action == "com.example.ACTION_TRIGGER_QUICK_FAKECALL"
     val openSafeJourney = intent.getBooleanExtra("EXTRA_OPEN_SAFE_JOURNEY", false)
     
     if (openEmergency) {
@@ -85,7 +140,7 @@ class MainActivity : ComponentActivity() {
     }
     
     if (openEmergency || openFakeCall || openSafeJourney) {
-      recreate() // Simple way to force compose to pick up the new intent
+      recreate() // Force compose to re-initialize with destination
     }
   }
 

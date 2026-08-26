@@ -1,7 +1,9 @@
 package com.example.features.journey
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.core.sms.EmergencySmsDispatcher
 import com.example.data.repository.JourneyRepositoryImpl
 import com.example.domain.model.Journey
 import com.example.domain.model.JourneyStatus
@@ -32,8 +34,9 @@ data class JourneyUiState(
 )
 
 class JourneyViewModel(
+  application: Application,
   private val journeyRepository: JourneyRepository = JourneyRepositoryImpl()
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
   private val _uiState = MutableStateFlow(JourneyUiState())
   val uiState: StateFlow<JourneyUiState> = _uiState.asStateFlow()
@@ -100,15 +103,29 @@ class JourneyViewModel(
 
   fun completeJourney() {
     val journeyId = _uiState.value.activeJourney?.id ?: return
+    val destination = _uiState.value.destination
     viewModelScope.launch {
       journeyRepository.completeJourney(journeyId)
       timerJob?.cancel()
       promptCountdownJob?.cancel()
+      
+      // Auto dispatch "Reached Safely" SMS to guardians
+      val smsSent = EmergencySmsDispatcher.dispatchSafeArrivalSms(
+        context = getApplication(),
+        destination = destination
+      )
+
+      val confirmationMsg = if (smsSent) {
+        "আলহামদুলিল্লাহ! আপনি নিরাপদে পৌঁছেছেন। অভিভাবকদের SMS এর মাধ্যমে নিশ্চিত করা হয়েছে।"
+      } else {
+        "You have marked yourself safe. Journey completed."
+      }
+
       _uiState.update {
         it.copy(
           isJourneyActive = false,
           isSafetyPromptVisible = false,
-          statusMessage = "You have marked yourself safe. Journey completed."
+          statusMessage = confirmationMsg
         )
       }
     }

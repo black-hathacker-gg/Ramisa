@@ -1,9 +1,14 @@
 package com.example.features.legalaid
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,10 +29,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Gavel
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.LocalPolice
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -70,19 +77,26 @@ fun LegalAidScreen(
   val uiState by viewModel.uiState.collectAsState()
   val context = LocalContext.current
 
+  val categories = listOf(
+    "Street Harassment / ইভটিজিং",
+    "Cyber Blackmail / সাইবার হেনস্তা",
+    "Stalking / পিছু নেওয়া ও হুমকি",
+    "Domestic Abuse / পারিবারিক নির্যাতন"
+  )
+
   Scaffold(
     topBar = {
       TopAppBar(
         title = {
           Column {
             Text(
-              text = "Legal Aid & GD Drafter",
+              text = "ডিজিটাল জিডি ও আইনি সহায়তা",
               style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-              text = "Free legal aid clinics & General Diary generator (আইনি সহায়তা)",
+              text = "Bangladesh Police GD & Cyber Harassment Drafter",
               style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+              color = Color.White.copy(alpha = 0.85f)
             )
           }
         },
@@ -94,8 +108,7 @@ fun LegalAidScreen(
         colors = TopAppBarDefaults.topAppBarColors(
           containerColor = MaterialTheme.colorScheme.primary,
           titleContentColor = Color.White,
-          navigationIconContentColor = Color.White,
-          actionIconContentColor = Color.White
+          navigationIconContentColor = Color.White
         )
       )
     },
@@ -110,7 +123,7 @@ fun LegalAidScreen(
       verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
 
-      // Notification banner
+      // Feedback banner
       item {
         AnimatedVisibility(visible = uiState.feedbackMessage != null) {
           uiState.feedbackMessage?.let { msg ->
@@ -129,7 +142,8 @@ fun LegalAidScreen(
                 Text(
                   text = msg,
                   style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                  color = PinkPrimaryDark
+                  color = PinkPrimaryDark,
+                  modifier = Modifier.weight(1f)
                 )
                 TextButton(onClick = { viewModel.clearFeedback() }) {
                   Text("Dismiss", color = PinkPrimary)
@@ -173,17 +187,17 @@ fun LegalAidScreen(
               Spacer(modifier = Modifier.width(12.dp))
               Column {
                 Text(
-                  text = "NATIONAL LEGAL AID HOTLINE (টোল ফ্রি)",
-                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp),
+                  text = "জাতীয় জরুরি আইনি সহায়তা হটলাইন",
+                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                   color = PinkPrimaryDark
                 )
                 Text(
-                  text = "Dial 16430 (Government NLASO)",
+                  text = "ডায়াল করুন: ১৬৪৩০ (টোল ফ্রি)",
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                   color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                  text = "Free court representation in all 64 districts",
+                  text = "বিনামূল্যে আইনি পরামর্শ ও ৬৪ জেলায় সরকারি উকিল",
                   style = MaterialTheme.typography.bodySmall,
                   color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -219,24 +233,87 @@ fun LegalAidScreen(
               .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
           ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Assignment, contentDescription = null, tint = PinkPrimary)
+              Spacer(modifier = Modifier.width(8.dp))
+              Text(
+                text = "থানা জিডি / অনলাইন অভিযোগ ড্রাফটার",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+              )
+            }
+
             Text(
-              text = "GENERAL DIARY (GD) QUICK DRAFTER",
-              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
-              color = PinkPrimary
+              text = "অভিযোগের ধরন নির্বাচন করুন:",
+              style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+              color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              items(categories) { cat ->
+                val isSelected = uiState.generalDiaryDraftCategory == cat
+                Surface(
+                  shape = RoundedCornerShape(20.dp),
+                  color = if (isSelected) PinkPrimary else MaterialTheme.colorScheme.surfaceVariant,
+                  modifier = Modifier.clickable { viewModel.updateGdCategory(cat) }
+                ) {
+                  Text(
+                    text = cat,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                  )
+                }
+              }
+            }
+
             OutlinedTextField(
-              value = uiState.generalDiaryDraftCategory,
-              onValueChange = { viewModel.updateGdCategory(it) },
-              label = { Text("Incident Reason / Offense") },
-              modifier = Modifier.fillMaxWidth().testTag("input_gd_reason")
+              value = uiState.applicantName,
+              onValueChange = { viewModel.updateApplicantName(it) },
+              label = { Text("আপনার নাম (Applicant Name)") },
+              placeholder = { Text("যেমন: সুমাইয়া আক্তার") },
+              modifier = Modifier.fillMaxWidth()
             )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+              OutlinedTextField(
+                value = uiState.applicantPhone,
+                onValueChange = { viewModel.updateApplicantPhone(it) },
+                label = { Text("মোবাইল নম্বর") },
+                placeholder = { Text("017XXXXXXXX") },
+                modifier = Modifier.weight(1f)
+              )
+              OutlinedTextField(
+                value = uiState.applicantNid,
+                onValueChange = { viewModel.updateApplicantNid(it) },
+                label = { Text("NID / জন্মসনদ") },
+                placeholder = { Text("ঐচ্ছিক") },
+                modifier = Modifier.weight(1f)
+              )
+            }
 
             OutlinedTextField(
               value = uiState.incidentThana,
               onValueChange = { viewModel.updateGdThana(it) },
-              label = { Text("Target Police Station / Thana (থানা)") },
+              label = { Text("সংশ্লিষ্ট থানা (Target Thana)") },
               modifier = Modifier.fillMaxWidth().testTag("input_gd_thana")
+            )
+
+            OutlinedTextField(
+              value = uiState.incidentLocationDetail,
+              onValueChange = { viewModel.updateLocationDetail(it) },
+              label = { Text("ঘটনাস্থল (Incident Location)") },
+              placeholder = { Text("যেমন: কার্জন হল গেট, ঢাকা বিশ্ববিদ্যালয়") },
+              modifier = Modifier.fillMaxWidth()
+            )
+
+            OutlinedTextField(
+              value = uiState.incidentDescription,
+              onValueChange = { viewModel.updateIncidentDescription(it) },
+              label = { Text("ঘটনার সংক্ষিপ্ত বিবরণ (Description)") },
+              placeholder = { Text("কী ঘটেছিল তা সংক্ষেপে লিখুন...") },
+              minLines = 2,
+              modifier = Modifier.fillMaxWidth()
             )
 
             Button(
@@ -245,9 +322,9 @@ fun LegalAidScreen(
               shape = RoundedCornerShape(10.dp),
               modifier = Modifier.fillMaxWidth().testTag("btn_generate_gd_draft")
             ) {
-              Icon(imageVector = Icons.Default.Assignment, contentDescription = null, modifier = Modifier.size(16.dp))
+              Icon(imageVector = Icons.Default.Assignment, contentDescription = null, modifier = Modifier.size(18.dp))
               Spacer(modifier = Modifier.width(6.dp))
-              Text("Generate Thana GD Format", fontWeight = FontWeight.Bold)
+              Text("জিডি ফরম্যাট প্রস্তুত করুন (Generate GD Draft)", fontWeight = FontWeight.Bold)
             }
 
             uiState.gdDraftText?.let { draft ->
@@ -256,13 +333,120 @@ fun LegalAidScreen(
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.fillMaxWidth().testTag("surface_gd_draft_result")
               ) {
-                Text(
-                  text = draft,
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurface,
-                  modifier = Modifier.padding(12.dp)
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                  Text(
+                    text = draft,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                  )
+
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                  ) {
+                    OutlinedButton(
+                      onClick = {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                        val clip = ClipData.newPlainText("RAMISA GD Draft", draft)
+                        clipboard?.setPrimaryClip(clip)
+                        Toast.makeText(context, "জিডি টেক্সট কপি হয়েছে!", Toast.LENGTH_SHORT).show()
+                      },
+                      modifier = Modifier.weight(1f),
+                      shape = RoundedCornerShape(8.dp)
+                    ) {
+                      Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text("কপি করুন", style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    Button(
+                      onClick = {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                          type = "text/plain"
+                          putExtra(Intent.EXTRA_SUBJECT, "জিডি আবেদনপত্র - ${uiState.generalDiaryDraftCategory}")
+                          putExtra(Intent.EXTRA_TEXT, draft)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "জিডি আবেদন শেয়ার করুন"))
+                      },
+                      colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+                      modifier = Modifier.weight(1f),
+                      shape = RoundedCornerShape(8.dp)
+                    ) {
+                      Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(14.dp))
+                      Spacer(modifier = Modifier.width(4.dp))
+                      Text("শেয়ার করুন", style = MaterialTheme.typography.labelSmall)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // POLICE STATIONS & CYBER HELPLINES DIRECTORY
+      item {
+        Text(
+          text = "জরুরি থানা ও সাইবার পুলিশ কন্ট্রোল রুম",
+          style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+      }
+
+      items(uiState.policeHotlines) { police ->
+        Card(
+          modifier = Modifier.fillMaxWidth(),
+          shape = RoundedCornerShape(12.dp),
+          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+          elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+              Box(
+                modifier = Modifier
+                  .size(36.dp)
+                  .clip(CircleShape)
+                  .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(
+                  imageVector = Icons.Default.LocalPolice,
+                  contentDescription = null,
+                  tint = MaterialTheme.colorScheme.primary,
+                  modifier = Modifier.size(20.dp)
                 )
               }
+              Spacer(modifier = Modifier.width(10.dp))
+              Column {
+                Text(
+                  text = police.name,
+                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                  color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                  text = "${police.thana} • ${police.phone}",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+
+            OutlinedButton(
+              onClick = {
+                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${police.phone}"))
+                context.startActivity(intent)
+              },
+              shape = RoundedCornerShape(8.dp)
+            ) {
+              Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(14.dp))
+              Spacer(modifier = Modifier.width(4.dp))
+              Text("কল", style = MaterialTheme.typography.labelSmall)
             }
           }
         }
@@ -271,8 +455,8 @@ fun LegalAidScreen(
       // LEGAL AID FOUNDATIONS IN BANGLADESH
       item {
         Text(
-          text = "LEGAL AID SERVICES & WOMEN'S DEFENSE",
-          style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+          text = "বিনামূল্যে আইনি সহায়তা সংস্থা (LEGAL AID)",
+          style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp),
           color = MaterialTheme.colorScheme.onSurfaceVariant
         )
       }
@@ -297,12 +481,12 @@ fun LegalAidScreen(
             ) {
               Column(modifier = Modifier.weight(1f)) {
                 Text(
-                  text = org.name,
+                  text = org.nameBengali,
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                   color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                  text = org.nameBengali,
+                  text = org.name,
                   style = MaterialTheme.typography.bodySmall,
                   color = PinkPrimary
                 )
@@ -322,7 +506,7 @@ fun LegalAidScreen(
             }
 
             Text(
-              text = "Office: ${org.address}",
+              text = "ঠিকানা: ${org.address}",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -350,7 +534,7 @@ fun LegalAidScreen(
               ) {
                 Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Call ${org.hotline}", style = MaterialTheme.typography.labelSmall)
+                Text("কল ${org.hotline}", style = MaterialTheme.typography.labelSmall)
               }
             }
           }

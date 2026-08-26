@@ -67,6 +67,28 @@
             android:exported="false" 
             android:foregroundServiceType="location" />
 
+        <service
+            android:name=".core.service.SosQuickTileService"
+            android:icon="@mipmap/ic_launcher"
+            android:label="RAMISA SOS"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".core.service.FakeCallQuickTileService"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Fake Call"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <receiver android:name=".core.widget.RamisaWidgetProvider" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

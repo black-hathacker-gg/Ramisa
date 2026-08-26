@@ -1,6 +1,8 @@
 package com.example.features.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,12 +46,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.SafetyRedPrimary
 
 @Composable
@@ -80,16 +84,16 @@ fun LoginScreen(
       // Logo Icon
       Box(
         modifier = Modifier
-          .size(72.dp)
+          .size(80.dp)
           .clip(CircleShape)
-          .background(MaterialTheme.colorScheme.primaryContainer),
+          .background(Color.White)
+          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
-        Icon(
-          imageVector = Icons.Default.Shield,
+        Image(
+          painter = painterResource(id = R.drawable.img_app_logo),
           contentDescription = "RAMISA Logo",
-          tint = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.size(40.dp)
+          modifier = Modifier.size(70.dp).clip(CircleShape)
         )
       }
 

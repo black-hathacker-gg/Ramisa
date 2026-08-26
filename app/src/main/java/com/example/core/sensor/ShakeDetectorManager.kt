@@ -12,6 +12,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.example.MainActivity
+import com.example.core.community.CommunityManager
 import com.example.core.location.EmergencyLocationManager
 import com.example.core.sms.EmergencySmsDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -146,6 +147,12 @@ object ShakeDetectorManager : SensorEventListener {
                     context = context,
                     customNote = "Triggered via 3x Emergency Shake",
                     location = loc
+                )
+                // Broadcast to Community Safety Network
+                CommunityManager.broadcastSosAlert(
+                    triggerTypeLabel = "3x Phone Shake Trigger",
+                    location = loc,
+                    note = "Emergency SOS triggered automatically by 3x vigorous phone shake gesture."
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error in shake SOS dispatch: ${e.message}")

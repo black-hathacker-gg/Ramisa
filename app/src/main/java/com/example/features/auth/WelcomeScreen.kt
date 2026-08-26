@@ -1,5 +1,6 @@
 package com.example.features.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -42,10 +43,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.SafeGreenContainer
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
@@ -77,17 +80,16 @@ fun WelcomeScreen(
       // App Logo Badge
       Box(
         modifier = Modifier
-          .size(96.dp)
+          .size(100.dp)
           .clip(CircleShape)
-          .background(SafetyRedPrimary.copy(alpha = 0.12f))
-          .border(2.dp, SafetyRedPrimary.copy(alpha = 0.4f), CircleShape),
+          .background(Color.White)
+          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
-        Icon(
-          imageVector = Icons.Default.Shield,
-          contentDescription = "RAMISA Safety Shield",
-          tint = SafetyRedPrimary,
-          modifier = Modifier.size(54.dp)
+        Image(
+          painter = painterResource(id = R.drawable.img_app_logo),
+          contentDescription = "RAMISA Safety Logo",
+          modifier = Modifier.size(88.dp).clip(CircleShape)
         )
       }
 

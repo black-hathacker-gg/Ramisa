@@ -13,21 +13,10 @@
                 android:endX="108"
                 android:endY="108"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#8A0000" />
-                <item android:offset="0.5" android:color="#C5221F" />
-                <item android:offset="1.0" android:color="#E53935" />
+                <item android:offset="0.0" android:color="#FFFFFF" />
+                <item android:offset="0.6" android:color="#FFF0F5" />
+                <item android:offset="1.0" android:color="#FCE4EC" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Subtle circular pulse ring -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#33FFFFFF"
-        android:strokeWidth="1.5"
-        android:pathData="M54,18 A36,36 0 1,1 53.9,18 Z" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#1AFFFFFF"
-        android:strokeWidth="1.5"
-        android:pathData="M54,8 A46,46 0 1,1 53.9,8 Z" />
 </vector>

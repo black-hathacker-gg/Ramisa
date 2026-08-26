@@ -2,7 +2,14 @@ package com.example.features.community
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.core.community.CommunityManager
 import com.example.domain.model.AreaSafetyReport
+import com.example.domain.model.CentralCommunityInfo
+import com.example.domain.model.CentralCommunityPost
+import com.example.domain.model.CommunityMember
+import com.example.domain.model.CommunitySosAlert
+import com.example.domain.model.CommunityTopicCategory
+import com.example.domain.model.GeoLocation
 import com.example.domain.model.LiveShareSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,13 +19,35 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 data class CommunityUiState(
+  val selectedTab: Int = 0, // 0: Discussions & Messenger Forum, 1: Emergency SOS Feed, 2: Active Sisters & Advisors, 3: Safe Zones
+  val selectedCategory: CommunityTopicCategory = CommunityTopicCategory.ALL,
   val searchQuery: String = "",
-  val selectedFilter: String = "ALL", // "ALL", "SAFE", "CAUTION"
-  val activeLiveSession: LiveShareSession? = null,
-  val isLiveSharingEnabled: Boolean = false,
-  val isReportingDialogVisible: Boolean = false,
+  val isOfflineMode: Boolean = false,
+  
+  // Post Creation Dialog
+  val isCreatePostDialogVisible: Boolean = false,
+  val newPostCategory: CommunityTopicCategory = CommunityTopicCategory.SISTERHOOD_GENERAL,
+  val newPostTitle: String = "",
+  val newPostContent: String = "",
+  val newPostLocation: String = "Dhaka",
+  val isNewPostAnonymous: Boolean = false,
+  
+  // Reply State
+  val selectedPostForReply: CentralCommunityPost? = null,
+  val replyInputText: String = "",
+  val isReplyAnonymous: Boolean = false,
+
+  // PIN Unlock
+  val pinInput: String = "",
+  val pinError: String? = null,
+  val pinSuccessMessage: String? = null,
+
+  // Safe Zones
   val areaReports: List<AreaSafetyReport> = emptyList(),
-  val showShareSuccessMessage: Boolean = false
+  val selectedSafeZoneFilter: String = "ALL",
+  val isReportingDialogVisible: Boolean = false,
+
+  val testSosSuccessMessage: String? = null
 )
 
 class CommunityViewModel : ViewModel() {
@@ -26,10 +55,180 @@ class CommunityViewModel : ViewModel() {
   private val _uiState = MutableStateFlow(CommunityUiState())
   val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
 
+  val communityInfo: StateFlow<CentralCommunityInfo> = CommunityManager.communityInfo
+  val communityPosts: StateFlow<List<CentralCommunityPost>> = CommunityManager.communityPosts
+  val activeSosAlerts: StateFlow<List<CommunitySosAlert>> = CommunityManager.activeSosAlerts
+  val communityMembers: StateFlow<List<CommunityMember>> = CommunityManager.communityMembers
+
+  // Backward compatibility properties
+  val communities = CommunityManager.communities
+  val communityMessages = CommunityManager.communityMessages
+
   init {
     loadDefaultAreaReports()
   }
 
+  fun setSelectedTab(index: Int) {
+    _uiState.update { it.copy(selectedTab = index) }
+  }
+
+  fun setSelectedCategory(category: CommunityTopicCategory) {
+    _uiState.update { it.copy(selectedCategory = category) }
+  }
+
+  fun updateSearchQuery(query: String) {
+    _uiState.update { it.copy(searchQuery = query) }
+  }
+
+  fun toggleOfflineMode() {
+    _uiState.update { it.copy(isOfflineMode = !it.isOfflineMode) }
+  }
+
+  // --- Create Post Dialog Management ---
+  fun showCreatePostDialog(show: Boolean) {
+    _uiState.update {
+      it.copy(
+        isCreatePostDialogVisible = show,
+        newPostTitle = "",
+        newPostContent = "",
+        newPostLocation = "Dhaka",
+        isNewPostAnonymous = false
+      )
+    }
+  }
+
+  fun updateNewPostCategory(category: CommunityTopicCategory) {
+    _uiState.update { it.copy(newPostCategory = category) }
+  }
+
+  fun updateNewPostTitle(title: String) {
+    _uiState.update { it.copy(newPostTitle = title) }
+  }
+
+  fun updateNewPostContent(content: String) {
+    _uiState.update { it.copy(newPostContent = content) }
+  }
+
+  fun updateNewPostLocation(loc: String) {
+    _uiState.update { it.copy(newPostLocation = loc) }
+  }
+
+  fun toggleNewPostAnonymous(anonymous: Boolean) {
+    _uiState.update { it.copy(isNewPostAnonymous = anonymous) }
+  }
+
+  fun submitNewPost() {
+    val title = _uiState.value.newPostTitle.trim()
+    val content = _uiState.value.newPostContent.trim()
+    if (title.isBlank() || content.isBlank()) return
+
+    CommunityManager.createPost(
+      category = _uiState.value.newPostCategory,
+      title = title,
+      content = content,
+      locationTag = _uiState.value.newPostLocation,
+      isAnonymous = _uiState.value.isNewPostAnonymous,
+      isOffline = _uiState.value.isOfflineMode
+    )
+
+    _uiState.update {
+      it.copy(
+        isCreatePostDialogVisible = false,
+        testSosSuccessMessage = if (it.isOfflineMode)
+          "📥 Post saved to Offline Cache & will sync automatically!"
+        else
+          "🎉 Discussion posted to RAMISA Central Community!"
+      )
+    }
+  }
+
+  // --- Reactions ---
+  fun toggleSupport(postId: String) {
+    CommunityManager.toggleSupportReaction(postId)
+  }
+
+  fun toggleHelpful(postId: String) {
+    CommunityManager.toggleHelpfulReaction(postId)
+  }
+
+  // --- Reply Management ---
+  fun openReplyDialog(post: CentralCommunityPost) {
+    _uiState.update {
+      it.copy(
+        selectedPostForReply = post,
+        replyInputText = "",
+        isReplyAnonymous = false
+      )
+    }
+  }
+
+  fun closeReplyDialog() {
+    _uiState.update { it.copy(selectedPostForReply = null, replyInputText = "") }
+  }
+
+  fun updateReplyInput(text: String) {
+    _uiState.update { it.copy(replyInputText = text) }
+  }
+
+  fun toggleReplyAnonymous(anonymous: Boolean) {
+    _uiState.update { it.copy(isReplyAnonymous = anonymous) }
+  }
+
+  fun submitReply() {
+    val post = _uiState.value.selectedPostForReply ?: return
+    val text = _uiState.value.replyInputText.trim()
+    if (text.isBlank()) return
+
+    CommunityManager.addReply(
+      postId = post.id,
+      content = text,
+      isAnonymous = _uiState.value.isReplyAnonymous
+    )
+
+    _uiState.update { it.copy(selectedPostForReply = null, replyInputText = "") }
+  }
+
+  // --- SOS Management ---
+  fun broadcastManualSosToCommunity(triggerType: String = "Manual Central SOS Trigger") {
+    val alert = CommunityManager.broadcastSosAlert(
+      triggerTypeLabel = triggerType,
+      location = GeoLocation(23.7258, 90.3976, "Curzon Hall, Dhaka University"),
+      note = "URGENT: I need emergency help and escort assistance!"
+    )
+    _uiState.update {
+      it.copy(
+        testSosSuccessMessage = "🚨 Emergency SOS Broadcast sent to RAMISA Central Community! Alert ID: ${alert.id}"
+      )
+    }
+  }
+
+  fun respondToSosAlert(alertId: String) {
+    CommunityManager.respondToAlert(alertId, "Sadia Rahman (You)")
+  }
+
+  fun resolveSosAlert(alertId: String) {
+    CommunityManager.resolveAlert(alertId)
+  }
+
+  fun clearTestSosMessage() {
+    _uiState.update { it.copy(testSosSuccessMessage = null) }
+  }
+
+  // --- PIN unlock ---
+  fun updatePinInput(pin: String) {
+    _uiState.update { it.copy(pinInput = pin, pinError = null, pinSuccessMessage = null) }
+  }
+
+  fun verifyPin() {
+    val pin = _uiState.value.pinInput.trim()
+    if (CommunityManager.verifyOrUnlockPin(pin)) {
+      _uiState.update { it.copy(pinSuccessMessage = "✓ Verified Central Sisterhood Member", pinError = null) }
+    } else {
+      _uiState.update { it.copy(pinError = "ভুল পিন নম্বর! (Try default 1234)") }
+    }
+  }
+
+  // --- Safe Zone Reports ---
   private fun loadDefaultAreaReports() {
     val defaultReports = listOf(
       AreaSafetyReport(
@@ -91,105 +290,44 @@ class CommunityViewModel : ViewModel() {
         isCautionZone = false,
         safetyTips = listOf("Diplomatic police patrol active 24/7", "CCTV surveillance network covered"),
         safetyTipsBn = listOf("কূটনৈতিক পুলিশ সার্বক্ষণিক টহল দেয়", "পুরো এলাকা সিসিটিভি ক্যামেরার আওতাভুক্ত")
-      ),
-      AreaSafetyReport(
-        id = "dhk_mirpur10",
-        areaName = "Mirpur 10 Circle & Metro Station",
-        areaNameBn = "মিরপুর ১০ গোলচত্বর ও মেট্রো স্টেশন",
-        safetyScore = 84,
-        lightingRating = 4.4f,
-        policePatrolRating = 4.2f,
-        crowdDensity = "High",
-        crowdDensityBn = "উচ্চ ভিড়",
-        totalReviews = 389,
-        lastReportedMinutesAgo = 19,
-        isCautionZone = false,
-        safetyTips = listOf("Metro concourse heavily guarded", "Use main concourse exits after 9 PM"),
-        safetyTipsBn = listOf("মেট্রো স্টেশন এলাকা সম্পূর্ণ সুরক্ষিত", "রাত ৯টার পর প্রধান এক্সিট ব্যবহার করুন")
-      ),
-      AreaSafetyReport(
-        id = "dhk_uttara",
-        areaName = "Uttara Sector 3 & Rabindra Sarani",
-        areaNameBn = "উত্তরা সেক্টর ৩ ও রবীন্দ্র সরণি",
-        safetyScore = 88,
-        lightingRating = 4.6f,
-        policePatrolRating = 4.4f,
-        crowdDensity = "Moderate",
-        crowdDensityBn = "মাঝারি ভিড়",
-        totalReviews = 194,
-        lastReportedMinutesAgo = 25,
-        isCautionZone = false,
-        safetyTips = listOf("Residential security at every gate", "Street lamps active throughout night"),
-        safetyTipsBn = listOf("প্রতিটি গেটে আবাসিক নিরাপত্তা প্রহরী রয়েছে", "সারারাত স্ট্রিট লাইট জ্বলে")
       )
     )
 
     _uiState.update { it.copy(areaReports = defaultReports) }
   }
 
-  fun updateSearchQuery(query: String) {
-    _uiState.update { it.copy(searchQuery = query) }
+  fun setSafeZoneFilter(filter: String) {
+    _uiState.update { it.copy(selectedSafeZoneFilter = filter) }
   }
 
-  fun setFilter(filter: String) {
-    _uiState.update { it.copy(selectedFilter = filter) }
-  }
-
-  fun startLiveSharing(durationMinutes: Int = 60) {
-    val code = "RMS-" + UUID.randomUUID().toString().take(6).uppercase()
-    val url = "https://ramisa.live/track/$code"
-    val session = LiveShareSession(
-      trackingCode = code,
-      shareableWebUrl = url,
-      isSessionActive = true,
-      expiresAtTimestamp = System.currentTimeMillis() + (durationMinutes * 60 * 1000L),
-      lastKnownLatitude = 23.7258,
-      lastKnownLongitude = 90.3976,
-      batteryLevel = 91
-    )
-    _uiState.update {
-      it.copy(
-        activeLiveSession = session,
-        isLiveSharingEnabled = true,
-        showShareSuccessMessage = true
-      )
-    }
-  }
-
-  fun stopLiveSharing() {
-    _uiState.update {
-      it.copy(
-        activeLiveSession = null,
-        isLiveSharingEnabled = false,
-        showShareSuccessMessage = false
-      )
-    }
+  fun showReportingDialog(show: Boolean) {
+    _uiState.update { it.copy(isReportingDialogVisible = show) }
   }
 
   fun submitCommunityReport(
     areaName: String,
     areaNameBn: String,
-    safetyRating: Int,
+    safetyScore: Int,
     lightingRating: Float,
     isCaution: Boolean,
     note: String
   ) {
     val newReport = AreaSafetyReport(
-      id = "custom_" + System.currentTimeMillis(),
-      areaName = areaName.ifBlank { "Dhaka Local Zone" },
-      areaNameBn = areaNameBn.ifBlank { "ঢাকা স্থানীয় এলাকা" },
-      safetyScore = safetyRating.coerceIn(10, 100),
+      id = "rep_${UUID.randomUUID().toString().take(6)}",
+      areaName = areaName.ifBlank { "Reported Area" },
+      areaNameBn = areaNameBn.ifBlank { areaName },
+      district = "Dhaka",
+      safetyScore = safetyScore,
       lightingRating = lightingRating,
-      policePatrolRating = 4.0f,
-      crowdDensity = if (safetyRating > 70) "High" else "Isolated",
-      crowdDensityBn = if (safetyRating > 70) "উচ্চ ভিড়" else "নির্জান",
+      policePatrolRating = if (isCaution) 2.5f else 4.5f,
+      crowdDensity = if (isCaution) "Isolated" else "Moderate",
+      crowdDensityBn = if (isCaution) "নির্জন" else "মাঝারি ভিড়",
       totalReviews = 1,
-      lastReportedMinutesAgo = 0,
+      lastReportedMinutesAgo = 1,
       isCautionZone = isCaution,
       safetyTips = if (note.isNotBlank()) listOf(note) else listOf("Community crowdsourced feedback"),
-      safetyTipsBn = listOf("ব্যবহারকারীর সাম্প্রতিক নিরাপত্তা রেটিং")
+      safetyTipsBn = if (note.isNotBlank()) listOf(note) else listOf("কমিউনিটি নাগরিকদের তথ্য")
     )
-
     _uiState.update {
       it.copy(
         areaReports = listOf(newReport) + it.areaReports,
@@ -198,11 +336,17 @@ class CommunityViewModel : ViewModel() {
     }
   }
 
-  fun toggleReportingDialog(visible: Boolean) {
-    _uiState.update { it.copy(isReportingDialogVisible = visible) }
-  }
-
-  fun dismissShareMessage() {
-    _uiState.update { it.copy(showShareSuccessMessage = false) }
-  }
+  // Backward compatibility
+  fun joinCommunityWithPin() { verifyPin() }
+  fun toggleCommunityJoin(communityId: String) {}
+  fun showCreateGroupDialog(show: Boolean) { showCreatePostDialog(show) }
+  fun updateNewGroupName(name: String) { updateNewPostTitle(name) }
+  fun updateNewGroupNameBn(name: String) {}
+  fun updateNewGroupArea(area: String) { updateNewPostLocation(area) }
+  fun updateNewGroupPin(pin: String) {}
+  fun updateNewGroupDesc(desc: String) { updateNewPostContent(desc) }
+  fun createCommunity() { submitNewPost() }
+  fun updateChatInput(text: String) { updateReplyInput(text) }
+  fun sendCommunityChatMessage(communityId: String = "ramisa_central") { submitReply() }
+  fun setFilter(filter: String) { setSafeZoneFilter(filter) }
 }

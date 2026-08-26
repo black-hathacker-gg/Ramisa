@@ -8,6 +8,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.People
@@ -59,6 +61,7 @@ import androidx.compose.material.icons.filled.SportsMartialArts
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -84,10 +87,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
+import com.example.core.community.CommunityManager
 import com.example.data.repository.AppSessionManager
 import com.example.ui.theme.PinkAccentLilac
 import com.example.ui.theme.PinkBorderSubtle
@@ -149,6 +156,12 @@ fun HomeScreen(
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val isBangla by AppSessionManager.isBanglaLanguage.collectAsState()
+  val communities by CommunityManager.communities.collectAsState()
+  val activeSosAlerts by CommunityManager.activeSosAlerts.collectAsState()
+  val primaryCommunity = communities.firstOrNull { it.isJoined } ?: communities.firstOrNull()
+  val activeCommunitySosCount = activeSosAlerts.count { it.status != "RESOLVED" }
+  val latestSosAlert = activeSosAlerts.firstOrNull { it.status != "RESOLVED" }
+
   val scrollState = rememberScrollState()
   var selectedTab by remember { mutableStateOf(SafetyCategoryTab.OVERVIEW) }
 
@@ -200,21 +213,40 @@ fun HomeScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
           ) {
-            Column {
-              Text(
-                text = "RAMISA",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                  fontWeight = FontWeight.Black,
-                  letterSpacing = 2.sp
-                ),
-                color = Color.White,
-                modifier = Modifier.testTag("app_logo_title")
-              )
-              Text(
-                text = if (isBangla) "নারী ও শিশুর ব্যক্তিগত নিরাপত্তা" else "Women & Child Personal Safety",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                color = Color.White.copy(alpha = 0.92f)
-              )
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+              Box(
+                modifier = Modifier
+                  .size(44.dp)
+                  .clip(CircleShape)
+                  .background(Color.White)
+                  .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                contentAlignment = Alignment.Center
+              ) {
+                Image(
+                  painter = painterResource(id = R.drawable.img_app_logo),
+                  contentDescription = "RAMISA Logo",
+                  modifier = Modifier.size(38.dp).clip(CircleShape)
+                )
+              }
+              Column {
+                Text(
+                  text = "RAMISA",
+                  style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                  ),
+                  color = Color.White,
+                  modifier = Modifier.testTag("app_logo_title")
+                )
+                Text(
+                  text = if (isBangla) "নারী ও শিশুর ব্যক্তিগত নিরাপত্তা" else "Women & Child Personal Safety",
+                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                  color = Color.White.copy(alpha = 0.92f)
+                )
+              }
             }
 
             Row(
@@ -463,7 +495,93 @@ fun HomeScreen(
         }
       }
 
-      Spacer(modifier = Modifier.height(18.dp))
+      Spacer(modifier = Modifier.height(14.dp))
+
+      // COMMUNITY GUARD NETWORK STATUS BANNER
+      Card(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clickable(onClick = onNavigateToCommunitySafety)
+          .testTag("card_community_network_home"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+          containerColor = if (activeCommunitySosCount > 0) SafetyRedPrimary.copy(alpha = 0.12f) else PinkAccentLilac.copy(alpha = 0.7f)
+        ),
+        border = BorderStroke(
+          1.5.dp,
+          if (activeCommunitySosCount > 0) SafetyRedPrimary else PinkBorderSubtle
+        )
+      ) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(14.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+          Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Box(
+              modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(if (activeCommunitySosCount > 0) SafetyRedPrimary else MaterialTheme.colorScheme.primary),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = if (activeCommunitySosCount > 0) Icons.Default.Warning else Icons.Default.Shield,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(22.dp)
+              )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+              if (activeCommunitySosCount > 0 && latestSosAlert != null) {
+                Text(
+                  text = if (isBangla) "🚨 জরুরি অ্যালার্ট: ${latestSosAlert.victimName}" else "🚨 CRISIS: ${latestSosAlert.victimName} SOS!",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, color = SafetyRedDark)
+                )
+                Text(
+                  text = "${latestSosAlert.triggerTypeLabel} • ${latestSosAlert.locationName}",
+                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
+                  color = SafetyRedDark,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              } else {
+                Text(
+                  text = if (isBangla) "রমিসা সেন্ট্রাল নারী ফোরাম ও সেফটি" else "RAMISA Central Women's Forum & Safety",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = PinkPrimaryDark)
+                )
+                Text(
+                  text = if (isBangla) "💬 ৩,৪৫০ বোন সংযুক্ত • ফোরাম আলোচনা ও অটোমেটিক SOS" else "💬 3,450 Sisters • Messenger Forum & Auto SOS",
+                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis
+                )
+              }
+            }
+          }
+
+          Surface(
+            color = if (activeCommunitySosCount > 0) SafetyRedPrimary else MaterialTheme.colorScheme.primary,
+            shape = RoundedCornerShape(14.dp)
+          ) {
+            Text(
+              text = if (activeCommunitySosCount > 0) (if (isBangla) "রেসপন্ড" else "RESPOND") else (if (isBangla) "ফোরাম" else "FORUM"),
+              color = Color.White,
+              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+              modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(14.dp))
 
       // 4. IMMEDIATE EMERGENCY SHORTCUTS (4 Core Priority Tools)
       Text(

@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import com.example.core.community.CommunityManager
 import com.example.domain.model.AlertDispatchResult
 import com.example.domain.model.EmergencyEvent
 import com.example.domain.model.EmergencyStatus
@@ -73,6 +74,14 @@ class EmergencyRepositoryImpl : EmergencyRepository {
 
     _activeEmergency.value = event
     _emergencyHistory.update { listOf(event) + it }
+
+    // Automatically broadcast SOS alert to joined Community Circles
+    CommunityManager.broadcastSosAlert(
+      triggerTypeLabel = triggerType.name.replace("_", " "),
+      location = loc,
+      note = customNote.ifBlank { "Emergency SOS initiated" }
+    )
+
     return Result.success(event)
   }
 

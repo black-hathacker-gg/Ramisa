@@ -10,6 +10,8 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
+import com.example.core.community.CommunityManager
+import com.example.core.location.EmergencyLocationManager
 import com.example.core.sms.EmergencySmsDispatcher
 import com.example.core.sms.SmsDispatchReport
 import kotlinx.coroutines.CoroutineScope
@@ -148,6 +150,18 @@ object LockScreenSosManager {
         "Dispatched SIM SMS to ${report.totalAttempted} contacts"
       }
       _lastOfflineDispatchStatus.value = statusText
+
+      // Broadcast to Community Safety Network
+      try {
+        val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
+        CommunityManager.broadcastSosAlert(
+          triggerTypeLabel = "Lock Screen 1-Tap SOS",
+          location = loc,
+          note = "Urgent SOS triggered directly from Lock Screen notification action."
+        )
+      } catch (e: Exception) {
+        Log.e("LockScreenSosManager", "Error broadcasting to community: ${e.message}")
+      }
 
       // 2. Launch Emergency UI directly over lockscreen
       val launchIntent = Intent(context, MainActivity::class.java).apply {

@@ -64,6 +64,7 @@ fun ToolsHubScreen(
   onNavigateToSirenStrobe: () -> Unit,
   onNavigateToSafeJourney: () -> Unit,
   onNavigateToContacts: () -> Unit,
+  onNavigateToAdmin: () -> Unit = {},
   onTriggerSos: () -> Unit
 ) {
   var selectedCategory by remember { mutableStateOf("All") }
@@ -221,6 +222,14 @@ fun ToolsHubScreen(
       icon = androidx.compose.material.icons.Icons.Default.BatteryAlert,
       onClick = onNavigateToBatteryPing,
       testTag = "tool_battery_ping"
+    ),
+    ToolItem(
+      title = "Safety Control Room (Admin)",
+      subtitle = "User roster, NID/ID verify & dispatch console",
+      category = "Security & Vault",
+      icon = Icons.Default.AdminPanelSettings,
+      onClick = onNavigateToAdmin,
+      testTag = "tool_admin_panel"
     )
   )
 

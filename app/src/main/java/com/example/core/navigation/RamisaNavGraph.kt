@@ -85,6 +85,8 @@ import com.example.features.threat.ThreatGuardViewModel
 import com.example.features.vault.VaultScreen
 import com.example.features.vault.VaultViewModel
 import com.example.features.toolshub.ToolsHubScreen
+import com.example.features.admin.AdminPanelScreen
+import com.example.features.admin.AdminViewModel
 import com.example.ui.theme.*
 
 @Composable
@@ -126,6 +128,7 @@ fun RamisaNavGraph(
   val childSafetyViewModel: ChildSafetyViewModel = viewModel()
   val lockScreenSosViewModel: LockScreenSosViewModel = viewModel()
   val dangerMapViewModel: DangerMapViewModel = viewModel()
+  val adminViewModel: AdminViewModel = viewModel()
 
   val currentBackStackEntry by navController.currentBackStackEntryAsState()
   val currentRoute = currentBackStackEntry?.destination?.route
@@ -348,6 +351,7 @@ fun RamisaNavGraph(
           onNavigateBack = { navController.popBackStack() },
           onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
           onNavigateToVault = { navController.navigate(Screen.Vault.route) },
+          onNavigateToAdmin = { navController.navigate(Screen.AdminPanel.route) },
           onLogout = {
             authViewModel.logout {
               navController.navigate(Screen.Welcome.route) {
@@ -629,10 +633,19 @@ fun RamisaNavGraph(
           onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
           onNavigateToSafeJourney = { navController.navigate(Screen.SafeJourney.route) },
           onNavigateToContacts = { navController.navigate(Screen.EmergencyContacts.route) },
+          onNavigateToAdmin = { navController.navigate(Screen.AdminPanel.route) },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
+        )
+      }
+
+      // 36. Master SuperAdmin & Safety Control Room
+      composable(Screen.AdminPanel.route) {
+        AdminPanelScreen(
+          viewModel = adminViewModel,
+          onNavigateBack = { navController.popBackStack() }
         )
       }
     }

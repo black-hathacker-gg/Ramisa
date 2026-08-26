@@ -1,5 +1,6 @@
 package com.example.features.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.Language
@@ -72,6 +74,7 @@ fun SettingsScreen(
   onLogout: () -> Unit,
   onNavigateToProfile: () -> Unit = {},
   onNavigateToVault: () -> Unit = {},
+  onNavigateToAdmin: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -91,7 +94,7 @@ fun SettingsScreen(
         },
         navigationIcon = {
           IconButton(onClick = onNavigateBack) {
-            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -431,6 +434,80 @@ fun SettingsScreen(
             text = "Tip: Enter '9999' or reversed PIN in the Vault to silently open Decoy Mode under coercion.",
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             color = MaterialTheme.colorScheme.primary
+          )
+        }
+      }
+
+      // Master SuperAdmin & Safety Control Room Console
+      Card(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clickable { onNavigateToAdmin() }
+          .testTag("card_superadmin_portal"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+          containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        ),
+        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+      ) {
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+          Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Surface(
+              shape = CircleShape,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(42.dp)
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Icon(
+                  imageVector = Icons.Default.Security,
+                  contentDescription = null,
+                  tint = Color.White,
+                  modifier = Modifier.size(24.dp)
+                )
+              }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                  text = "👑 সুপার অ্যাডমিন ও কন্ট্রোল প্যানেল",
+                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Surface(
+                  shape = RoundedCornerShape(4.dp),
+                  color = MaterialTheme.colorScheme.primary
+                ) {
+                  Text(
+                    text = "MASTER PIN",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold),
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                  )
+                }
+              }
+              Text(
+                text = "সকল ইউজারের ডাটা, NID/আইডি ভেরিফিকেশন, অভিভাবক কন্টাক্ট ও CSV এক্সপোর্ট",
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
+          }
+
+          Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.primary
           )
         }
       }

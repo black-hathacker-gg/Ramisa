@@ -7,10 +7,12 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.example.MainActivity
 import com.example.R
 import com.example.core.location.EmergencyLocationManager
@@ -23,9 +25,31 @@ class FusedLocationBackgroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        if (!EmergencyLocationManager.hasLocationPermission(this)) {
+            Log.w(TAG, "Cannot start location foreground service: Location permission not granted.")
+            stopSelf()
+            return
+        }
+
         createNotificationChannel()
         val notification = createServiceNotification("RAMISA GPS Guard Active", "Tracking high-accuracy coordinates for Emergency SMS.")
-        startForeground(NOTIFICATION_ID, notification)
+        
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceCompat.startForeground(
+                    this,
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to startForeground for location: ${e.message}")
+            stopSelf()
+            return
+        }
 
         // Start high accuracy location tracking via FusedLocationProviderClient
         EmergencyLocationManager.startBackgroundLocationUpdates(this)
@@ -33,6 +57,11 @@ class FusedLocationBackgroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (!EmergencyLocationManager.hasLocationPermission(this)) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         when (intent?.action) {
             ACTION_STOP_LOCATION_SERVICE -> {
                 stopSelf()
@@ -98,21 +127,33 @@ class FusedLocationBackgroundService : Service() {
         const val ACTION_REFRESH_LOCATION = "com.example.ACTION_REFRESH_LOCATION"
 
         fun startLocationService(context: Context) {
-            val intent = Intent(context, FusedLocationBackgroundService::class.java).apply {
-                action = ACTION_START_LOCATION_SERVICE
+            if (!EmergencyLocationManager.hasLocationPermission(context)) {
+                Log.w(TAG, "Location permission not granted yet. Skipping FusedLocationBackgroundService startup.")
+                return
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, FusedLocationBackgroundService::class.java).apply {
+                    action = ACTION_START_LOCATION_SERVICE
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to start FusedLocationBackgroundService: ${e.message}")
             }
         }
 
         fun stopLocationService(context: Context) {
-            val intent = Intent(context, FusedLocationBackgroundService::class.java).apply {
-                action = ACTION_STOP_LOCATION_SERVICE
+            try {
+                val intent = Intent(context, FusedLocationBackgroundService::class.java).apply {
+                    action = ACTION_STOP_LOCATION_SERVICE
+                }
+                context.stopService(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Unable to stop FusedLocationBackgroundService: ${e.message}")
             }
-            context.startService(intent)
         }
     }
 }

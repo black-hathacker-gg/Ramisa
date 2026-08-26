@@ -30,7 +30,9 @@ class MainActivity : ComponentActivity() {
     // Start RAMISA Safety and Fused Location Background Services
     try {
       RamisaSafetyService.startService(this)
-      FusedLocationBackgroundService.startLocationService(this)
+      if (com.example.core.location.EmergencyLocationManager.hasLocationPermission(this)) {
+        FusedLocationBackgroundService.startLocationService(this)
+      }
     } catch (e: Exception) {
       // Background services start gracefully
     }

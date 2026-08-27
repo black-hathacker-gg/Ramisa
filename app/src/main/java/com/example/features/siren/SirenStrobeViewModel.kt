@@ -1,10 +1,12 @@
 package com.example.features.siren
 
+import android.app.Application
 import android.content.Context
+import android.hardware.camera2.CameraManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,7 +36,7 @@ enum class SirenMode(val title: String, val desc: String) {
   DEFENSE_ALARM("Deterrent Security Alarm", "Continuous pulsating defensive alarm")
 }
 
-class SirenStrobeViewModel : ViewModel() {
+class SirenStrobeViewModel(application: Application) : AndroidViewModel(application) {
 
   private val _uiState = MutableStateFlow(SirenStrobeUiState())
   val uiState: StateFlow<SirenStrobeUiState> = _uiState.asStateFlow()
@@ -79,7 +81,7 @@ class SirenStrobeViewModel : ViewModel() {
   }
 
   private fun startSiren() {
-    _uiState.update { it.copy(isSirenPlaying = true, statusMessage = "Audible alarm ACTIVE! Disorienting deterrent playing") }
+    _uiState.update { it.copy(isSirenPlaying = true, statusMessage = "Siren & Flash Strobe ACTIVE! Audible & visual/torch deterrent") }
     audioJob?.cancel()
 
     audioJob = viewModelScope.launch(Dispatchers.Default) {
@@ -150,9 +152,26 @@ class SirenStrobeViewModel : ViewModel() {
   private fun startStrobe() {
     _uiState.update { it.copy(isStrobeActive = true) }
     strobeJob?.cancel()
-    strobeJob = viewModelScope.launch {
+    strobeJob = viewModelScope.launch(Dispatchers.Default) {
+      val context = getApplication<Application>()
+      val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+      val cameraId = try {
+        cameraManager?.cameraIdList?.firstOrNull()
+      } catch (e: Exception) {
+        null
+      }
+
+      var torchOn = false
       while (isActive) {
-        delay(120) // Fast 8Hz visual disorientation strobe
+        delay(120) // Fast 8Hz visual & mobile flashlight torch strobe
+        torchOn = !torchOn
+        try {
+          cameraId?.let { id ->
+            cameraManager?.setTorchMode(id, torchOn)
+          }
+        } catch (e: Exception) {
+          // Ignored if camera in use or unavailable
+        }
         _uiState.update { it.copy(strobeColorIndex = (it.strobeColorIndex + 1) % 2) }
       }
     }
@@ -160,6 +179,16 @@ class SirenStrobeViewModel : ViewModel() {
 
   private fun stopStrobe() {
     strobeJob?.cancel()
+    try {
+      val context = getApplication<Application>()
+      val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+      val cameraId = cameraManager?.cameraIdList?.firstOrNull()
+      cameraId?.let { id ->
+        cameraManager.setTorchMode(id, false)
+      }
+    } catch (e: Exception) {
+      // Ignored
+    }
     _uiState.update { it.copy(isStrobeActive = false, strobeColorIndex = 0) }
   }
 

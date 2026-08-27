@@ -34,9 +34,10 @@ data class JourneyUiState(
 )
 
 class JourneyViewModel(
-  application: Application,
-  private val journeyRepository: JourneyRepository = JourneyRepositoryImpl()
+  application: Application
 ) : AndroidViewModel(application) {
+
+  private val journeyRepository: JourneyRepository = JourneyRepositoryImpl()
 
   private val _uiState = MutableStateFlow(JourneyUiState())
   val uiState: StateFlow<JourneyUiState> = _uiState.asStateFlow()

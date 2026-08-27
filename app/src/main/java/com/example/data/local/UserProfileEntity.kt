@@ -20,7 +20,8 @@ data class UserProfileEntity(
   val guardianName: String?,
   val guardianPhone: String?,
   val createdAt: Long,
-  val updatedAt: Long
+  val updatedAt: Long,
+  val isLoggedIn: Boolean = true
 )
 
 fun UserProfile.toEntity(): UserProfileEntity {
@@ -37,7 +38,8 @@ fun UserProfile.toEntity(): UserProfileEntity {
         guardianName = guardianName,
         guardianPhone = guardianPhone,
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        isLoggedIn = true
     )
 }
 

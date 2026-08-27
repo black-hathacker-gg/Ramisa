@@ -215,7 +215,7 @@ class AdminRepository(
     return listOf(
       AdminUserRecord(
         id = "usr_ramisa_8801",
-        name = "Sadia Rahman (Current Device User)",
+        name = "RAMISA User (Current Device User)",
         phone = "+880 1712-345678",
         email = "sadia.rahman.du@gmail.com",
         age = 22,

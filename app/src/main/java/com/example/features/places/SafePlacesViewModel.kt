@@ -22,10 +22,9 @@ data class SafePlacesUiState(
   val dialIntentNumber: String? = null
 )
 
-class SafePlacesViewModel(
-  private val safePlacesRepository: SafePlacesRepository = SafePlacesRepositoryImpl()
-) : ViewModel() {
+class SafePlacesViewModel : ViewModel() {
 
+  private val safePlacesRepository: SafePlacesRepository = SafePlacesRepositoryImpl()
   private val _uiState = MutableStateFlow(SafePlacesUiState())
   val uiState: StateFlow<SafePlacesUiState> = _uiState.asStateFlow()
 

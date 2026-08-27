@@ -1,0 +1,16 @@
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+
+// inside IncomingCallUi
+val context = LocalContext.current
+DisposableEffect(Unit) {
+  val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+  val ringtone: Ringtone = RingtoneManager.getRingtone(context, uri)
+  ringtone.play()
+  onDispose {
+    ringtone.stop()
+  }
+}

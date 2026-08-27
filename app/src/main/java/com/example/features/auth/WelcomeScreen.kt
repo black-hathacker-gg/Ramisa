@@ -73,7 +73,8 @@ fun WelcomeScreen(
         .fillMaxSize()
         .verticalScroll(scrollState)
         .padding(horizontal = 24.dp, vertical = 32.dp),
-      horizontalAlignment = Alignment.CenterHorizontally
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.Center
     ) {
       Spacer(modifier = Modifier.height(20.dp))
 
@@ -86,10 +87,11 @@ fun WelcomeScreen(
           .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
-        Image(
-          painter = painterResource(id = R.drawable.img_app_logo),
+        androidx.compose.material3.Icon(
+          imageVector = Icons.Default.Shield,
           contentDescription = "RAMISA Safety Logo",
-          modifier = Modifier.size(88.dp).clip(CircleShape)
+          tint = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.size(54.dp)
         )
       }
 
@@ -114,37 +116,7 @@ fun WelcomeScreen(
 
       Spacer(modifier = Modifier.height(28.dp))
 
-      // Feature Highlights Card
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-      ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(18.dp),
-          verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-          FeatureHighlightRow(
-            icon = Icons.Outlined.CheckCircle,
-            title = "1-Tap Urgent SOS Alerting",
-            subtitle = "Direct dispatch to trusted contacts & national services"
-          )
-          FeatureHighlightRow(
-            icon = Icons.Outlined.Security,
-            title = "Bangladesh 999 & 109 Hotlines",
-            subtitle = "Instant, toll-free national emergency connectivity"
-          )
-          FeatureHighlightRow(
-            icon = Icons.Default.Lock,
-            title = "Privacy-First Local Vault",
-            subtitle = "Zero tracking; emergency PIN resolution protection"
-          )
-        }
-      }
 
-      Spacer(modifier = Modifier.height(36.dp))
 
       // Action Buttons
       Button(

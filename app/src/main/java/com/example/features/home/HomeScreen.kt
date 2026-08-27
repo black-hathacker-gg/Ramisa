@@ -214,6 +214,7 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
           ) {
             Row(
+              modifier = Modifier.weight(1f),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -225,13 +226,16 @@ fun HomeScreen(
                   .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
                 contentAlignment = Alignment.Center
               ) {
-                Image(
-                  painter = painterResource(id = R.drawable.img_app_logo),
+                androidx.compose.material3.Icon(
+                  imageVector = Icons.Default.Shield,
                   contentDescription = "RAMISA Logo",
-                  modifier = Modifier.size(38.dp).clip(CircleShape)
+                  tint = MaterialTheme.colorScheme.primary,
+                  modifier = Modifier.size(26.dp)
                 )
               }
-              Column {
+              Column(
+                modifier = Modifier.weight(1f)
+              ) {
                 Text(
                   text = "RAMISA",
                   style = MaterialTheme.typography.headlineSmall.copy(
@@ -239,12 +243,14 @@ fun HomeScreen(
                     letterSpacing = 2.sp
                   ),
                   color = Color.White,
+                  maxLines = 1,
                   modifier = Modifier.testTag("app_logo_title")
                 )
                 Text(
                   text = if (isBangla) "নারী ও শিশুর ব্যক্তিগত নিরাপত্তা" else "Women & Child Personal Safety",
                   style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                  color = Color.White.copy(alpha = 0.92f)
+                  color = Color.White.copy(alpha = 0.92f),
+                  maxLines = 1
                 )
               }
             }
@@ -834,16 +840,21 @@ fun QuickEmergencyPill(
     ) {
       Box(
         modifier = Modifier
-          .size(34.dp)
+          .size(40.dp)
           .clip(CircleShape)
-          .background(PinkContainer),
+          .background(
+            Brush.verticalGradient(
+              colors = listOf(PinkContainer, PinkAccentLilac)
+            )
+          )
+          .border(1.dp, accentColor.copy(alpha = 0.35f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
         Icon(
           imageVector = icon,
           contentDescription = title,
           tint = accentColor,
-          modifier = Modifier.size(18.dp)
+          modifier = Modifier.size(20.dp)
         )
       }
       Spacer(modifier = Modifier.height(6.dp))
@@ -1305,16 +1316,21 @@ fun FeatureCard(
     ) {
       Box(
         modifier = Modifier
-          .size(42.dp)
+          .size(46.dp)
           .clip(CircleShape)
-          .background(PinkContainer),
+          .background(
+            Brush.verticalGradient(
+              colors = listOf(PinkContainer, PinkAccentLilac)
+            )
+          )
+          .border(1.5.dp, PinkPrimary.copy(alpha = 0.35f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
         Icon(
           imageVector = icon,
           contentDescription = title,
           tint = PinkPrimary,
-          modifier = Modifier.size(22.dp)
+          modifier = Modifier.size(24.dp)
         )
       }
       Spacer(modifier = Modifier.width(12.dp))

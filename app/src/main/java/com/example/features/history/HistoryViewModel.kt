@@ -18,10 +18,9 @@ data class HistoryUiState(
   val isLoading: Boolean = false
 )
 
-class HistoryViewModel(
-  private val emergencyRepository: EmergencyRepository = EmergencyRepositoryImpl()
-) : ViewModel() {
+class HistoryViewModel : ViewModel() {
 
+  private val emergencyRepository: EmergencyRepository = EmergencyRepositoryImpl()
   private val _uiState = MutableStateFlow(HistoryUiState())
   val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 

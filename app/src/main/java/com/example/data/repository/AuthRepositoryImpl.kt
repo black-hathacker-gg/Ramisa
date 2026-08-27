@@ -17,7 +17,7 @@ object AppSessionManager {
   private val _currentUser = MutableStateFlow<UserProfile?>(
     UserProfile(
       id = "usr_ramisa_8801",
-      name = "Sadia Rahman",
+      name = "RAMISA User",
       phone = "+880 1712-345678",
       ageCategory = AgeCategory.ADULT_18_PLUS,
       userType = UserType.ADULT,
@@ -66,10 +66,13 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
   override suspend fun login(phone: String, pinOrPassword: String): AuthResult<UserProfile> {
     val cleanPhone = phone.trim()
     val cleanPin = pinOrPassword.trim()
-    val entity = userDao.getProfileSync()
+    val entity = userDao.getProfileByPhone(cleanPhone) // Find exact user by phone
     if (entity != null) {
       if (entity.emergencyPin == cleanPin || cleanPin.length >= 4) {
-        val domain = entity.toDomain()
+        // Log them back in by updating flag
+        val updatedEntity = entity.copy(isLoggedIn = true)
+        userDao.saveProfile(updatedEntity)
+        val domain = updatedEntity.toDomain()
         AppSessionManager.setUser(domain)
         return AuthResult.Success(domain)
       } else {
@@ -78,7 +81,7 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
     }
     val profile = UserProfile(
       id = "user_${System.currentTimeMillis()}",
-      name = if (cleanPhone.contains("1819")) "Sadia Rahman" else "RAMISA User",
+      name = "RAMISA User",
       phone = cleanPhone.ifEmpty { "+880 1712-345678" },
       emergencyPin = if (cleanPin.isNotEmpty()) cleanPin else "1234",
       userType = UserType.ADULT,
@@ -94,7 +97,7 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
   override suspend fun loginAsGuest(): AuthResult<UserProfile> {
     val guest = UserProfile(
       id = "guest_${System.currentTimeMillis()}",
-      name = "Sadia Rahman (Guest)",
+      name = "RAMISA User (Guest)",
       phone = "+880 1712-345678",
       emergencyPin = "1234",
       userType = UserType.ADULT,
@@ -119,7 +122,7 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
   ): AuthResult<UserProfile> {
     val newProfile = UserProfile(
       id = "user_${System.currentTimeMillis()}",
-      name = name.trim().ifEmpty { "Sadia Rahman" },
+      name = name.trim().ifEmpty { "RAMISA User" },
       phone = phone.trim().ifEmpty { "+880 1712-345678" },
       emergencyPin = emergencyPin.trim().ifEmpty { "1234" },
       userType = userType,

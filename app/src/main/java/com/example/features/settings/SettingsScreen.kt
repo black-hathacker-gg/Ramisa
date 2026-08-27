@@ -133,6 +133,10 @@ fun SettingsScreen(
           horizontalArrangement = Arrangement.SpaceBetween
         ) {
           Row(verticalAlignment = Alignment.CenterVertically) {
+            val currentUser by com.example.data.repository.AppSessionManager.currentUser.collectAsState()
+            val userName = currentUser?.name ?: "RAMISA User"
+            val initials = userName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("").ifEmpty { "RU" }
+
             Surface(
               shape = CircleShape,
               color = MaterialTheme.colorScheme.primary,
@@ -140,7 +144,7 @@ fun SettingsScreen(
             ) {
               Box(contentAlignment = Alignment.Center) {
                 Text(
-                  text = "SR",
+                  text = initials,
                   style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                   color = Color.White
                 )
@@ -149,7 +153,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column {
               Text(
-                text = "Sadia Rahman",
+                text = userName,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onPrimaryContainer
               )

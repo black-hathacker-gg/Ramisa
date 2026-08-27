@@ -1,5 +1,16 @@
 package com.example.features.fakecall
 
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.content.Context
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
+
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -316,12 +327,38 @@ fun FakeCallScreen(
   }
 }
 
+
 @Composable
 private fun IncomingCallUi(
   profile: FakeCallerProfile,
   onAccept: () -> Unit,
   onDecline: () -> Unit
 ) {
+  val context = LocalContext.current
+  DisposableEffect(Unit) {
+    var ringtone: Ringtone? = null
+    val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    try {
+      val uri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+      ringtone = RingtoneManager.getRingtone(context, uri)
+      ringtone?.play()
+      
+      val pattern = longArrayOf(0, 1000, 1000)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator?.vibrate(VibrationEffect.createWaveform(pattern, 0))
+      } else {
+        @Suppress("DEPRECATION")
+        vibrator?.vibrate(pattern, 0)
+      }
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
+    onDispose {
+      ringtone?.stop()
+      vibrator?.cancel()
+    }
+  }
+
   val infiniteTransition = rememberInfiniteTransition(label = "ring_pulse")
   val pulseScale by infiniteTransition.animateFloat(
     initialValue = 1f,

@@ -15,7 +15,7 @@ enum class AgeCategory(val label: String) {
 
 data class UserProfile(
   val id: String = "usr_ramisa_8801",
-  val name: String = "Sadia Rahman",
+  val name: String = "RAMISA User",
   val phone: String = "+880 1712-345678",
   val ageCategory: AgeCategory = AgeCategory.ADULT_18_PLUS,
   val userType: UserType = UserType.ADULT,

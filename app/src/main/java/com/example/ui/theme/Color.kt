@@ -2,55 +2,53 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// RAMISA & Luna Cycle Rose Pink Signature Palette
-val PinkPrimary = Color(0xFFFF4D84) // Vibrant Bubblegum / Rose Pink (from Luna Cycle screenshot)
-val PinkPrimaryDark = Color(0xFFD81B60) // Deep Rose Cherry
-val PinkPrimaryLight = Color(0xFFFF7DA6) // Soft Blossom Radiant Pink
-val PinkContainer = Color(0xFFFDEBF2) // Light Blush Rose Container
-val OnPinkContainer = Color(0xFF7A1341) // Deep Berry Text on Pink
+// Original Pink & White Theme Palette
+val PinkPrimary = Color(0xFFE91E63) // Vibrant Safety Pink / Magenta
+val PinkPrimaryDark = Color(0xFFC2185B)
+val PinkPrimaryLight = Color(0xFFF8BBD0)
+val PinkContainer = Color(0xFFFCE4EC)
+val OnPinkContainer = Color(0xFF880E4F)
 
-// Header & Navigation Bar Gradients & Solid Tones
-val PinkHeaderPrimary = Color(0xFFFF4D84)
-val PinkHeaderGradientStart = Color(0xFFFF5C93)
-val PinkHeaderGradientEnd = Color(0xFFFA3B76)
-val PinkAccentLilac = Color(0xFFF3DDF0) // Soft lavender-pink badge pill
-val PinkBorderSubtle = Color(0xFFFCD3E2) // Delicate card borders
+// Header Gradient Colors
+val PinkHeaderPrimary = Color(0xFFE91E63)
+val PinkHeaderGradientStart = Color(0xFFF06292)
+val PinkHeaderGradientEnd = Color(0xFFC2185B)
+val PinkAccentLilac = Color(0xFFFCE4EC)
+val PinkBorderSubtle = Color(0xFFF8BBD0)
 
-val SafetyPinkAlert = Color(0xFFFF3366) // High-contrast Alert Coral-Rose
-val SafetyPinkAlertDark = Color(0xFFC2185B)
-val SafetyPinkAlertContainer = Color(0xFFFFE3ED)
+// Safety & Alert Colors
+val SafetyPinkAlert = Color(0xFFD32F2F)
+val SafetyPinkAlertDark = Color(0xFFB71C1C)
+val SafetyPinkAlertContainer = Color(0xFFFFCDD2)
 
-// Aliases mapped to Pink & White for safety/emergency components
-val SafetyRedPrimary = Color(0xFFFF4D84)
-val SafetyRedLight = Color(0xFFFF6998)
-val SafetyRedDark = Color(0xFFD81B60)
-val SafetyRedContainer = Color(0xFFFDEBF2)
-val OnSafetyRedContainer = Color(0xFF7A1341)
+val SafetyRedPrimary = Color(0xFFD32F2F)
+val SafetyRedLight = Color(0xFFEF5350)
+val SafetyRedDark = Color(0xFFC62828)
+val SafetyRedContainer = Color(0xFFFFCDD2)
+val OnSafetyRedContainer = Color(0xFFB71C1C)
 
-val SafeGreenPrimary = Color(0xFFFF4D84)
-val SafeGreenDark = Color(0xFF9E1049)
-val SafeGreenContainer = Color(0xFFFDEBF2)
-val OnSafeGreenContainer = Color(0xFF7A1341)
+// Surfaces & Backgrounds (White & Soft Pinkish White)
+val SurfaceLight = Color(0xFFFFF8FA)
+val SurfaceVariantLight = Color(0xFFFCE4EC)
+val SurfaceCardLight = Color(0xFFFFFFFF)
+val TextPrimaryLight = Color(0xFF212121)
+val TextSecondaryLight = Color(0xFF757575)
 
-val WarningAmber = Color(0xFFFF6B95)
-val WarningAmberContainer = Color(0xFFFDEBF2)
+// Dark Mode Surfaces
+val SurfaceDark = Color(0xFF121212)
+val SurfaceVariantDark = Color(0xFF1E1E1E)
+val SurfaceCardDark = Color(0xFF1E1E1E)
+val TextPrimaryDark = Color(0xFFFFFFFF)
+val TextSecondaryDark = Color(0xFFB0BEC5)
 
-// Pure White & Light Pink Surfaces (Matching screenshot)
-val SurfaceLight = Color(0xFFFFF2F6) // Subtle Soft Rose-White Canvas
-val SurfaceVariantLight = Color(0xFFFCE6EE) // Soft Blush Surface
-val SurfaceCardLight = Color(0xFFFFFFFF) // Pure Pristine White Card
-val TextPrimaryLight = Color(0xFF330C20) // Deep Berry-Black for ultra-crisp contrast
-val TextSecondaryLight = Color(0xFF7E4A66) // Medium Muted Berry-Rose
+// Supporting Colors
+val SafeGreenPrimary = Color(0xFF2E7D32)
+val SafeGreenDark = Color(0xFF1B5E20)
+val SafeGreenContainer = Color(0xFFC8E6C9)
+val OnSafeGreenContainer = Color(0xFF1B5E20)
 
-// Luxury Plum-Pink Dark Mode Surfaces (for Dark Theme)
-val SurfaceDark = Color(0xFF1E0715) // Deepest Velvet Plum
-val SurfaceVariantDark = Color(0xFF2D0E22)
-val SurfaceCardDark = Color(0xFF3C142E)
-val TextPrimaryDark = Color(0xFFFFFFFF) // Pure White
-val TextSecondaryDark = Color(0xFFF8BBD0) // Soft Blush Pink
+val WarningAmber = Color(0xFFF57F17)
+val WarningAmberContainer = Color(0xFFFFF9C4)
 
-val SlateBlue = Color(0xFFFF4D84)
-val SlateBlueContainer = Color(0xFFFDEBF2)
-
-
-
+val SlateBlue = Color(0xFF3F51B5)
+val SlateBlueContainer = Color(0xFFE8EAF6)

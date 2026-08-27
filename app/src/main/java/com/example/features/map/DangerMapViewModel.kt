@@ -41,10 +41,9 @@ enum class MapLayerType {
   SAFE_CORRIDORS
 }
 
-class DangerMapViewModel(
-  private val repository: DangerZonesRepository = DangerZonesRepositoryImpl()
-) : ViewModel() {
+class DangerMapViewModel : ViewModel() {
 
+  private val repository: DangerZonesRepository = DangerZonesRepositoryImpl()
   private val _uiState = MutableStateFlow(DangerMapUiState())
   val uiState: StateFlow<DangerMapUiState> = _uiState.asStateFlow()
 

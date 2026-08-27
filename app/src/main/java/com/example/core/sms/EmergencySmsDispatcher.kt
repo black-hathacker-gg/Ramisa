@@ -62,14 +62,7 @@ object EmergencySmsDispatcher {
             emptyList()
         }
 
-        // Fallback default contacts if database is empty
-        if (contacts.isEmpty()) {
-            contacts = listOf(
-                EmergencyContact("c1", "Mother (আম্মা)", "+8801819112233", "Mother", 1, smsEnabled = true),
-                EmergencyContact("c2", "Father (আব্বু)", "+8801711223344", "Father", 2, smsEnabled = true),
-                EmergencyContact("c3", "Sister (আপু)", "+8801912334455", "Sister", 3, smsEnabled = true)
-            )
-        }
+
 
         val primaryPhone = contacts.firstOrNull()?.phone
 

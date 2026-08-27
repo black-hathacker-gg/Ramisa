@@ -3,6 +3,7 @@ package com.example.features.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.community.CommunityManager
+import com.example.data.repository.AppSessionManager
 import com.example.domain.model.AreaSafetyReport
 import com.example.domain.model.CentralCommunityInfo
 import com.example.domain.model.CentralCommunityPost
@@ -203,7 +204,8 @@ class CommunityViewModel : ViewModel() {
   }
 
   fun respondToSosAlert(alertId: String) {
-    CommunityManager.respondToAlert(alertId, "Sadia Rahman (You)")
+    val currentUserName = AppSessionManager.currentUser.value?.name ?: "RAMISA User"
+    CommunityManager.respondToAlert(alertId, "$currentUserName (You)")
   }
 
   fun resolveSosAlert(alertId: String) {

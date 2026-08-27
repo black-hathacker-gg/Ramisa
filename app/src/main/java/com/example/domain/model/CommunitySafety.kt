@@ -6,12 +6,12 @@ enum class CommunityTopicCategory(
   val titleBn: String
 ) {
   ALL("all", "All Discussions", "সকল আলোচনা"),
-  EMERGENCY_SOS("sos", "🚨 Emergency SOS", "🚨 জরুরি অ্যালার্ট"),
-  SISTERHOOD_GENERAL("general", "💬 Sisterhood & Sharing", "💬 নারী ফোরাম ও অভিজ্ঞতা"),
-  HARASSMENT_ALERT("harassment", "🛡️ Harassment & Danger Reports", "🛡️ ইভটিজিং ও বিপদবার্তা"),
-  LEGAL_CYBER_HELP("legal", "⚖️ Legal & Cyber Aid", "⚖️ আইনি ও সাইবার সহায়তা"),
-  HEALTH_WELLNESS("health", "🏥 Health & Mental Wellness", "🏥 নারী স্বাস্থ্য ও মানসিক সাপোর্ট"),
-  SAFE_WALK_BUDDY("safe_walk", "🚶‍♀️ Safe-Walk Companions", "🚶‍♀️ নিরাপদ সঙ্গ ও সহযাত্রী")
+  EMERGENCY_SOS("sos", "Emergency SOS", "জরুরি অ্যালার্ট"),
+  SISTERHOOD_GENERAL("general", "Sisterhood & Sharing", "নারী ফোরাম ও অভিজ্ঞতা"),
+  HARASSMENT_ALERT("harassment", "Harassment & Danger Reports", "ইভটিজিং ও বিপদবার্তা"),
+  LEGAL_CYBER_HELP("legal", "Legal & Cyber Aid", "আইনি ও সাইবার সহায়তা"),
+  HEALTH_WELLNESS("health", "Health & Mental Wellness", "নারী স্বাস্থ্য ও মানসিক সাপোর্ট"),
+  SAFE_WALK_BUDDY("safe_walk", "Safe-Walk Companions", "নিরাপদ সঙ্গ ও সহযাত্রী")
 }
 
 data class CommunityReply(

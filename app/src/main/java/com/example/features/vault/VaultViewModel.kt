@@ -26,10 +26,9 @@ data class VaultUiState(
   val feedbackMessage: String? = null
 )
 
-class VaultViewModel(
-  private val vaultRepository: VaultRepository = VaultRepositoryImpl()
-) : ViewModel() {
+class VaultViewModel : ViewModel() {
 
+  private val vaultRepository: VaultRepository = VaultRepositoryImpl()
   private val _uiState = MutableStateFlow(VaultUiState())
   val uiState: StateFlow<VaultUiState> = _uiState.asStateFlow()
 

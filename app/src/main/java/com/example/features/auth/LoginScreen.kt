@@ -90,10 +90,11 @@ fun LoginScreen(
           .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
-        Image(
-          painter = painterResource(id = R.drawable.img_app_logo),
+        androidx.compose.material3.Icon(
+          imageVector = Icons.Default.Shield,
           contentDescription = "RAMISA Logo",
-          modifier = Modifier.size(70.dp).clip(CircleShape)
+          tint = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.size(44.dp)
         )
       }
 

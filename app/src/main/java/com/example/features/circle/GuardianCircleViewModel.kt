@@ -39,48 +39,7 @@ class GuardianCircleViewModel : ViewModel() {
   private fun loadDefaultCircleMembers() {
     _uiState.update {
       it.copy(
-        members = listOf(
-          GuardianCircleMember(
-            id = "mem_1",
-            name = "Mother (আম্মা)",
-            relation = "Parent",
-            phone = "+8801711000001",
-            status = CircleMemberStatus.SAFE,
-            batteryLevel = 92,
-            lastLocation = "Home, Dhanmondi",
-            lastUpdatedTime = "2 mins ago"
-          ),
-          GuardianCircleMember(
-            id = "mem_2",
-            name = "Anika Rahman (University Peer)",
-            relation = "Friend",
-            phone = "+8801811000002",
-            status = CircleMemberStatus.IN_TRANSIT,
-            batteryLevel = 45,
-            lastLocation = "TSC, Dhaka University",
-            lastUpdatedTime = "5 mins ago"
-          ),
-          GuardianCircleMember(
-            id = "mem_3",
-            name = "Tanvir Ahmed (Elder Brother)",
-            relation = "Sibling",
-            phone = "+8801911000003",
-            status = CircleMemberStatus.SAFE,
-            batteryLevel = 78,
-            lastLocation = "Gulshan-1",
-            lastUpdatedTime = "12 mins ago"
-          ),
-          GuardianCircleMember(
-            id = "mem_4",
-            name = "Samira Karim (Roommate)",
-            relation = "Colleague",
-            phone = "+8801611000004",
-            status = CircleMemberStatus.LOW_BATTERY,
-            batteryLevel = 12,
-            lastLocation = "Farmgate Bus Stand",
-            lastUpdatedTime = "Just now"
-          )
-        )
+        members = emptyList()
       )
     }
   }

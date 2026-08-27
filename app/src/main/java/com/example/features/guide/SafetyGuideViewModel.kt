@@ -17,10 +17,9 @@ data class SafetyGuideUiState(
   val expandedTipId: String? = null
 )
 
-class SafetyGuideViewModel(
-  private val repository: SafetyGuideRepository = SafetyGuideRepository()
-) : ViewModel() {
+class SafetyGuideViewModel : ViewModel() {
 
+  private val repository: SafetyGuideRepository = SafetyGuideRepository()
   private val _uiState = MutableStateFlow(SafetyGuideUiState())
   val uiState: StateFlow<SafetyGuideUiState> = _uiState.asStateFlow()
 

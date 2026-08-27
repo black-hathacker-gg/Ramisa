@@ -53,7 +53,7 @@ object CommunityManager {
       authorRole = "Campus Guard Proctor",
       authorPhone = "+880 1711-889900",
       isAnonymous = false,
-      title = "🚨 Notice: Extra Volunteers Stationed Near Curzon & Nilkhet",
+      title = "Notice: Extra Volunteers Stationed Near Curzon & Nilkhet",
       content = "To all students and night commuters: 4 female student volunteers and campus proctors are on duty along Curzon Hall gate and Nilkhet till 10:30 PM. Call anytime if you need safe walk assistance.",
       locationTag = "Dhaka University Campus",
       timestamp = System.currentTimeMillis() - 1000 * 60 * 25,
@@ -78,7 +78,7 @@ object CommunityManager {
       authorRole = "Verified Member",
       authorPhone = "Hidden",
       isAnonymous = true,
-      title = "⚠️ Beware: Dim lighting near Farmgate Footbridge West Exit",
+      title = "Beware: Dim lighting near Farmgate Footbridge West Exit",
       content = "Today around 7:45 PM near the west staircase of Farmgate overbridge, a group of suspicious boys were making inappropriate catcalls. I used Ramisa's Fake Call tool and safely moved into the nearby pharmacy. Please avoid that staircase after sunset or walk in groups.",
       locationTag = "Farmgate, Dhaka",
       timestamp = System.currentTimeMillis() - 1000 * 60 * 80,
@@ -103,7 +103,7 @@ object CommunityManager {
       authorRole = "Legal & Cyber Advisor",
       authorPhone = "+880 1812-445566",
       isAnonymous = false,
-      title = "⚖️ Steps to Take if Someone is Threatening or Stalking on Facebook/WhatsApp",
+      title = "Steps to Take if Someone is Threatening or Stalking on Facebook/WhatsApp",
       content = "Important legal guideline for all sisters:\n1. Do NOT delete threatening chats or audio—take clear screenshots showing phone numbers/URLs.\n2. Store screenshots in Ramisa's Encrypted Evidence Vault (with automatic EXIF time/GPS stamp).\n3. You can lodge an official complaint via Cyber Crime Investigation Division (CID) or 999 without having to visit the police station alone.\nFeel free to ask your questions below, I am here to help.",
       locationTag = "Dhaka / Bangladesh",
       timestamp = System.currentTimeMillis() - 1000 * 60 * 180,
@@ -173,7 +173,7 @@ object CommunityManager {
   // Community Members
   private val _communityMembers = MutableStateFlow<List<CommunityMember>>(
     listOf(
-      CommunityMember("mem_1", "Sadia Rahman (You)", "+880 1712-345678", "Verified Member", "Active & Guarding", true, "S"),
+      CommunityMember("mem_1", "RAMISA User (You)", "+880 1712-345678", "Verified Member", "Active & Guarding", true, "R"),
       CommunityMember("mem_2", "Nusrat Jahan", "+880 1711-889900", "Circle Admin / Proctor", "On Duty Patrol", true, "N"),
       CommunityMember("mem_3", "Advocate Farzana Karim", "+880 1812-445566", "Legal Advisor", "Active for Help", true, "F"),
       CommunityMember("mem_4", "Dr. Samia Chowdhury", "+880 1913-776655", "Health Consultant", "Consulting", true, "S"),
@@ -230,7 +230,7 @@ object CommunityManager {
     isOffline: Boolean = false
   ): CentralCommunityPost {
     val currentUser = AppSessionManager.currentUser.value
-    val authorName = if (isAnonymous) "বেনামী বোন (Anonymous Sister)" else (currentUser?.name ?: "Sadia Rahman")
+    val authorName = if (isAnonymous) "বেনামী বোন (Anonymous Sister)" else (currentUser?.name ?: "RAMISA User")
     val authorPhone = if (isAnonymous) "Protected" else (currentUser?.phone ?: "+880 1712-345678")
     val authorRole = if (isAnonymous) "Anonymous Sister" else "Verified Member"
 
@@ -269,7 +269,7 @@ object CommunityManager {
   ) {
     if (content.isBlank()) return
     val currentUser = AppSessionManager.currentUser.value
-    val authorName = if (isAnonymous) "Anonymous Sister" else (currentUser?.name ?: "Sadia Rahman")
+    val authorName = if (isAnonymous) "Anonymous Sister" else (currentUser?.name ?: "RAMISA User")
 
     val reply = CommunityReply(
       id = "rep_${UUID.randomUUID().toString().take(8)}",
@@ -331,7 +331,7 @@ object CommunityManager {
     note: String = ""
   ): CommunitySosAlert {
     val currentUser = AppSessionManager.currentUser.value
-    val name = victimName ?: currentUser?.name ?: "Sadia Rahman"
+    val name = victimName ?: currentUser?.name ?: "RAMISA User"
     val phone = victimPhone ?: currentUser?.phone ?: "+880 1712-345678"
     val blood = victimBloodGroup ?: currentUser?.bloodGroup ?: "B+"
 

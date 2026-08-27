@@ -1,8 +1,10 @@
 package com.example
 
+import android.Manifest
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -13,6 +15,8 @@ import android.os.VibrationEffect
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -39,16 +43,45 @@ class MainActivity : ComponentActivity() {
   private var lastVolumeClickTime = 0L
   private val pendingRoute = MutableStateFlow<String?>(null)
 
+  private val requestPermissionLauncher = registerForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { permissions ->
+    // Permissions handled
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    
+    // Request vital permissions on startup
+    val permissionsToRequest = arrayOf(
+      Manifest.permission.SEND_SMS,
+      Manifest.permission.CALL_PHONE,
+      Manifest.permission.ACCESS_FINE_LOCATION,
+      Manifest.permission.ACCESS_COARSE_LOCATION,
+      Manifest.permission.RECORD_AUDIO,
+      Manifest.permission.CAMERA,
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else ""
+    ).filter {
+      it.isNotEmpty() && ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+    }.toTypedArray()
+
+    if (permissionsToRequest.isNotEmpty()) {
+      requestPermissionLauncher.launch(permissionsToRequest)
+    }
 
     val action = intent?.action
-    val openEmergency = intent?.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false) == true ||
-        action == "com.example.ACTION_TRIGGER_QUICK_SOS"
-    val openFakeCall = intent?.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false) == true ||
-        action == "com.example.ACTION_TRIGGER_QUICK_FAKECALL"
-    val openSafeJourney = intent?.getBooleanExtra("EXTRA_OPEN_SAFE_JOURNEY", false) ?: false
+    val isMainLauncher = intent?.hasCategory(Intent.CATEGORY_LAUNCHER) == true || action == Intent.ACTION_MAIN
+    val openEmergency = (!isMainLauncher) && (intent?.getBooleanExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY, false) == true ||
+        action == "com.example.ACTION_TRIGGER_QUICK_SOS")
+    val openFakeCall = (!isMainLauncher) && (intent?.getBooleanExtra("EXTRA_OPEN_FAKE_CALL", false) == true ||
+        action == "com.example.ACTION_TRIGGER_QUICK_FAKECALL")
+    val openSafeJourney = (!isMainLauncher) && (intent?.getBooleanExtra("EXTRA_OPEN_SAFE_JOURNEY", false) ?: false)
+
+    // Clear intent extras so future app opens don't re-trigger
+    intent?.removeExtra(LockScreenSosManager.EXTRA_OPEN_EMERGENCY)
+    intent?.removeExtra("EXTRA_OPEN_FAKE_CALL")
+    intent?.removeExtra("EXTRA_OPEN_SAFE_JOURNEY")
 
     // ONLY configure lock screen flags if specifically invoked for an emergency on lockscreen
     if (openEmergency) {

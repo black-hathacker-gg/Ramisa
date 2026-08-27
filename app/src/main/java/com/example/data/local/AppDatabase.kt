@@ -55,15 +55,7 @@ abstract class AppDatabase : RoomDatabase() {
             super.onCreate(db)
             INSTANCE?.let { database ->
                 CoroutineScope(Dispatchers.IO).launch {
-                    // Seed Emergency Contacts
-                    val contactDao = database.emergencyContactDao()
-                    if (contactDao.getCount() == 0) {
-                        contactDao.insertAll(listOf(
-                            EmergencyContact("c1", "Mother (আম্মা)", "+880 1819-112233", "Mother", 1, smsEnabled = true, callEnabled = true, pushEnabled = true, isVerified = true),
-                            EmergencyContact("c2", "Father (আব্বু)", "+880 1711-223344", "Father", 2, smsEnabled = true, callEnabled = true, pushEnabled = true, isVerified = true),
-                            EmergencyContact("c3", "Sister (আপু)", "+880 1912-334455", "Sister", 3, smsEnabled = true, callEnabled = true, pushEnabled = false, isVerified = true)
-                        ))
-                    }
+
 
                     // Seed Admin Users
                     val adminDao = database.adminUserDao()
@@ -71,7 +63,7 @@ abstract class AppDatabase : RoomDatabase() {
                         adminDao.insertUsers(listOf(
                             AdminUserEntity(
                                 id = "usr_ramisa_8801",
-                                name = "Sadia Rahman (Current Device User)",
+                                name = "RAMISA User (Current Device User)",
                                 phone = "+880 1712-345678",
                                 email = "sadia.rahman.du@gmail.com",
                                 age = 22,

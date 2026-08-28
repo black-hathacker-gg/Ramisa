@@ -128,31 +128,56 @@ object EmergencySmsDispatcher {
         val failedNames = mutableListOf<String>()
 
         try {
-            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(SmsManager::class.java)
-            } else {
+            val smsManager: SmsManager = try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    context.getSystemService(SmsManager::class.java) ?: SmsManager.getDefault()
+                } else {
+                    @Suppress("DEPRECATION")
+                    SmsManager.getDefault()
+                }
+            } catch (e: Exception) {
                 @Suppress("DEPRECATION")
                 SmsManager.getDefault()
             }
 
-            val dividedParts = smsManager.divideMessage(messageBody)
-
             for (contact in contacts) {
                 val cleanPhone = contact.phone.replace(Regex("[^0-9+]"), "")
                 if (cleanPhone.isNotBlank()) {
+                    var sentSuccessfully = false
                     try {
-                        smsManager.sendMultipartTextMessage(
-                            cleanPhone,
-                            null,
-                            dividedParts,
-                            null,
-                            null
-                        )
+                        val dividedParts = smsManager.divideMessage(messageBody)
+                        if (dividedParts.size > 1) {
+                            smsManager.sendMultipartTextMessage(
+                                cleanPhone,
+                                null,
+                                dividedParts,
+                                null,
+                                null
+                            )
+                        } else {
+                            smsManager.sendTextMessage(
+                                cleanPhone,
+                                null,
+                                messageBody,
+                                null,
+                                null
+                            )
+                        }
+                        sentSuccessfully = true
                         successNames.add(contact.name)
                         Log.d(TAG, "SMS successfully dispatched to ${contact.name} ($cleanPhone)")
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to send SMS to ${contact.name} ($cleanPhone): ${e.message}")
-                        failedNames.add("${contact.name}: ${e.message ?: "Failed"}")
+                        Log.w(TAG, "Primary SMS sending failed for ${contact.name}, trying default SmsManager: ${e.message}")
+                        try {
+                            @Suppress("DEPRECATION")
+                            val fallbackSms = SmsManager.getDefault()
+                            fallbackSms.sendTextMessage(cleanPhone, null, messageBody.take(160), null, null)
+                            sentSuccessfully = true
+                            successNames.add(contact.name)
+                        } catch (e2: Exception) {
+                            Log.e(TAG, "Failed to send SMS to ${contact.name} ($cleanPhone): ${e2.message}")
+                            failedNames.add("${contact.name}: ${e2.message ?: "Failed"}")
+                        }
                     }
                 }
             }

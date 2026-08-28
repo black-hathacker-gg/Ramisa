@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.outlined.Security
@@ -139,27 +140,27 @@ fun LoginScreen(
             color = MaterialTheme.colorScheme.onSurface
           )
           Text(
-            text = "Enter your phone number to access protection",
+            text = "Enter your email address to access protection",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
 
           Spacer(modifier = Modifier.height(20.dp))
 
-          // Phone Number Input
+          // Email Address Input
           OutlinedTextField(
-            value = uiState.phone,
-            onValueChange = viewModel::onPhoneChanged,
-            label = { Text("Phone Number (বাংলাদেশ)") },
-            placeholder = { Text("+880 17XX-XXXXXX") },
+            value = uiState.email,
+            onValueChange = viewModel::onEmailChanged,
+            label = { Text("Email Address") },
+            placeholder = { Text("your.email@example.com") },
             leadingIcon = {
-              Icon(imageVector = Icons.Default.Phone, contentDescription = null)
+              Icon(imageVector = Icons.Default.Email, contentDescription = null)
             },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
             modifier = Modifier
               .fillMaxWidth()
-              .testTag("input_phone")
+              .testTag("input_email")
           )
 
           Spacer(modifier = Modifier.height(16.dp))

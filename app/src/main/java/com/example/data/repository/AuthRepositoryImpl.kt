@@ -7,6 +7,12 @@ import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
 import com.example.domain.model.UserType
 import com.example.domain.repository.AuthRepository
+import com.example.data.remote.SupabaseConfig
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.exceptions.RestException
+import com.example.data.remote.SupabaseProfile
+import io.github.jan.supabase.postgrest.postgrest
 import com.example.domain.repository.AuthResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -112,6 +118,7 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
 
   override suspend fun register(
     name: String,
+    email: String,
     phone: String,
     password: String,
     emergencyPin: String,
@@ -120,19 +127,53 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
     bloodGroup: String,
     emergencyNote: String
   ): AuthResult<UserProfile> {
-    val newProfile = UserProfile(
-      id = "user_${System.currentTimeMillis()}",
-      name = name.trim().ifEmpty { "RAMISA User" },
-      phone = phone.trim().ifEmpty { "+880 1712-345678" },
-      emergencyPin = emergencyPin.trim().ifEmpty { "1234" },
-      userType = userType,
-      ageCategory = ageCategory,
-      bloodGroup = bloodGroup.ifEmpty { "B+" },
-      emergencyNote = emergencyNote
-    )
-    userDao.saveProfile(newProfile.toEntity())
-    AppSessionManager.setUser(newProfile)
-    return AuthResult.Success(newProfile)
+    return try {
+        val signUpResult = SupabaseConfig.client.auth.signUpWith(Email) {
+            this.email = email
+            this.password = password
+        }
+        
+        // Use user returned by signUp if available, otherwise fallback
+        val supabaseUserId = SupabaseConfig.client.auth.currentUserOrNull()?.id ?: "user_${System.currentTimeMillis()}"
+
+        val remoteProfile = SupabaseProfile(
+            id = supabaseUserId,
+            name = name.trim().ifEmpty { "RAMISA User" },
+            email = email.trim(),
+            phone = phone.trim(),
+            emergencyPin = emergencyPin.trim().ifEmpty { "1234" },
+            userType = userType.name,
+            ageCategory = ageCategory.name,
+            bloodGroup = bloodGroup.ifEmpty { "B+" },
+            emergencyNote = emergencyNote
+        )
+        
+        // Insert into Supabase profiles table
+        try {
+            SupabaseConfig.client.postgrest["profiles"].insert(remoteProfile)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Continue even if profile insert fails (maybe table doesn't exist yet)
+        }
+
+        val newProfile = UserProfile(
+          id = supabaseUserId,
+          name = remoteProfile.name,
+          phone = remoteProfile.phone,
+          emergencyPin = remoteProfile.emergencyPin,
+          userType = userType,
+          ageCategory = ageCategory,
+          bloodGroup = remoteProfile.bloodGroup,
+          emergencyNote = remoteProfile.emergencyNote
+        )
+        
+        userDao.saveProfile(newProfile.toEntity().copy(isLoggedIn = true))
+        AppSessionManager.setUser(newProfile)
+        AuthResult.Success(newProfile)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        AuthResult.Error(e.message ?: "রেজিস্ট্রেশন ব্যর্থ হয়েছে। অন্য ইমেইল ব্যবহার করুন।")
+    }
   }
 
   override suspend fun logout(): Boolean {

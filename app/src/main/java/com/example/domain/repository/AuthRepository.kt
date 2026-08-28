@@ -14,10 +14,11 @@ interface AuthRepository {
   val currentUser: StateFlow<UserProfile?>
   val isAuthenticated: StateFlow<Boolean>
 
-  suspend fun login(phone: String, pinOrPassword: String): AuthResult<UserProfile>
+  suspend fun login(email: String, pinOrPassword: String): AuthResult<UserProfile>
   suspend fun loginAsGuest(): AuthResult<UserProfile>
   suspend fun register(
     name: String,
+    email: String,
     phone: String,
     password: String,
     emergencyPin: String,

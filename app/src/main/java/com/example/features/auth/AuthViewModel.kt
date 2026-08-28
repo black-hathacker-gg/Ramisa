@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class AuthUiState(
-  val phone: String = "+880 1712-345678",
+  val email: String = "",
+  val phone: String = "",
   val name: String = "",
   val password: String = "",
   val emergencyPin: String = "",
@@ -54,6 +55,7 @@ class AuthViewModel(
     }
   }
 
+  fun onEmailChanged(value: String) = _uiState.update { it.copy(email = value, errorMessage = null) }
   fun onPhoneChanged(value: String) = _uiState.update { it.copy(phone = value, errorMessage = null) }
   fun onNameChanged(value: String) = _uiState.update { it.copy(name = value, errorMessage = null) }
   fun onPasswordChanged(value: String) = _uiState.update { it.copy(password = value, errorMessage = null) }
@@ -66,18 +68,18 @@ class AuthViewModel(
 
   fun login(onSuccess: () -> Unit) {
     val state = _uiState.value
-    if (state.phone.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Please enter your phone number") }
+    if (state.email.isBlank()) {
+      _uiState.update { it.copy(errorMessage = "Please enter your email") }
       return
     }
-    if (state.password.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Please enter your password or PIN") }
+    if (state.password.isBlank() || state.password.length < 6) {
+      _uiState.update { it.copy(errorMessage = "Password must be at least 6 characters") }
       return
     }
 
     viewModelScope.launch {
       _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-      when (val result = authRepository.login(state.phone, state.password)) {
+      when (val result = authRepository.login(state.email, state.password)) {
         is AuthResult.Success -> {
           _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
           onSuccess()
@@ -106,6 +108,14 @@ class AuthViewModel(
 
   fun register(onSuccess: () -> Unit) {
     val state = _uiState.value
+    if (state.email.isBlank()) {
+      _uiState.update { it.copy(errorMessage = "Please enter your email address") }
+      return
+    }
+    if (state.password.isBlank() || state.password.length < 6) {
+      _uiState.update { it.copy(errorMessage = "Password must be at least 6 characters") }
+      return
+    }
     if (state.name.isBlank()) {
       _uiState.update { it.copy(errorMessage = "Please enter your full name") }
       return
@@ -127,6 +137,7 @@ class AuthViewModel(
       _uiState.update { it.copy(isLoading = true, errorMessage = null) }
       val result = authRepository.register(
         name = state.name,
+        email = state.email,
         phone = state.phone,
         password = state.password.ifBlank { "Pass@1234" },
         emergencyPin = state.emergencyPin,

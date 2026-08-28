@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Bloodtype
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notes
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Pin
@@ -193,6 +194,22 @@ fun RegisterScreen(
       )
 
       Spacer(modifier = Modifier.height(12.dp))
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+      // Email Input
+      OutlinedTextField(
+        value = uiState.email,
+        onValueChange = viewModel::onEmailChanged,
+        label = { Text("Email Address") },
+        placeholder = { Text("your.email@example.com") },
+        leadingIcon = { Icon(imageVector = Icons.Default.Email, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+        singleLine = true,
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("input_reg_email")
+      )
 
       // Phone Number
       OutlinedTextField(

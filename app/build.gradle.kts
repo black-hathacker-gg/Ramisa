@@ -7,6 +7,7 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+  id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -122,6 +123,13 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.play.services.location)
   implementation(libs.retrofit)
+  implementation(platform(libs.supabase.bom))
+  implementation(libs.supabase.postgrest)
+  implementation(libs.supabase.auth)
+  implementation(libs.ktor.client.android)
+  implementation(libs.ktor.client.core)
+  implementation(libs.ktor.client.content.negotiation)
+  implementation(libs.kotlinx.serialization.json)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

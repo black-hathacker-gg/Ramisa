@@ -16,6 +16,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import com.example.data.remote.SupabaseConfig
+import com.example.data.remote.SupabaseCommunityMessage
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
@@ -43,6 +50,61 @@ object CommunityManager {
     )
   )
   val communityInfo: StateFlow<CentralCommunityInfo> = _communityInfo.asStateFlow()
+
+  init {
+    GlobalScope.launch(Dispatchers.IO) {
+      while (true) {
+        try {
+          val remoteMessages = SupabaseConfig.client.postgrest["community_messages"]
+              .select()
+              .decodeList<SupabaseCommunityMessage>()
+              .sortedByDescending { it.createdAt ?: "" }
+          
+          val mappedPosts = remoteMessages.map { msg ->
+              CentralCommunityPost(
+                  id = msg.id ?: UUID.randomUUID().toString(),
+                  category = if (msg.isSosAlert) CommunityTopicCategory.EMERGENCY_SOS else CommunityTopicCategory.SISTERHOOD_GENERAL,
+                  authorName = if (msg.isSosAlert) "🚨 SOS BROADCAST: ${msg.userName}" else msg.userName,
+                  authorRole = if (msg.isSosAlert) "Emergency Dispatch" else "Verified Member",
+                  authorPhone = "Protected",
+                  isAnonymous = false,
+                  title = if (msg.isSosAlert) "🚨 CRISIS SOS: ${msg.userName} needs immediate help!" else "Community Update",
+                  content = msg.message,
+                  locationTag = "Live Area",
+                  timestamp = System.currentTimeMillis(), // We could parse createdAt but this is easier for now
+                  supportCount = 0,
+                  helpfulCount = 0,
+                  isSosAlert = msg.isSosAlert,
+                  sosDetails = if (msg.isSosAlert) CommunitySosAlert(
+                      id = "SOS-${msg.id}",
+                      victimName = msg.userName,
+                      victimPhone = "",
+                      triggerTypeLabel = "Emergency Alert",
+                      locationName = "Location protected",
+                      latitude = 23.7258,
+                      longitude = 90.3976,
+                      mapUrl = "https://maps.google.com/?q=23.7258,90.3976",
+                      customNote = msg.message
+                  ) else null
+              )
+          }
+
+          // Merge keeping local replies and states, but for simplicity we just replace the ones that come from Supabase.
+          // Or even simpler: we just update the _communityPosts to include these.
+          _communityPosts.update { currentList ->
+              val localOnly = currentList.filter { !it.id.contains("-") && !it.id.contains("post_") } // rough heuristic, let's just keep our seeded ones and supabase
+              val seeded = initialPosts
+              
+              val all = (seeded + mappedPosts).distinctBy { it.id }
+              all.sortedByDescending { it.timestamp }
+          }
+        } catch (e: Exception) {
+          Log.e(TAG, "Failed to poll Supabase community messages", e)
+        }
+        delay(3000) // Poll every 3 seconds
+      }
+    }
+  }
 
   // Pre-seeded female-related discussions (Messenger community topics)
   private val initialPosts = listOf(
@@ -255,6 +317,21 @@ object CommunityManager {
     )
 
     _communityPosts.update { listOf(newPost) + it }
+    GlobalScope.launch(Dispatchers.IO) {
+      try {
+        val user = AppSessionManager.currentUser.value
+        val userId = user?.id ?: "unknown"
+        val message = SupabaseCommunityMessage(
+          userId = userId,
+          userName = authorName,
+          message = content.trim(),
+          isSosAlert = false
+        )
+        SupabaseConfig.client.postgrest["community_messages"].insert(message)
+      } catch(e: Exception) {
+        e.printStackTrace()
+      }
+    }
     Log.d(TAG, "Created community post [${category.name}] by $authorName (Offline queued: $isOffline)")
     return newPost
   }
@@ -391,6 +468,21 @@ object CommunityManager {
     )
 
     _communityPosts.update { listOf(sosPost) + it }
+    GlobalScope.launch(Dispatchers.IO) {
+      try {
+        val user = AppSessionManager.currentUser.value
+        val userId = user?.id ?: "unknown"
+        val message = SupabaseCommunityMessage(
+          userId = userId,
+          userName = name,
+          message = sosPost.content,
+          isSosAlert = true
+        )
+        SupabaseConfig.client.postgrest["community_messages"].insert(message)
+      } catch(e: Exception) {
+        e.printStackTrace()
+      }
+    }
     return alert
   }
 

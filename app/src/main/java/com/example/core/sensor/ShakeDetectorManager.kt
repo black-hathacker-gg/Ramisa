@@ -181,12 +181,16 @@ object ShakeDetectorManager : SensorEventListener {
                 vibratorManager?.defaultVibrator?.vibrate(
                     VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300, 150, 500), -1)
                 )
-            } else {
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 @Suppress("DEPRECATION")
                 val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
                 vibrator?.vibrate(
                     VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300, 150, 500), -1)
                 )
+            } else {
+                @Suppress("DEPRECATION")
+                val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                vibrator?.vibrate(longArrayOf(0, 300, 150, 300, 150, 500), -1)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error triggering vibration: ${e.message}")

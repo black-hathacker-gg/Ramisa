@@ -335,35 +335,7 @@ fun SettingsScreen(
             )
           }
 
-          HorizontalDivider()
 
-          // Child Safety Mode Toggle
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-              Icon(imageVector = Icons.Default.ChildCare, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.width(12.dp))
-              Column {
-                Text(
-                  text = "Child Safety Mode (শিশু সুরক্ষা)",
-                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                  text = "Simplified single-tap interface locked with guardian PIN",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-            Switch(
-              checked = uiState.isChildSafetyModeEnabled,
-              onCheckedChange = { viewModel.toggleChildMode() },
-              modifier = Modifier.testTag("switch_child_mode")
-            )
-          }
         }
       }
 

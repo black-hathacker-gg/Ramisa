@@ -48,8 +48,6 @@ fun ToolsHubScreen(
   onNavigateToSafePlaces: () -> Unit,
   onNavigateToThreatGuard: () -> Unit,
   onNavigateToRideSafety: () -> Unit,
-  onNavigateToChildSafety: () -> Unit,
-  onNavigateToCampusSafety: () -> Unit,
   onNavigateToMeshNetwork: () -> Unit,
   onNavigateToHardwareTrigger: () -> Unit,
   onNavigateToStealthMode: () -> Unit,
@@ -58,7 +56,6 @@ fun ToolsHubScreen(
   onNavigateToBatteryPing: () -> Unit,
   onNavigateToOfflineMaps: () -> Unit,
   onNavigateToVolunteerEscort: () -> Unit,
-  onNavigateToGuardianCircle: () -> Unit,
   onNavigateToCommunitySafety: () -> Unit,
   onNavigateToFakeCall: () -> Unit,
   onNavigateToSirenStrobe: () -> Unit,
@@ -78,14 +75,6 @@ fun ToolsHubScreen(
       icon = Icons.AutoMirrored.Filled.Assignment,
       onClick = onNavigateToSafetyGuide,
       testTag = "tool_legal_guide"
-    ),
-    ToolItem(
-      title = "Cyber Support Desk",
-      subtitle = "PCSW cyber crime reporting",
-      category = "Legal & Rights",
-      icon = Icons.Default.SupportAgent,
-      onClick = onNavigateToCyberCrimeSupport,
-      testTag = "tool_cyber_desk"
     ),
     ToolItem(
       title = "Free Legal Aid & GD",
@@ -152,30 +141,6 @@ fun ToolsHubScreen(
       testTag = "tool_ride_safety"
     ),
     ToolItem(
-      title = "Child Safety",
-      subtitle = "Geofencing & 1098 helpline",
-      category = "Protection & Transit",
-      icon = Icons.Default.ChildCare,
-      onClick = onNavigateToChildSafety,
-      testTag = "tool_child_safety"
-    ),
-    ToolItem(
-      title = "Campus Safety",
-      subtitle = "Safe corridors & escort service",
-      category = "Protection & Transit",
-      icon = Icons.Default.School,
-      onClick = onNavigateToCampusSafety,
-      testTag = "tool_campus_safety"
-    ),
-    ToolItem(
-      title = "Peer Escort Network",
-      subtitle = "Volunteer walking guardian",
-      category = "Protection & Transit",
-      icon = Icons.Default.People,
-      onClick = onNavigateToVolunteerEscort,
-      testTag = "tool_peer_escort"
-    ),
-    ToolItem(
       title = "Offline Mesh Network",
       subtitle = "Zero-internet BLE SOS relay",
       category = "Security & Vault",
@@ -190,14 +155,6 @@ fun ToolsHubScreen(
       icon = Icons.Default.FlashOn,
       onClick = onNavigateToHardwareTrigger,
       testTag = "tool_hardware_trigger"
-    ),
-    ToolItem(
-      title = "Stealth Calculator",
-      subtitle = "Camouflage PIN mode",
-      category = "Security & Vault",
-      icon = Icons.Default.Calculate,
-      onClick = onNavigateToStealthMode,
-      testTag = "tool_stealth_calc"
     ),
     ToolItem(
       title = "Safety Vault",

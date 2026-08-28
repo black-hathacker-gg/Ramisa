@@ -137,11 +137,9 @@ fun HomeScreen(
   onNavigateToHardwareTrigger: () -> Unit = {},
   onNavigateToMeshNetwork: () -> Unit = {},
   onNavigateToVault: () -> Unit = {},
-  onNavigateToGuardianCircle: () -> Unit = {},
   onNavigateToStealthMode: () -> Unit = {},
   onNavigateToSirenStrobe: () -> Unit = {},
   onNavigateToRideSafety: () -> Unit = {},
-  onNavigateToCampusSafety: () -> Unit = {},
   onNavigateToSelfDefense: () -> Unit = {},
   onNavigateToCyberCrimeSupport: () -> Unit = {},
   onNavigateToWellness: () -> Unit = {},
@@ -149,7 +147,6 @@ fun HomeScreen(
   onNavigateToLegalAid: () -> Unit = {},
   onNavigateToSafetyTimer: () -> Unit = {},
   onNavigateToFirstAid: () -> Unit = {},
-  onNavigateToChildSafety: () -> Unit = {},
   onNavigateToLockScreenSos: () -> Unit = {},
   onNavigateToDangerMap: () -> Unit = {},
   modifier: Modifier = Modifier
@@ -278,30 +275,7 @@ fun HomeScreen(
                 )
               }
 
-              // Active Background Service Badge
-              Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = Color.White.copy(alpha = 0.22f),
-                modifier = Modifier.testTag("badge_background_service")
-              ) {
-                Row(
-                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Box(
-                    modifier = Modifier
-                      .size(6.dp)
-                      .clip(CircleShape)
-                      .background(Color(0xFF4CAF50))
-                  )
-                  Spacer(modifier = Modifier.width(4.dp))
-                  Text(
-                    text = if (isBangla) "সক্রিয়" else "Active",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
-                    color = Color.White
-                  )
-                }
-              }
+
 
               // User Profile Avatar
               IconButton(
@@ -337,54 +311,7 @@ fun HomeScreen(
             .fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 12.dp)
         ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Box(
-              modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(PinkPrimary),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(
-                imageVector = Icons.Outlined.CheckCircle,
-                contentDescription = "Status Safe",
-                tint = Color.White,
-                modifier = Modifier.size(20.dp)
-              )
-            }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                  text = if (isBangla) "সুরক্ষা সক্রিয় আছে" else "SHIELD ACTIVE",
-                  style = MaterialTheme.typography.labelLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
-                  ),
-                  color = PinkPrimaryDark,
-                  modifier = Modifier.testTag("status_text")
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                  modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(SafeGreenDark)
-                )
-              }
-              Text(
-                text = if (isBangla) "লাইভ গার্ডিয়ান ট্র্যাকিং • ${uiState.activeContactCount} জন অভিভাবক যুক্ত আছেন" 
-                       else "Live Protection • ${uiState.activeContactCount} Trusted Guardians Ready",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-              )
-            }
-          }
 
           // Shake 3x Indicator Info
           Spacer(modifier = Modifier.height(8.dp))
@@ -696,12 +623,9 @@ fun HomeScreen(
             onNavigateToSafePlaces = onNavigateToSafePlaces,
             onNavigateToDangerMap = onNavigateToDangerMap,
             onNavigateToThreatGuard = onNavigateToThreatGuard,
-            onNavigateToGuardianCircle = onNavigateToGuardianCircle,
             onNavigateToHardwareTrigger = onNavigateToHardwareTrigger,
             onNavigateToMeshNetwork = onNavigateToMeshNetwork,
             onNavigateToRideSafety = onNavigateToRideSafety,
-            onNavigateToCampusSafety = onNavigateToCampusSafety,
-            onNavigateToChildSafety = onNavigateToChildSafety,
             onNavigateToVault = onNavigateToVault,
             onNavigateToHistory = onNavigateToHistory,
             onNavigateToCommunitySafety = onNavigateToCommunitySafety,
@@ -751,9 +675,6 @@ fun HomeScreen(
         }
         SafetyCategoryTab.COMMUNITY -> {
           CommunityTabSection(
-            onNavigateToGuardianCircle = onNavigateToGuardianCircle,
-            onNavigateToCampusSafety = onNavigateToCampusSafety,
-            onNavigateToChildSafety = onNavigateToChildSafety,
             onNavigateToVolunteerEscort = onNavigateToVolunteerEscort,
             onNavigateToLegalAid = onNavigateToLegalAid,
             onNavigateToSafetyGuide = onNavigateToSafetyGuide,
@@ -880,12 +801,9 @@ fun OverviewSection(
   onNavigateToSafePlaces: () -> Unit,
   onNavigateToDangerMap: () -> Unit,
   onNavigateToThreatGuard: () -> Unit,
-  onNavigateToGuardianCircle: () -> Unit,
   onNavigateToHardwareTrigger: () -> Unit,
   onNavigateToMeshNetwork: () -> Unit,
   onNavigateToRideSafety: () -> Unit,
-  onNavigateToCampusSafety: () -> Unit,
-  onNavigateToChildSafety: () -> Unit,
   onNavigateToVault: () -> Unit,
   onNavigateToHistory: () -> Unit,
   onNavigateToCommunitySafety: () -> Unit,
@@ -920,12 +838,12 @@ fun OverviewSection(
         testTag = "card_contacts"
       )
       FeatureCard(
-        title = "Guardian Circle",
-        subtitle = "Live multi-guardian real-time tracker",
-        icon = Icons.Default.People,
-        onClick = onNavigateToGuardianCircle,
+        title = "Safe Journey & Ride",
+        subtitle = "Live route tracking & destination check-in",
+        icon = Icons.Default.DirectionsWalk,
+        onClick = onNavigateToSafeJourney,
         modifier = Modifier.weight(1f),
-        testTag = "card_guardian_circle"
+        testTag = "card_safe_journey"
       )
     }
 
@@ -934,20 +852,20 @@ fun OverviewSection(
       horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
       FeatureCard(
-        title = "Safe Journey & Ride",
-        subtitle = "Live route tracking & destination check-in",
-        icon = Icons.Default.DirectionsWalk,
-        onClick = onNavigateToSafeJourney,
-        modifier = Modifier.weight(1f),
-        testTag = "card_safe_journey"
-      )
-      FeatureCard(
         title = "Danger Map & Shelters",
         subtitle = "Reported zones & nearest police stations",
         icon = Icons.Default.Place,
         onClick = onNavigateToDangerMap,
         modifier = Modifier.weight(1f),
         testTag = "card_danger_map"
+      )
+      FeatureCard(
+        title = "AI Threat Guard",
+        subtitle = "Speech & distress sound analysis",
+        icon = Icons.Default.Sensors,
+        onClick = onNavigateToThreatGuard,
+        modifier = Modifier.weight(1f),
+        testTag = "card_threat_guard"
       )
     }
 
@@ -977,14 +895,6 @@ fun OverviewSection(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-      FeatureCard(
-        title = "Child & Campus Safety",
-        subtitle = "Geofence alerts & campus emergency",
-        icon = Icons.Default.School,
-        onClick = onNavigateToCampusSafety,
-        modifier = Modifier.weight(1f),
-        testTag = "card_campus_safety"
-      )
       FeatureCard(
         title = "App Settings & Hardware",
         subtitle = "Power button triggers & preferences",
@@ -1186,9 +1096,6 @@ fun SensorsTabSection(
 
 @Composable
 fun CommunityTabSection(
-  onNavigateToGuardianCircle: () -> Unit,
-  onNavigateToCampusSafety: () -> Unit,
-  onNavigateToChildSafety: () -> Unit,
   onNavigateToVolunteerEscort: () -> Unit,
   onNavigateToLegalAid: () -> Unit,
   onNavigateToSafetyGuide: () -> Unit,
@@ -1203,48 +1110,8 @@ fun CommunityTabSection(
     modifier = Modifier.fillMaxWidth(),
     verticalArrangement = Arrangement.spacedBy(10.dp)
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-      FeatureCard(
-        title = "Guardian Circle",
-        subtitle = "Live mutual tracking with family",
-        icon = Icons.Default.Group,
-        onClick = onNavigateToGuardianCircle,
-        modifier = Modifier.weight(1f),
-        testTag = "card_circle_comm"
-      )
-      FeatureCard(
-        title = "Campus Safety",
-        subtitle = "Student emergency & proctor alert",
-        icon = Icons.Default.School,
-        onClick = onNavigateToCampusSafety,
-        modifier = Modifier.weight(1f),
-        testTag = "card_campus_comm"
-      )
-    }
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-      FeatureCard(
-        title = "Child Safety",
-        subtitle = "Safe zone exit notification",
-        icon = Icons.Default.ChildCare,
-        onClick = onNavigateToChildSafety,
-        modifier = Modifier.weight(1f),
-        testTag = "card_child_comm"
-      )
-      FeatureCard(
-        title = "Volunteer Escort",
-        subtitle = "Verified peer walking buddy",
-        icon = Icons.Default.SupportAgent,
-        onClick = onNavigateToVolunteerEscort,
-        modifier = Modifier.weight(1f),
-        testTag = "card_escort_comm"
-      )
-    }
+
+
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(10.dp)

@@ -42,16 +42,12 @@ import com.example.features.hardware.HardwareTriggerScreen
 import com.example.features.hardware.HardwareTriggerViewModel
 import com.example.features.mesh.MeshNetworkScreen
 import com.example.features.mesh.MeshNetworkViewModel
-import com.example.features.circle.GuardianCircleScreen
-import com.example.features.circle.GuardianCircleViewModel
 import com.example.features.stealth.StealthModeScreen
 import com.example.features.stealth.StealthModeViewModel
 import com.example.features.siren.SirenStrobeScreen
 import com.example.features.siren.SirenStrobeViewModel
 import com.example.features.ridesafety.RideSafetyScreen
 import com.example.features.ridesafety.RideSafetyViewModel
-import com.example.features.campus.CampusSafetyScreen
-import com.example.features.campus.CampusSafetyViewModel
 import com.example.features.defense.SelfDefenseScreen
 import com.example.features.defense.SelfDefenseViewModel
 import com.example.features.cyber.CyberCrimeSupportScreen
@@ -66,8 +62,6 @@ import com.example.features.timer.SafetyTimerScreen
 import com.example.features.timer.SafetyTimerViewModel
 import com.example.features.firstaid.FirstAidScreen
 import com.example.features.firstaid.FirstAidViewModel
-import com.example.features.child.ChildSafetyScreen
-import com.example.features.child.ChildSafetyViewModel
 import com.example.features.lockscreen.LockScreenSosScreen
 import com.example.features.lockscreen.LockScreenSosViewModel
 import com.example.features.map.DangerMapScreen
@@ -113,11 +107,9 @@ fun RamisaNavGraph(
   val communityViewModel: CommunityViewModel = viewModel()
   val hardwareTriggerViewModel: HardwareTriggerViewModel = viewModel()
   val meshNetworkViewModel: MeshNetworkViewModel = viewModel()
-  val guardianCircleViewModel: GuardianCircleViewModel = viewModel()
   val stealthModeViewModel: StealthModeViewModel = viewModel()
   val sirenStrobeViewModel: SirenStrobeViewModel = viewModel()
   val rideSafetyViewModel: RideSafetyViewModel = viewModel()
-  val campusSafetyViewModel: CampusSafetyViewModel = viewModel()
   val selfDefenseViewModel: SelfDefenseViewModel = viewModel()
   val cyberCrimeViewModel: CyberCrimeViewModel = viewModel()
   val wellnessViewModel: WellnessViewModel = viewModel()
@@ -125,7 +117,6 @@ fun RamisaNavGraph(
   val legalAidViewModel: LegalAidViewModel = viewModel()
   val safetyTimerViewModel: SafetyTimerViewModel = viewModel()
   val firstAidViewModel: FirstAidViewModel = viewModel()
-  val childSafetyViewModel: ChildSafetyViewModel = viewModel()
   val lockScreenSosViewModel: LockScreenSosViewModel = viewModel()
   val dangerMapViewModel: DangerMapViewModel = viewModel()
   val adminViewModel: AdminViewModel = viewModel()
@@ -245,11 +236,9 @@ fun RamisaNavGraph(
           onNavigateToHardwareTrigger = { navController.navigate(Screen.HardwareTrigger.route) },
           onNavigateToMeshNetwork = { navController.navigate(Screen.MeshNetwork.route) },
           onNavigateToVault = { navController.navigate(Screen.Vault.route) },
-          onNavigateToGuardianCircle = { navController.navigate(Screen.GuardianCircle.route) },
           onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
           onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
           onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
-          onNavigateToCampusSafety = { navController.navigate(Screen.CampusSafety.route) },
           onNavigateToSelfDefense = { navController.navigate(Screen.SelfDefense.route) },
           onNavigateToCyberCrimeSupport = { navController.navigate(Screen.CyberCrimeSupport.route) },
           onNavigateToWellness = { navController.navigate(Screen.WellnessCounseling.route) },
@@ -257,7 +246,6 @@ fun RamisaNavGraph(
           onNavigateToLegalAid = { navController.navigate(Screen.LegalAid.route) },
           onNavigateToSafetyTimer = { navController.navigate(Screen.SafetyTimer.route) },
           onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
-          onNavigateToChildSafety = { navController.navigate(Screen.ChildSafety.route) },
           onNavigateToLockScreenSos = { navController.navigate(Screen.LockScreenSos.route) },
           onNavigateToDangerMap = { navController.navigate(Screen.DangerMap.route) },
           onTriggerSos = {
@@ -434,13 +422,6 @@ fun RamisaNavGraph(
         )
       }
 
-      // 18. Guardian Circles
-      composable(Screen.GuardianCircle.route) {
-        GuardianCircleScreen(
-          viewModel = guardianCircleViewModel,
-          onNavigateBack = { navController.popBackStack() }
-        )
-      }
 
       // 19. Stealth Calculator Mode
       composable(Screen.StealthMode.route) {
@@ -478,17 +459,7 @@ fun RamisaNavGraph(
         )
       }
 
-      // 22. Campus Safety Corridor
-      composable(Screen.CampusSafety.route) {
-        CampusSafetyScreen(
-          viewModel = campusSafetyViewModel,
-          onNavigateBack = { navController.popBackStack() },
-          onTriggerSos = {
-            emergencyViewModel.triggerSos()
-            navController.navigate(Screen.Emergency.route)
-          }
-        )
-      }
+
 
       // 23. Practical Self Defense Techniques
       composable(Screen.SelfDefense.route) {
@@ -558,13 +529,7 @@ fun RamisaNavGraph(
         )
       }
 
-      // 30. Child & Minor Protection (Geofencing & 1098)
-      composable(Screen.ChildSafety.route) {
-        ChildSafetyScreen(
-          viewModel = childSafetyViewModel,
-          onNavigateBack = { navController.popBackStack() }
-        )
-      }
+
 
       // 31. Lock Screen & Offline SOS Guard
       composable(Screen.LockScreenSos.route) {
@@ -617,8 +582,6 @@ fun RamisaNavGraph(
           onNavigateToSafePlaces = { navController.navigate(Screen.SafePlaces.route) },
           onNavigateToThreatGuard = { navController.navigate(Screen.ThreatGuard.route) },
           onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
-          onNavigateToChildSafety = { navController.navigate(Screen.ChildSafety.route) },
-          onNavigateToCampusSafety = { navController.navigate(Screen.CampusSafety.route) },
           onNavigateToMeshNetwork = { navController.navigate(Screen.MeshNetwork.route) },
           onNavigateToHardwareTrigger = { navController.navigate(Screen.HardwareTrigger.route) },
           onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
@@ -627,7 +590,6 @@ fun RamisaNavGraph(
           onNavigateToBatteryPing = { navController.navigate(Screen.BatteryPing.route) },
           onNavigateToOfflineMaps = { navController.navigate(Screen.OfflineMaps.route) },
           onNavigateToVolunteerEscort = { navController.navigate(Screen.VolunteerEscort.route) },
-          onNavigateToGuardianCircle = { navController.navigate(Screen.GuardianCircle.route) },
           onNavigateToCommunitySafety = { navController.navigate(Screen.CommunitySafety.route) },
           onNavigateToFakeCall = { navController.navigate(Screen.FakeCall.route) },
           onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },

@@ -101,7 +101,7 @@ fun RegisterScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 12.dp)

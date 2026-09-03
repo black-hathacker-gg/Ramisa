@@ -146,10 +146,10 @@ fun FakeCallScreen(
       ) { paddingValues ->
         Column(
           modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(paddingValues)
             .verticalScroll(scrollState)
-            .padding(horizontal = 20.dp, vertical = 12.dp)
+            .padding(horizontal = 20.dp, vertical = 4.dp)
         ) {
           Text(
             text = "Discreet Safety Escape",

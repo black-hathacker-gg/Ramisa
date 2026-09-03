@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -117,6 +117,7 @@ import com.example.domain.model.CommunityTopicCategory
 import com.example.ui.theme.PinkAccentLilac
 import com.example.ui.theme.PinkBorderSubtle
 import com.example.ui.theme.PinkContainer
+import com.example.ui.theme.OnPinkContainer
 import com.example.ui.theme.PinkHeaderGradientStart
 import com.example.ui.theme.PinkPrimary
 import com.example.ui.theme.PinkPrimaryDark
@@ -178,9 +179,9 @@ fun CommunitySafetyScreen(
               Spacer(modifier = Modifier.width(6.dp))
               Text(
                 text = if (uiState.isOfflineMode)
-                  (if (isBangla) "📡 অফলাইন মোড (লোকাল ক্যাশে ও SIM SMS সক্রিয়)" else "📡 Offline Mode (Local Cache & SIM SMS)")
+                  (if (isBangla) "অফলাইন মোড (লোকাল ক্যাশে ও SIM SMS সক্রিয়)" else "Offline Mode (Local Cache & SIM SMS)")
                 else
-                  (if (isBangla) "🟢 ৩,৪৫০ বোন সংযুক্ত • ১৪২ সক্রিয়" else "🟢 3,450 Sisters Connected • 142 Online"),
+                  (if (isBangla) "৩,৪৫০ বোন সংযুক্ত • ১৪২ সক্রিয়" else "3,450 Sisters Connected • 142 Online"),
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
               )
@@ -297,37 +298,37 @@ fun CommunitySafetyScreen(
         Card(
           modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-          colors = CardDefaults.cardColors(containerColor = SafetyRedPrimary.copy(alpha = 0.12f)),
-          border = BorderStroke(1.5.dp, SafetyRedPrimary),
-          shape = RoundedCornerShape(14.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+          colors = CardDefaults.cardColors(containerColor = PinkContainer),
+          border = BorderStroke(1.dp, PinkPrimary.copy(alpha = 0.5f)),
+          shape = RoundedCornerShape(12.dp)
         ) {
           Row(
             modifier = Modifier
               .fillMaxWidth()
-              .padding(12.dp),
+              .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
           ) {
             Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
               Box(
                 modifier = Modifier
-                  .size(36.dp)
+                  .size(30.dp)
                   .clip(CircleShape)
-                  .background(SafetyRedPrimary),
+                  .background(PinkPrimary),
                 contentAlignment = Alignment.Center
               ) {
-                Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
               }
-              Spacer(modifier = Modifier.width(10.dp))
+              Spacer(modifier = Modifier.width(8.dp))
               Column {
                 Text(
-                  text = if (isBangla) "🚨 সক্রিয় জরুরি ব্রডকাস্ট ($activeSosCount টি)" else "🚨 ACTIVE CRISIS SOS ($activeSosCount)",
-                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, color = SafetyRedDark)
+                  text = if (isBangla) "সক্রিয় জরুরি ব্রডকাস্ট ($activeSosCount টি)" else "ACTIVE CRISIS SOS ($activeSosCount)",
+                  style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = OnPinkContainer)
                 )
                 Text(
-                  text = if (isBangla) "কমিউনিটির বোনের তাৎক্ষণিক সাহায্য প্রয়োজন!" else "A sister in the central circle needs rescue assistance!",
-                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, color = SafetyRedDark)
+                  text = if (isBangla) "বোনের তাৎক্ষণিক সাহায্য প্রয়োজন" else "Sister needs rescue assistance",
+                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.5.sp, color = OnPinkContainer.copy(alpha = 0.8f))
                 )
               }
             }
@@ -336,11 +337,12 @@ fun CommunitySafetyScreen(
                 viewModel.setSelectedTab(0)
                 viewModel.setSelectedCategory(CommunityTopicCategory.EMERGENCY_SOS)
               },
-              colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary),
-              shape = RoundedCornerShape(10.dp),
-              contentPadding = ButtonDefaults.TextButtonContentPadding
+              colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
+              shape = RoundedCornerShape(8.dp),
+              contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+              modifier = Modifier.height(32.dp)
             ) {
-              Text(text = if (isBangla) "অ্যালার্ট দেখুন" else "View SOS", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = Color.White))
+              Text(text = if (isBangla) "দেখুন" else "View", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = Color.White))
             }
           }
         }
@@ -348,9 +350,9 @@ fun CommunitySafetyScreen(
 
       // Navigation Tabs
       val tabTitles = if (isBangla) {
-        listOf("💬 ফোরাম ও আলোচনা", "🚨 জরুরি SOS (${activeSosCount})", "👥 বোন ও পরামর্শক", "🗺️ নিরাপদ জোন")
+        listOf("ফোরাম ও আলোচনা", "জরুরি SOS (${activeSosCount})", "বোন ও পরামর্শক", "নিরাপদ জোন")
       } else {
-        listOf("💬 Discussions", "🚨 Live SOS (${activeSosCount})", "👥 Advisors & Sisters", "🗺️ Safe Zones")
+        listOf("Discussions", "Live SOS (${activeSosCount})", "Advisors & Sisters", "Safe Zones")
       }
 
       ScrollableTabRow(
@@ -497,68 +499,7 @@ fun DiscussionsMessengerView(
     verticalArrangement = Arrangement.spacedBy(14.dp)
   ) {
     item {
-      Spacer(modifier = Modifier.height(6.dp))
-
-      // Central Community Banner Card
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = PinkContainer.copy(alpha = 0.65f)),
-        border = BorderStroke(1.dp, PinkBorderSubtle)
-      ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(PinkPrimary),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(imageVector = Icons.Default.Shield, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-              Text(
-                text = if (isBangla) "রমিসা সেন্ট্রাল নারী ফোরাম ও নেটওয়ার্ক" else "RAMISA Central Sisterhood Network",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = PinkPrimaryDark)
-              )
-              Text(
-                text = if (isBangla) "একটি কেন্দ্রীয় প্ল্যাটফর্ম • সংকট, স্বাস্থ্য, আইনি পরামর্শ ও সহযাত্রী"
-                else "One Central Community • Crisis SOS, Health, Legal & Safe-Walks",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-              )
-            }
-          }
-
-          Spacer(modifier = Modifier.height(12.dp))
-
-          // Quick SOS broadcast shortcut inside community
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-          ) {
-            Button(
-              onClick = onTriggerSosBroadcast,
-              modifier = Modifier
-                .weight(1f)
-                .testTag("btn_community_manual_sos"),
-              colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary),
-              shape = RoundedCornerShape(12.dp)
-            ) {
-              Icon(imageVector = Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
-              Spacer(modifier = Modifier.width(6.dp))
-              Text(
-                text = if (isBangla) "🚨 সেন্ট্রাল SOS অ্যালার্ট পাঠান" else "🚨 Broadcast Central SOS",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-              )
-            }
-          }
-        }
-      }
+      Spacer(modifier = Modifier.height(4.dp))
     }
 
     // Search bar
@@ -698,11 +639,11 @@ fun CommunityPostCard(
       .testTag("card_post_${post.id}"),
     shape = RoundedCornerShape(16.dp),
     colors = CardDefaults.cardColors(
-      containerColor = if (isSos) SafetyRedPrimary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+      containerColor = MaterialTheme.colorScheme.surface
     ),
     border = BorderStroke(
-      width = if (isSos) 1.8.dp else 1.dp,
-      color = if (isSos) SafetyRedPrimary else PinkBorderSubtle
+      width = 1.dp,
+      color = PinkBorderSubtle
     ),
     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
   ) {
@@ -742,7 +683,7 @@ fun CommunityPostCard(
               shape = RoundedCornerShape(6.dp)
             ) {
               Text(
-                text = if (isBangla) "📥 অফলাইন সংরক্ষিত" else "📥 Offline Queued",
+                text = if (isBangla) "অফলাইন সংরক্ষিত" else "Offline Queued",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = Color(0xFFB45309)),
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
               )
@@ -793,9 +734,11 @@ fun CommunityPostCard(
             )
             if (post.isAnonymous) {
               Spacer(modifier = Modifier.width(4.dp))
-              Text(
-                text = "🔒",
-                fontSize = 12.sp
+              Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = "Anonymous",
+                modifier = Modifier.size(12.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
           }
@@ -837,11 +780,11 @@ fun CommunityPostCard(
         ) {
           Column(modifier = Modifier.padding(12.dp)) {
             Text(
-              text = "📍 ${sos.locationName}",
+              text = "Location: ${sos.locationName}",
               style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, color = SafetyRedDark)
             )
             Text(
-              text = "🩸 Blood Group: ${sos.victimBloodGroup} • Responding: ${sos.respondingCount} Sisters",
+              text = "Blood Group: ${sos.victimBloodGroup} • Responding: ${sos.respondingCount} Sisters",
               style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, color = SafetyRedDark)
             )
 
@@ -884,7 +827,7 @@ fun CommunityPostCard(
                 colors = ButtonDefaults.buttonColors(containerColor = SafeGreenPrimary),
                 shape = RoundedCornerShape(8.dp)
               ) {
-                Text(text = if (isBangla) "🙋‍♀️ আমি আসছি" else "🙋‍♀️ Responding", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Text(text = if (isBangla) "আমি আসছি" else "Responding", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
               }
             }
           }
@@ -1000,8 +943,8 @@ fun EmergencySosFeedView(
     item {
       Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SafetyRedPrimary.copy(alpha = 0.1f)),
-        border = BorderStroke(1.5.dp, SafetyRedPrimary),
+        colors = CardDefaults.cardColors(containerColor = PinkContainer),
+        border = BorderStroke(1.dp, PinkPrimary.copy(alpha = 0.5f)),
         modifier = Modifier.fillMaxWidth()
       ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -1039,7 +982,7 @@ fun EmergencySosFeedView(
             modifier = Modifier.fillMaxWidth()
           ) {
             Text(
-              text = if (isBangla) "🚨 জরুরি ব্রডকাস্ট টেস্ট করুন" else "🚨 Broadcast Emergency SOS Now",
+              text = if (isBangla) "জরুরি ব্রডকাস্ট টেস্ট করুন" else "Broadcast Emergency SOS Now",
               fontWeight = FontWeight.Bold
             )
           }
@@ -1079,8 +1022,8 @@ fun EmergencySosFeedView(
       items(activeList, key = { it.id }) { alert ->
         Card(
           shape = RoundedCornerShape(16.dp),
-          colors = CardDefaults.cardColors(containerColor = SafetyRedPrimary.copy(alpha = 0.08f)),
-          border = BorderStroke(2.dp, SafetyRedPrimary),
+          colors = CardDefaults.cardColors(containerColor = PinkContainer),
+          border = BorderStroke(1.dp, PinkPrimary.copy(alpha = 0.5f)),
           modifier = Modifier.fillMaxWidth()
         ) {
           Column(modifier = Modifier.padding(16.dp)) {
@@ -1091,7 +1034,7 @@ fun EmergencySosFeedView(
             ) {
               Surface(color = SafetyRedPrimary, shape = RoundedCornerShape(6.dp)) {
                 Text(
-                  text = "🚨 LIVE SOS #${alert.id}",
+                  text = "LIVE SOS #${alert.id}",
                   color = Color.White,
                   style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                   modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1116,7 +1059,7 @@ fun EmergencySosFeedView(
               color = SafetyRedDark
             )
             Text(
-              text = "📍 Location: ${alert.locationName}",
+              text = "Location: ${alert.locationName}",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurface
             )
@@ -1166,7 +1109,7 @@ fun EmergencySosFeedView(
                 modifier = Modifier.weight(1.2f),
                 colors = ButtonDefaults.buttonColors(containerColor = SafeGreenPrimary)
               ) {
-                Text(text = if (isBangla) "🙋‍♀️ রেসপন্ড" else "🙋‍♀️ Respond", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+                Text(text = if (isBangla) "রেসপন্ড" else "Respond", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
               }
             }
           }
@@ -1403,12 +1346,12 @@ fun SafeZonesView(
         FilterChip(
           selected = selectedFilter == "SAFE",
           onClick = { onFilterChange("SAFE") },
-          label = { Text(if (isBangla) "🛡️ নিরাপদ জোন (৮০%+)" else "🛡️ Safe Zones (80%+)") }
+          label = { Text(if (isBangla) "নিরাপদ জোন (৮০%+)" else "Safe Zones (80%+)") }
         )
         FilterChip(
           selected = selectedFilter == "CAUTION",
           onClick = { onFilterChange("CAUTION") },
-          label = { Text(if (isBangla) "⚠️ সতর্কতা জোন" else "⚠️ Caution Zones") }
+          label = { Text(if (isBangla) "সতর্কতা জোন" else "Caution Zones") }
         )
       }
     }
@@ -1449,7 +1392,7 @@ fun SafeZonesView(
           Spacer(modifier = Modifier.height(6.dp))
 
           Text(
-            text = "💡 Lighting: ${report.lightingRating}/5.0 • 👮 Police Patrol: ${report.policePatrolRating}/5.0 • 👥 Crowd: ${if (isBangla) report.crowdDensityBn else report.crowdDensity}",
+            text = "Lighting: ${report.lightingRating}/5.0 • Police Patrol: ${report.policePatrolRating}/5.0 • Crowd: ${if (isBangla) report.crowdDensityBn else report.crowdDensity}",
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant
           )
@@ -1458,7 +1401,7 @@ fun SafeZonesView(
           if (!tip.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-              text = "📌 $tip",
+              text = "Tip: $tip",
               style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, fontWeight = FontWeight.Medium),
               color = if (report.isCautionZone) SafetyRedDark else MaterialTheme.colorScheme.onSurface
             )
@@ -1505,7 +1448,7 @@ fun ReplyBottomSheet(
       ) {
         Column(modifier = Modifier.weight(1f)) {
           Text(
-            text = if (isBangla) "💬 আলোচনা ও পরামর্শ থ্রেড" else "💬 Messenger Discussion Thread",
+            text = if (isBangla) "আলোচনা ও পরামর্শ থ্রেড" else "Messenger Discussion Thread",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = PinkPrimaryDark)
           )
           Text(
@@ -1695,8 +1638,8 @@ fun CreatePostDialog(
         )
         if (isOffline) {
           Text(
-            text = if (isBangla) "📡 অফলাইন মোড: পোস্টটি লোকালি সেভ থাকবে ও পরে সিঙ্ক হবে"
-            else "📡 Offline Mode: Will be saved locally & auto-synced",
+            text = if (isBangla) "অফলাইন মোড: পোস্টটি লোকালি সেভ থাকবে ও পরে সিঙ্ক হবে"
+            else "Offline Mode: Will be saved locally & auto-synced",
             style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFD97706), fontSize = 11.sp)
           )
         }
@@ -1789,7 +1732,7 @@ fun CreatePostDialog(
           ) {
             Column(modifier = Modifier.weight(1f)) {
               Text(
-                text = if (isBangla) "🔒 নাম গোপন রাখুন (Anonymous)" else "🔒 Post Anonymously",
+                text = if (isBangla) "নাম গোপন রাখুন (Anonymous)" else "Post Anonymously",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold)
               )
               Text(
@@ -1868,7 +1811,7 @@ fun CrowdsourceReportDialog(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.SpaceBetween
         ) {
-          Text(text = if (isBangla) "⚠️ ঝুঁকিপূর্ণ এলাকা?" else "⚠️ Caution Area?", style = MaterialTheme.typography.bodySmall)
+          Text(text = if (isBangla) "ঝুঁকিপূর্ণ এলাকা?" else "Caution Area?", style = MaterialTheme.typography.bodySmall)
           Switch(checked = isCaution, onCheckedChange = { isCaution = it })
         }
 

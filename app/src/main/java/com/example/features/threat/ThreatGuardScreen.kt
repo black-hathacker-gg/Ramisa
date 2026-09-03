@@ -138,7 +138,7 @@ fun ThreatGuardScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(rememberScrollState())
         .padding(horizontal = 20.dp),
@@ -425,7 +425,7 @@ fun ThreatGuardScreen(
               shape = RoundedCornerShape(10.dp),
               colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary)
             ) {
-              Text("🗣️ \"বাঁচাও!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+              Text("\"বাঁচাও!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
 
             Button(
@@ -434,7 +434,7 @@ fun ThreatGuardScreen(
               shape = RoundedCornerShape(10.dp),
               colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-              Text("🗣️ \"Help Me!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+              Text("\"Help Me!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
           }
         }

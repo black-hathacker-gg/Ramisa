@@ -134,7 +134,7 @@ object ShakeDetectorManager : SensorEventListener {
 
     private fun onVigorousShakeDetected() {
         val context = appContext ?: return
-        Log.w(TAG, "🚨 VIGOROUS SHAKE DETECTED! Triggering Emergency SOS & Dispatching SMS!")
+        Log.w(TAG, "VIGOROUS SHAKE DETECTED! Triggering Emergency SOS & Dispatching SMS!")
 
         // 1. Trigger haptic vibration feedback
         vibratePhone(context)

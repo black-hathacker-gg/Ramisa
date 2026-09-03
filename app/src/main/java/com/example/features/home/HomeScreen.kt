@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -136,7 +138,6 @@ fun HomeScreen(
   onNavigateToCommunitySafety: () -> Unit = {},
   onNavigateToHardwareTrigger: () -> Unit = {},
   onNavigateToMeshNetwork: () -> Unit = {},
-  onNavigateToVault: () -> Unit = {},
   onNavigateToStealthMode: () -> Unit = {},
   onNavigateToSirenStrobe: () -> Unit = {},
   onNavigateToRideSafety: () -> Unit = {},
@@ -180,7 +181,9 @@ fun HomeScreen(
   ) {
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
+        .statusBarsPadding()
+        .navigationBarsPadding()
         .verticalScroll(scrollState)
         .padding(horizontal = 18.dp, vertical = 14.dp),
       horizontalAlignment = Alignment.CenterHorizontally
@@ -217,17 +220,18 @@ fun HomeScreen(
             ) {
               Box(
                 modifier = Modifier
-                  .size(44.dp)
+                  .size(46.dp)
                   .clip(CircleShape)
                   .background(Color.White)
-                  .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                  .border(1.5.dp, Color.White.copy(alpha = 0.9f), CircleShape),
                 contentAlignment = Alignment.Center
               ) {
-                androidx.compose.material3.Icon(
-                  imageVector = Icons.Default.Shield,
-                  contentDescription = "RAMISA Logo",
-                  tint = MaterialTheme.colorScheme.primary,
-                  modifier = Modifier.size(26.dp)
+                Image(
+                  painter = painterResource(id = R.drawable.img_app_logo),
+                  contentDescription = "RAMISA Official Logo",
+                  modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
                 )
               }
               Column(
@@ -265,7 +269,7 @@ fun HomeScreen(
                   .testTag("btn_language_toggle")
               ) {
                 Text(
-                  text = if (isBangla) "🇧🇩 বাং" else "🇬🇧 EN",
+                  text = if (isBangla) "বাং" else "EN",
                   style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp
@@ -335,8 +339,8 @@ fun HomeScreen(
               )
               Spacer(modifier = Modifier.width(8.dp))
               Text(
-                text = if (isBangla) "🚨 ফোন ৩ বার ঝাঁকালে (Shake) অটোমেটিক SOS ও লোকেশন SMS যাবে" 
-                       else "🚨 Shake device 3x to auto trigger SOS & Fused GPS SMS",
+                text = if (isBangla) "ফোন ৩ বার ঝাঁকালে (Shake) অটোমেটিক SOS ও লোকেশন SMS যাবে" 
+                       else "Shake device 3x to auto trigger SOS & Fused GPS SMS",
                 style = MaterialTheme.typography.bodySmall.copy(
                   fontWeight = FontWeight.SemiBold,
                   fontSize = 11.sp
@@ -474,7 +478,7 @@ fun HomeScreen(
             Column {
               if (activeCommunitySosCount > 0 && latestSosAlert != null) {
                 Text(
-                  text = if (isBangla) "🚨 জরুরি অ্যালার্ট: ${latestSosAlert.victimName}" else "🚨 CRISIS: ${latestSosAlert.victimName} SOS!",
+                  text = if (isBangla) "জরুরি অ্যালার্ট: ${latestSosAlert.victimName}" else "CRISIS: ${latestSosAlert.victimName} SOS!",
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black, color = SafetyRedDark)
                 )
                 Text(
@@ -490,7 +494,7 @@ fun HomeScreen(
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = PinkPrimaryDark)
                 )
                 Text(
-                  text = if (isBangla) "💬 ৩,৪৫০ বোন সংযুক্ত • ফোরাম আলোচনা ও অটোমেটিক SOS" else "💬 3,450 Sisters • Messenger Forum & Auto SOS",
+                  text = if (isBangla) "৩,৪৫০ বোন সংযুক্ত • ফোরাম আলোচনা ও অটোমেটিক SOS" else "3,450 Sisters • Messenger Forum & Auto SOS",
                   style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                   color = MaterialTheme.colorScheme.onSurfaceVariant,
                   maxLines = 1,
@@ -626,7 +630,6 @@ fun HomeScreen(
             onNavigateToHardwareTrigger = onNavigateToHardwareTrigger,
             onNavigateToMeshNetwork = onNavigateToMeshNetwork,
             onNavigateToRideSafety = onNavigateToRideSafety,
-            onNavigateToVault = onNavigateToVault,
             onNavigateToHistory = onNavigateToHistory,
             onNavigateToCommunitySafety = onNavigateToCommunitySafety,
             onNavigateToSelfDefense = onNavigateToSelfDefense,
@@ -669,7 +672,6 @@ fun HomeScreen(
             onNavigateToThreatGuard = onNavigateToThreatGuard,
             onNavigateToHardwareTrigger = onNavigateToHardwareTrigger,
             onNavigateToStealthMode = onNavigateToStealthMode,
-            onNavigateToVault = onNavigateToVault,
             onNavigateToSafetyTimer = onNavigateToSafetyTimer
           )
         }
@@ -804,7 +806,6 @@ fun OverviewSection(
   onNavigateToHardwareTrigger: () -> Unit,
   onNavigateToMeshNetwork: () -> Unit,
   onNavigateToRideSafety: () -> Unit,
-  onNavigateToVault: () -> Unit,
   onNavigateToHistory: () -> Unit,
   onNavigateToCommunitySafety: () -> Unit,
   onNavigateToSelfDefense: () -> Unit,
@@ -882,12 +883,12 @@ fun OverviewSection(
         testTag = "card_threat_guard"
       )
       FeatureCard(
-        title = "Evidence Vault",
-        subtitle = "PIN protected secure audio & photos",
-        icon = Icons.Default.Lock,
-        onClick = onNavigateToVault,
+        title = "Safety Timer",
+        subtitle = "Dead Man check-in timer",
+        icon = Icons.Default.Timer,
+        onClick = onNavigateToSafetyTimer,
         modifier = Modifier.weight(1f),
-        testTag = "card_vault"
+        testTag = "card_safety_timer"
       )
     }
 
@@ -1049,7 +1050,6 @@ fun SensorsTabSection(
   onNavigateToThreatGuard: () -> Unit,
   onNavigateToHardwareTrigger: () -> Unit,
   onNavigateToStealthMode: () -> Unit,
-  onNavigateToVault: () -> Unit,
   onNavigateToSafetyTimer: () -> Unit
 ) {
   Column(
@@ -1084,13 +1084,7 @@ fun SensorsTabSection(
         testTag = "card_hardware_sensor"
       )
     }
-    FeatureCard(
-      title = "Tamper-Proof Evidence Vault",
-      subtitle = "Encrypted audio recordings & snapshots safely locked behind emergency PIN",
-      icon = Icons.Default.Lock,
-      onClick = onNavigateToVault,
-      testTag = "card_vault_sensor"
-    )
+
   }
 }
 

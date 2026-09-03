@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,28 +72,31 @@ fun WelcomeScreen(
   ) {
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
+        .statusBarsPadding()
+        .navigationBarsPadding()
         .verticalScroll(scrollState)
         .padding(horizontal = 24.dp, vertical = 32.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.Center
+      verticalArrangement = Arrangement.Top
     ) {
       Spacer(modifier = Modifier.height(20.dp))
 
       // App Logo Badge
       Box(
         modifier = Modifier
-          .size(100.dp)
+          .size(108.dp)
           .clip(CircleShape)
           .background(Color.White)
-          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
+          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
-        androidx.compose.material3.Icon(
-          imageVector = Icons.Default.Shield,
+        Image(
+          painter = painterResource(id = R.drawable.img_app_logo),
           contentDescription = "RAMISA Safety Logo",
-          tint = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.size(54.dp)
+          modifier = Modifier
+            .size(96.dp)
+            .clip(CircleShape)
         )
       }
 

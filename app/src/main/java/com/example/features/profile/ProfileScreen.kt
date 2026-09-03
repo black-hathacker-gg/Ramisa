@@ -139,7 +139,7 @@ fun ProfileScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 8.dp),
@@ -255,7 +255,7 @@ fun ProfileScreen(
           }
         }
 
-        // 2. Emergency Safety Vault
+        // 2. Emergency Security Details
         Card(
           modifier = Modifier.fillMaxWidth(),
           shape = RoundedCornerShape(16.dp),
@@ -266,7 +266,7 @@ fun ProfileScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
           ) {
             Text(
-              text = "SAFETY VAULT DETAILS",
+              text = "EMERGENCY SECURITY DETAILS",
               style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
               color = MaterialTheme.colorScheme.primary
             )

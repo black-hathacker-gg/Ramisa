@@ -74,7 +74,7 @@ class StealthModeViewModel : ViewModel() {
       _uiState.update {
         it.copy(
           isSecretSosTriggered = true,
-          feedbackToast = "✓ Calc sync complete" // Discreet decoy message
+          feedbackToast = "Calc sync complete" // Discreet decoy message
         )
       }
       onSecretSos()

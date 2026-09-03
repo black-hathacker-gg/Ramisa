@@ -51,7 +51,6 @@ fun ToolsHubScreen(
   onNavigateToMeshNetwork: () -> Unit,
   onNavigateToHardwareTrigger: () -> Unit,
   onNavigateToStealthMode: () -> Unit,
-  onNavigateToVault: () -> Unit,
   onNavigateToHistory: () -> Unit,
   onNavigateToBatteryPing: () -> Unit,
   onNavigateToOfflineMaps: () -> Unit,
@@ -61,11 +60,10 @@ fun ToolsHubScreen(
   onNavigateToSirenStrobe: () -> Unit,
   onNavigateToSafeJourney: () -> Unit,
   onNavigateToContacts: () -> Unit,
-  onNavigateToAdmin: () -> Unit = {},
   onTriggerSos: () -> Unit
 ) {
   var selectedCategory by remember { mutableStateOf("All") }
-  val categories = listOf("All", "Legal & Rights", "Medical & Wellness", "Protection & Transit", "Security & Vault")
+  val categories = listOf("All", "Legal & Rights", "Medical & Wellness", "Protection & Transit", "Security")
 
   val tools = listOf(
     ToolItem(
@@ -143,7 +141,7 @@ fun ToolsHubScreen(
     ToolItem(
       title = "Offline Mesh Network",
       subtitle = "Zero-internet BLE SOS relay",
-      category = "Security & Vault",
+      category = "Security",
       icon = Icons.Default.Hub,
       onClick = onNavigateToMeshNetwork,
       testTag = "tool_mesh_network"
@@ -151,23 +149,16 @@ fun ToolsHubScreen(
     ToolItem(
       title = "Hardware 3x SOS",
       subtitle = "Power button & band triggers",
-      category = "Security & Vault",
+      category = "Security",
       icon = Icons.Default.FlashOn,
       onClick = onNavigateToHardwareTrigger,
       testTag = "tool_hardware_trigger"
     ),
-    ToolItem(
-      title = "Safety Vault",
-      subtitle = "Encrypted audio evidence log",
-      category = "Security & Vault",
-      icon = Icons.Default.Lock,
-      onClick = onNavigateToVault,
-      testTag = "tool_vault"
-    ),
+
     ToolItem(
       title = "Incident History",
       subtitle = "Timestamped alert records",
-      category = "Security & Vault",
+      category = "Security",
       icon = Icons.Default.History,
       onClick = onNavigateToHistory,
       testTag = "tool_history"
@@ -175,18 +166,10 @@ fun ToolsHubScreen(
     ToolItem(
       title = "Low-Battery Auto-Ping",
       subtitle = "Offline location broadcast on low battery",
-      category = "Security & Vault",
+      category = "Security",
       icon = androidx.compose.material.icons.Icons.Default.BatteryAlert,
       onClick = onNavigateToBatteryPing,
       testTag = "tool_battery_ping"
-    ),
-    ToolItem(
-      title = "Safety Control Room (Admin)",
-      subtitle = "User roster, NID/ID verify & dispatch console",
-      category = "Security & Vault",
-      icon = Icons.Default.AdminPanelSettings,
-      onClick = onNavigateToAdmin,
-      testTag = "tool_admin_panel"
     )
   )
 

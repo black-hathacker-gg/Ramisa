@@ -146,7 +146,7 @@ fun FirstAidScreen(
 
           items(topic.warnings) { warn ->
             Text(
-              text = "⚠️ $warn",
+              text = "• $warn",
               style = MaterialTheme.typography.bodySmall,
               color = Color(0xFFD32F2F)
             )
@@ -343,7 +343,7 @@ fun FirstAidScreen(
               horizontalArrangement = Arrangement.End
             ) {
               TextButton(onClick = { viewModel.selectTopic(topic) }) {
-                Text("View Full Steps ➔", color = PinkPrimary, fontWeight = FontWeight.Bold)
+                Text("View Full Steps", color = PinkPrimary, fontWeight = FontWeight.Bold)
               }
             }
           }

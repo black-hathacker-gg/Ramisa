@@ -138,3 +138,12 @@ data class CommunityChatMessage(
   val isSosAlert: Boolean = false,
   val timestamp: Long = System.currentTimeMillis()
 )
+
+data class SafetyBroadcastMessage(
+  val id: String,
+  val title: String,
+  val message: String,
+  val priority: String = "HIGH",
+  val timestamp: String = "",
+  val targetArea: String = "Dhaka City"
+)

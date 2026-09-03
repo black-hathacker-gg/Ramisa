@@ -164,7 +164,7 @@ fun DangerMapScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
     ) {
@@ -228,14 +228,14 @@ fun DangerMapScreen(
           FilterChip(
             selected = uiState.selectedRiskFilter == RiskLevel.CRITICAL_DANGER,
             onClick = { viewModel.setRiskFilter(RiskLevel.CRITICAL_DANGER) },
-            label = { Text("🔴 Critical Danger", fontSize = 11.sp) }
+            label = { Text("Critical Danger", fontSize = 11.sp) }
           )
         }
         item {
           FilterChip(
             selected = uiState.selectedRiskFilter == RiskLevel.HIGH_RISK,
             onClick = { viewModel.setRiskFilter(RiskLevel.HIGH_RISK) },
-            label = { Text("🟠 High Risk", fontSize = 11.sp) }
+            label = { Text("High Risk", fontSize = 11.sp) }
           )
         }
         item {
@@ -512,9 +512,9 @@ fun DangerMapScreen(
               ) {
                 Text(
                   text = when (zone.riskLevel) {
-                    RiskLevel.CRITICAL_DANGER -> "🚨 CRITICAL DANGER ZONE"
-                    RiskLevel.HIGH_RISK -> "⚠️ HIGH RISK AREA"
-                    RiskLevel.MODERATE_CAUTION -> "🟡 MODERATE CAUTION"
+                    RiskLevel.CRITICAL_DANGER -> "CRITICAL DANGER ZONE"
+                    RiskLevel.HIGH_RISK -> "HIGH RISK AREA"
+                    RiskLevel.MODERATE_CAUTION -> "MODERATE CAUTION"
                   },
                   style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
@@ -574,12 +574,12 @@ fun DangerMapScreen(
                   horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                   Text(
-                    text = "📊 ${zone.incidentStats}",
+                    text = "Reports: ${zone.incidentStats}",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                   )
                   Text(
-                    text = "⏰ Peak: ${zone.peakVulnerableHours}",
+                    text = "Peak: ${zone.peakVulnerableHours}",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = Color(0xFFC2410C)
                   )

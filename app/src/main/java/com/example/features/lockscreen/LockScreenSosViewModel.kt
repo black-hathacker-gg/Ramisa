@@ -26,7 +26,7 @@ data class LockScreenSosUiState(
   val offlineSmsDispatchedCount: Int = 0,
   val emergencyContacts: List<EmergencyContact> = emptyList(),
   val userPin: String = "1234",
-  val customSosMessage: String = "🚨 [RAMISA OFFLINE SOS] I am in urgent danger! My live GPS location will be attached. Please send help immediately!",
+  val customSosMessage: String = "[RAMISA OFFLINE SOS] I am in urgent danger! My live GPS location will be attached. Please send help immediately!",
   val showSuccessDialog: Boolean = false
 )
 

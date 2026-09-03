@@ -23,11 +23,11 @@ data class RideSafetyUiState(
   val feedbackMessage: String? = null
 )
 
-enum class TransportType(val label: String, val iconBengali: String) {
-  RICKSHAW("Rickshaw / Easybike (রিকশা)", "🛺"),
-  CNG("CNG Auto-Rickshaw (সিএনজি)", "🚕"),
-  BUS("Local / City Bus (বাস)", "🚌"),
-  RIDE_SHARE("Pathao / Uber Ride (রাইড)", "🚗")
+enum class TransportType(val label: String) {
+  RICKSHAW("Rickshaw / Easybike (রিকশা)"),
+  CNG("CNG Auto-Rickshaw (সিএনজি)"),
+  BUS("Local / City Bus (বাস)"),
+  RIDE_SHARE("Pathao / Uber Ride (রাইড)")
 }
 
 class RideSafetyViewModel : ViewModel() {
@@ -83,7 +83,7 @@ class RideSafetyViewModel : ViewModel() {
           s.copy(
             rideDurationMinutes = newDur,
             isDeviationAlertActive = deviation,
-            feedbackMessage = if (deviation) "⚠️ Overdue Arrival Alert: Exceeded estimated ride time!" else s.feedbackMessage
+            feedbackMessage = if (deviation) "Overdue Arrival Alert: Exceeded estimated ride time!" else s.feedbackMessage
           )
         }
       }
@@ -105,7 +105,7 @@ class RideSafetyViewModel : ViewModel() {
     _uiState.update {
       it.copy(
         isDeviationAlertActive = true,
-        feedbackMessage = "⚠️ Route Deviation Detected! Vehicle moved off standard path."
+        feedbackMessage = "Route Deviation Detected! Vehicle moved off standard path."
       )
     }
   }

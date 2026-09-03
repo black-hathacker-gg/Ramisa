@@ -107,7 +107,7 @@ fun SafeJourneyScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 12.dp)
@@ -165,7 +165,7 @@ fun SafeJourneyScreen(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-              text = "${uiState.startLocation} ➔ ${uiState.destination}",
+              text = "${uiState.startLocation} to ${uiState.destination}",
               style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
               color = SafeGreenDark
             )

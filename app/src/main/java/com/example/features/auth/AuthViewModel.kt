@@ -45,12 +45,15 @@ class AuthViewModel(
 
   init {
     viewModelScope.launch {
-      // Attempt to restore session on init
-      val restored = authRepository.restoreSession()
-      _uiState.update { it.copy(isAuthenticated = restored) }
+      try {
+        val restored = authRepository.restoreSession()
+        _uiState.update { it.copy(isAuthenticated = restored) }
       
-      authRepository.isAuthenticated.collect { authed ->
-        _uiState.update { it.copy(isAuthenticated = authed) }
+        authRepository.isAuthenticated.collect { authed ->
+          _uiState.update { it.copy(isAuthenticated = authed) }
+        }
+      } catch (e: Exception) {
+        // Safe fallback
       }
     }
   }

@@ -64,11 +64,11 @@ object CommunityManager {
               CentralCommunityPost(
                   id = msg.id ?: UUID.randomUUID().toString(),
                   category = if (msg.isSosAlert) CommunityTopicCategory.EMERGENCY_SOS else CommunityTopicCategory.SISTERHOOD_GENERAL,
-                  authorName = if (msg.isSosAlert) "🚨 SOS BROADCAST: ${msg.userName}" else msg.userName,
+                  authorName = if (msg.isSosAlert) "SOS BROADCAST: ${msg.userName}" else msg.userName,
                   authorRole = if (msg.isSosAlert) "Emergency Dispatch" else "Verified Member",
                   authorPhone = "Protected",
                   isAnonymous = false,
-                  title = if (msg.isSosAlert) "🚨 CRISIS SOS: ${msg.userName} needs immediate help!" else "Community Update",
+                  title = if (msg.isSosAlert) "CRISIS SOS: ${msg.userName} needs immediate help!" else "Community Update",
                   content = msg.message,
                   locationTag = "Live Area",
                   timestamp = System.currentTimeMillis(), // We could parse createdAt but this is easier for now
@@ -92,10 +92,7 @@ object CommunityManager {
           // Merge keeping local replies and states, but for simplicity we just replace the ones that come from Supabase.
           // Or even simpler: we just update the _communityPosts to include these.
           _communityPosts.update { currentList ->
-              val localOnly = currentList.filter { !it.id.contains("-") && !it.id.contains("post_") } // rough heuristic, let's just keep our seeded ones and supabase
-              val seeded = initialPosts
-              
-              val all = (seeded + mappedPosts).distinctBy { it.id }
+              val all = (currentList + mappedPosts).distinctBy { it.id }
               all.sortedByDescending { it.timestamp }
           }
         } catch (e: Exception) {
@@ -166,7 +163,7 @@ object CommunityManager {
       authorPhone = "+880 1812-445566",
       isAnonymous = false,
       title = "Steps to Take if Someone is Threatening or Stalking on Facebook/WhatsApp",
-      content = "Important legal guideline for all sisters:\n1. Do NOT delete threatening chats or audio—take clear screenshots showing phone numbers/URLs.\n2. Store screenshots in Ramisa's Encrypted Evidence Vault (with automatic EXIF time/GPS stamp).\n3. You can lodge an official complaint via Cyber Crime Investigation Division (CID) or 999 without having to visit the police station alone.\nFeel free to ask your questions below, I am here to help.",
+      content = "Important legal guideline for all sisters:\n1. Do NOT delete threatening chats or audio—take clear screenshots showing phone numbers/URLs.\n2. Back up screenshots securely to your private device storage.\n3. You can lodge an official complaint via Cyber Crime Investigation Division (CID) or 999 without having to visit the police station alone.\nFeel free to ask your questions below, I am here to help.",
       locationTag = "Dhaka / Bangladesh",
       timestamp = System.currentTimeMillis() - 1000 * 60 * 180,
       supportCount = 112,
@@ -200,7 +197,7 @@ object CommunityManager {
       authorRole = "Women's Health Consultant",
       authorPhone = "+880 1913-776655",
       isAnonymous = false,
-      title = "🏥 Managing Severe Dysmenorrhea (Period Cramps) during Work & Commute",
+      title = "Managing Severe Dysmenorrhea (Period Cramps) during Work & Commute",
       content = "For sisters who experience debilitating pain during travel or university:\n1. Keep a thermos with warm ginger water and magnesium-rich snacks.\n2. Avoid caffeine on the first 2 days.\n3. If pain is unbearable, check with a gynecologist for endometriosis screening.\nShare your self-care remedies or ask health questions comfortably here.",
       locationTag = "Health Forum",
       timestamp = System.currentTimeMillis() - 1000 * 60 * 320,
@@ -215,7 +212,7 @@ object CommunityManager {
       authorRole = "Verified Member",
       authorPhone = "+880 1614-223344",
       isAnonymous = false,
-      title = "🚶‍♀️ Metro Commuters: Evening Group from Agargaon to Mirpur 10",
+      title = "Metro Commuters: Evening Group from Agargaon to Mirpur 10",
       content = "I take the metro daily at 8:15 PM from Agargaon to Mirpur 10. Any other sisters travelling on the same train? Let's board the Women's Dedicated Coach together for a safe and comfortable ride!",
       locationTag = "Agargaon Metro Station",
       timestamp = System.currentTimeMillis() - 1000 * 60 * 140,
@@ -369,7 +366,7 @@ object CommunityManager {
   }
 
   /**
-   * Toggle reaction Support ("❤️ পাশে আছি") or Helpful ("💡 সহায়ক")
+   * Toggle reaction Support or Helpful
    */
   fun toggleSupportReaction(postId: String) {
     _communityPosts.update { list ->
@@ -403,7 +400,7 @@ object CommunityManager {
     victimName: String? = null,
     victimPhone: String? = null,
     victimBloodGroup: String? = null,
-    triggerTypeLabel: String = "🚨 Urgent Emergency SOS Trigger",
+    triggerTypeLabel: String = "Urgent Emergency SOS Trigger",
     location: GeoLocation = GeoLocation(23.7258, 90.3976, "Curzon Hall, Dhaka University"),
     note: String = ""
   ): CommunitySosAlert {
@@ -433,7 +430,7 @@ object CommunityManager {
       status = "CRITICAL_ACTIVE"
     )
 
-    Log.w(TAG, "🚨 BROADCASTING SOS TO CENTRAL COMMUNITY: $name at ${location.addressName}")
+    Log.w(TAG, "BROADCASTING SOS TO CENTRAL COMMUNITY: $name at ${location.addressName}")
 
     // Update active alerts list
     _activeSosAlerts.update { listOf(alert) + it }
@@ -442,11 +439,11 @@ object CommunityManager {
     val sosPost = CentralCommunityPost(
       id = "post_sos_${alert.id}",
       category = CommunityTopicCategory.EMERGENCY_SOS,
-      authorName = "🚨 SOS BROADCAST: $name",
+      authorName = "SOS BROADCAST: $name",
       authorRole = "Emergency Dispatch",
       authorPhone = phone,
       isAnonymous = false,
-      title = "🚨 CRISIS SOS: $name needs immediate help!",
+      title = "CRISIS SOS: $name needs immediate help!",
       content = "Triggered via [$triggerTypeLabel] at ${location.addressName}.\nBlood Group: $blood | Phone: $phone\nLive Location: $mapUrl\nNote: ${alert.customNote}",
       locationTag = location.addressName,
       timestamp = System.currentTimeMillis(),

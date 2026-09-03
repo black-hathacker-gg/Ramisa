@@ -14,7 +14,6 @@ sealed class Screen(val route: String) {
   data object Emergency : Screen("emergency")
   data object History : Screen("history")
   data object Settings : Screen("settings")
-  data object Vault : Screen("vault")
   data object SafePlaces : Screen("safe_places")
   data object FakeCall : Screen("fake_call")
   data object SafetyGuide : Screen("safety_guide")
@@ -34,5 +33,4 @@ sealed class Screen(val route: String) {
   data object FirstAid : Screen("first_aid")
   data object LockScreenSos : Screen("lock_screen_sos")
   data object DangerMap : Screen("danger_map")
-  data object AdminPanel : Screen("admin_panel")
 }

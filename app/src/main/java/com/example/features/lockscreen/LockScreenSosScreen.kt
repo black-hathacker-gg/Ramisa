@@ -123,7 +123,7 @@ fun LockScreenSosScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
         .padding(16.dp),
@@ -284,7 +284,7 @@ fun LockScreenSosScreen(
 
                   Spacer(modifier = Modifier.height(6.dp))
                   Text(
-                    text = "🔒 Phone Locked • 1-Tap Offline SOS Ready",
+                    text = "Phone Locked • 1-Tap Offline SOS Ready",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextPrimaryLight, fontWeight = FontWeight.SemiBold)
                   )
                   Text(
@@ -314,7 +314,7 @@ fun LockScreenSosScreen(
                       Icon(imageVector = Icons.Default.ElectricBolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                       Spacer(modifier = Modifier.width(4.dp))
                       Text(
-                        text = "🚨 TRIGGER SOS",
+                        text = "TRIGGER SOS",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
                       )
                     }
@@ -345,7 +345,7 @@ fun LockScreenSosScreen(
 
               Spacer(modifier = Modifier.height(14.dp))
               Text(
-                text = "👆 Tap '🚨 TRIGGER SOS' above to test the lockscreen dispatch",
+                text = "Tap 'TRIGGER SOS' above to test the lockscreen dispatch",
                 style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF64748B), fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
               )
             }

@@ -73,8 +73,6 @@ fun SettingsScreen(
   onNavigateBack: () -> Unit,
   onLogout: () -> Unit,
   onNavigateToProfile: () -> Unit = {},
-  onNavigateToVault: () -> Unit = {},
-  onNavigateToAdmin: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -110,7 +108,7 @@ fun SettingsScreen(
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 12.dp),
@@ -173,50 +171,6 @@ fun SettingsScreen(
         }
       }
 
-      // Encrypted Vault Quick Access Card
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clickable { onNavigateToVault() }
-          .testTag("settings_vault_card"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-      ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-              imageVector = Icons.Default.FolderSpecial,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-              Text(
-                text = "Encrypted Safety Vault",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-              )
-              Text(
-                text = "Access incident recordings & evidence logs",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-              )
-            }
-          }
-
-          Text(
-            text = "OPEN",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary
-          )
-        }
-      }
 
       // Language Card
       Card(
@@ -405,86 +359,6 @@ fun SettingsScreen(
             )
           }
 
-          Spacer(modifier = Modifier.height(10.dp))
-          Text(
-            text = "Tip: Enter '9999' or reversed PIN in the Vault to silently open Decoy Mode under coercion.",
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-            color = MaterialTheme.colorScheme.primary
-          )
-        }
-      }
-
-      // Master SuperAdmin & Safety Control Room Console
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clickable { onNavigateToAdmin() }
-          .testTag("card_superadmin_portal"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-          containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-        ),
-        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
-      ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Row(
-            modifier = Modifier.weight(1f),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Surface(
-              shape = CircleShape,
-              color = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(42.dp)
-            ) {
-              Box(contentAlignment = Alignment.Center) {
-                Icon(
-                  imageVector = Icons.Default.Security,
-                  contentDescription = null,
-                  tint = Color.White,
-                  modifier = Modifier.size(24.dp)
-                )
-              }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                  text = "👑 সুপার অ্যাডমিন ও কন্ট্রোল প্যানেল",
-                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Surface(
-                  shape = RoundedCornerShape(4.dp),
-                  color = MaterialTheme.colorScheme.primary
-                ) {
-                  Text(
-                    text = "MASTER PIN",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp, fontWeight = FontWeight.Bold),
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                  )
-                }
-              }
-              Text(
-                text = "সকল ইউজারের ডাটা, NID/আইডি ভেরিফিকেশন, অভিভাবক কন্টাক্ট ও CSV এক্সপোর্ট",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-              )
-            }
-          }
-
-          Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.primary
-          )
         }
       }
 

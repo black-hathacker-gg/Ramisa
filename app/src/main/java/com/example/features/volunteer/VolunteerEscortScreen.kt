@@ -211,7 +211,7 @@ fun VolunteerEscortScreen(
               )
 
               Text(
-                text = "Meeting at: ${uiState.pickupLocation} ➔ ${uiState.destination}",
+                text = "Meeting at: ${uiState.pickupLocation} to ${uiState.destination}",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = PinkPrimaryDark
               )

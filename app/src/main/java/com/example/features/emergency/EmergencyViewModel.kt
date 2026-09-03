@@ -156,7 +156,7 @@ class EmergencyViewModel(
           current.copy(
             isSmsSent = false,
             isSmsPermissionGranted = false,
-            smsStatusSummary = "⚠️ SMS Permission Required to send offline SMS via SIM card."
+            smsStatusSummary = "SMS Permission Required to send offline SMS via SIM card."
           )
         }
       }

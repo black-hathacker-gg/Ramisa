@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,28 +76,31 @@ fun LoginScreen(
   ) {
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
+        .statusBarsPadding()
+        .navigationBarsPadding()
         .verticalScroll(scrollState)
         .padding(horizontal = 24.dp, vertical = 24.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.Center
+      verticalArrangement = Arrangement.Top
     ) {
       Spacer(modifier = Modifier.height(16.dp))
 
       // Logo Icon
       Box(
         modifier = Modifier
-          .size(80.dp)
+          .size(88.dp)
           .clip(CircleShape)
           .background(Color.White)
-          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f), CircleShape),
+          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
-        androidx.compose.material3.Icon(
-          imageVector = Icons.Default.Shield,
+        Image(
+          painter = painterResource(id = R.drawable.img_app_logo),
           contentDescription = "RAMISA Logo",
-          tint = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.size(44.dp)
+          modifier = Modifier
+            .size(76.dp)
+            .clip(CircleShape)
         )
       }
 

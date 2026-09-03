@@ -185,7 +185,7 @@ fun StealthModeScreen(
               color = PinkContainer
             ) {
               Text(
-                text = "✓ Background SOS Signal Sent",
+                text = "Background SOS Signal Sent",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = PinkPrimaryDark,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)

@@ -43,6 +43,9 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShareLocation
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material.icons.filled.Sms
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -76,6 +79,9 @@ import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
 import com.example.ui.theme.SafetyRedLight
 import com.example.ui.theme.SafetyRedPrimary
+import com.example.ui.theme.PinkPrimary
+import com.example.ui.theme.PinkContainer
+import com.example.ui.theme.OnPinkContainer
 
 @Composable
 fun EmergencyScreen(
@@ -125,11 +131,11 @@ fun EmergencyScreen(
 
   Surface(
     modifier = modifier.fillMaxSize(),
-    color = Color(0xFF240618) // Velvet plum-pink emergency canvas
+    color = MaterialTheme.colorScheme.background // Pink and white theme background
   ) {
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 24.dp),
       horizontalAlignment = Alignment.CenterHorizontally
@@ -142,14 +148,14 @@ fun EmergencyScreen(
           .size(100.dp)
           .scale(pulseScale)
           .clip(CircleShape)
-          .background(SafetyRedPrimary.copy(alpha = 0.25f))
-          .border(2.dp, SafetyRedPrimary, CircleShape),
+          .background(PinkPrimary.copy(alpha = 0.15f))
+          .border(2.dp, PinkPrimary, CircleShape),
         contentAlignment = Alignment.Center
       ) {
         Icon(
           imageVector = Icons.Default.Warning,
           contentDescription = "Emergency Alert",
-          tint = SafetyRedLight,
+          tint = PinkPrimary,
           modifier = Modifier.size(48.dp)
         )
       }
@@ -162,14 +168,14 @@ fun EmergencyScreen(
           fontWeight = FontWeight.Black,
           letterSpacing = 1.5.sp
         ),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.testTag("emergency_title")
       )
 
       Text(
         text = "Alert ID: ${uiState.emergencyEventId} • Active for ${uiState.elapsedSeconds}s",
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-        color = SafetyRedLight
+        color = PinkPrimary
       )
 
       Spacer(modifier = Modifier.height(20.dp))
@@ -179,7 +185,7 @@ fun EmergencyScreen(
         Card(
           modifier = Modifier.fillMaxWidth(),
           shape = RoundedCornerShape(14.dp),
-          colors = CardDefaults.cardColors(containerColor = Color(0xFF5C1D1D))
+          colors = CardDefaults.cardColors(containerColor = PinkContainer)
         ) {
           Row(
             modifier = Modifier
@@ -190,18 +196,18 @@ fun EmergencyScreen(
             Icon(
               imageVector = Icons.Default.Warning,
               contentDescription = null,
-              tint = Color(0xFFFF8A80),
+              tint = PinkPrimary,
               modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
               Text(
                 text = "SMS Permission Needed",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = Color.White)
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = OnPinkContainer)
               )
               Text(
                 text = "Grant SMS permission so emergency SMS can be sent via SIM without internet.",
-                style = MaterialTheme.typography.bodySmall.copy(color = Color(0xFFFFCDD2))
+                style = MaterialTheme.typography.bodySmall.copy(color = OnPinkContainer.copy(alpha = 0.8f))
               )
             }
             Spacer(modifier = Modifier.width(8.dp))
@@ -214,7 +220,7 @@ fun EmergencyScreen(
                   )
                 )
               },
-              colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary),
+              colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
               shape = RoundedCornerShape(10.dp)
             ) {
               Text("Grant", fontSize = 12.sp)
@@ -224,11 +230,117 @@ fun EmergencyScreen(
         Spacer(modifier = Modifier.height(14.dp))
       }
 
+      // SMS DISPATCH CONFIRMATION PROMPT (Prominent Green Banner with animated Checkmark)
+      if (uiState.isSmsSent && uiState.isSmsPermissionGranted) {
+        Card(
+          modifier = Modifier
+            .fillMaxWidth()
+            .testTag("sms_success_confirmation_card"),
+          shape = RoundedCornerShape(16.dp),
+          colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+          border = BorderStroke(1.5.dp, SafeGreenPrimary)
+        ) {
+          Column(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            Row(
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Box(
+                modifier = Modifier
+                  .size(36.dp)
+                  .clip(CircleShape)
+                  .background(SafeGreenPrimary),
+                contentAlignment = Alignment.Center
+              ) {
+                Icon(
+                  imageVector = Icons.Default.CheckCircle,
+                  contentDescription = "Success",
+                  tint = Color.White,
+                  modifier = Modifier.size(24.dp)
+                )
+              }
+              Spacer(modifier = Modifier.width(12.dp))
+              Column(modifier = Modifier.weight(1f)) {
+                Text(
+                  text = "SMS Successfully Dispatched!",
+                  style = MaterialTheme.typography.titleSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = SafeGreenDark
+                  )
+                )
+                Text(
+                  text = "অফলাইন SMS সফলভাবে অভিভাবকদের কাছে পাঠানো হয়েছে",
+                  style = MaterialTheme.typography.bodySmall.copy(
+                    color = Color.DarkGray,
+                    fontSize = 11.sp
+                  )
+                )
+              }
+            }
+
+            if (uiState.contactedNames.isNotEmpty()) {
+              Text(
+                text = "Dispatched to ${uiState.contactedNames.size} Emergency Contact(s):",
+                style = MaterialTheme.typography.labelSmall.copy(
+                  color = SafeGreenDark,
+                  fontWeight = FontWeight.SemiBold
+                )
+              )
+              LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+              ) {
+                items(uiState.contactedNames) { name ->
+                  Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, SafeGreenPrimary.copy(alpha = 0.6f))
+                  ) {
+                    Row(
+                      modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = SafeGreenPrimary,
+                        modifier = Modifier.size(14.dp)
+                      )
+                      Spacer(modifier = Modifier.width(6.dp))
+                      Text(
+                        text = name,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                          fontWeight = FontWeight.Bold,
+                          color = SafeGreenDark,
+                          fontSize = 12.sp
+                        )
+                      )
+                    }
+                  }
+                }
+              }
+            }
+
+            Text(
+              text = "SIM Direct Network (Offline) • Live GPS Map Link & Battery Info Attached",
+              style = MaterialTheme.typography.bodySmall.copy(
+                color = Color.DarkGray,
+                fontSize = 11.sp
+              )
+            )
+          }
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+      }
+
       // Status Info Card
       Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF381028))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
       ) {
         Column(
           modifier = Modifier
@@ -241,14 +353,14 @@ fun EmergencyScreen(
             Icon(
               imageVector = Icons.Default.LocationOn,
               contentDescription = null,
-              tint = SafetyRedLight,
+              tint = PinkPrimary,
               modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
               text = uiState.locationLabel,
               style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-              color = Color.White
+              color = MaterialTheme.colorScheme.onSurface
             )
           }
 
@@ -269,7 +381,7 @@ fun EmergencyScreen(
               Text(
                 text = uiState.smsStatusSummary,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.9f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
           }
@@ -286,7 +398,7 @@ fun EmergencyScreen(
             Text(
               text = "GPS Coordinates: ${uiState.location.latitude}, ${uiState.location.longitude}",
               style = MaterialTheme.typography.bodySmall,
-              color = Color.White.copy(alpha = 0.8f)
+              color = MaterialTheme.colorScheme.onSurfaceVariant
             )
           }
 
@@ -295,14 +407,14 @@ fun EmergencyScreen(
             Icon(
               imageVector = Icons.Default.Lock,
               contentDescription = null,
-              tint = Color(0xFFFFB74D),
+              tint = PinkPrimary,
               modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
               text = "Lock Screen Guard & Hardware Trigger Active",
               style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-              color = Color(0xFFFFCC80)
+              color = MaterialTheme.colorScheme.onSurface
             )
           }
         }
@@ -445,7 +557,7 @@ fun EmergencyScreen(
       // Instant WhatsApp Emergency Broadcast Share
       Button(
         onClick = {
-          val sosMsg = "🚨 [RAMISA SOS ALERT] আমি বিপদে আছি! My live GPS Location: https://maps.google.com/?q=${uiState.location.latitude},${uiState.location.longitude} - Please send help immediately!"
+          val sosMsg = "[RAMISA SOS ALERT] আমি বিপদে আছি! My live GPS Location: https://maps.google.com/?q=${uiState.location.latitude},${uiState.location.longitude} - Please send help immediately!"
           val sendIntent = Intent().apply {
             action = Intent.ACTION_SEND
             putExtra(Intent.EXTRA_TEXT, sosMsg)

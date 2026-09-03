@@ -1,6 +1,8 @@
 package com.example.core.sms
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -9,6 +11,7 @@ import android.os.Build
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
 import com.example.core.location.EmergencyLocationManager
 import com.example.core.service.FusedLocationBackgroundService
 import com.example.data.local.AppDatabase
@@ -18,6 +21,9 @@ import com.example.domain.model.EmergencyContact
 import com.example.domain.model.GeoLocation
 import com.example.domain.model.UserProfile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -38,6 +44,13 @@ data class SmsDispatchReport(
 object EmergencySmsDispatcher {
 
     private const val TAG = "EmergencySmsDispatcher"
+
+    private val _lastDispatchEvent = MutableStateFlow<SmsDispatchReport?>(null)
+    val lastDispatchEvent: StateFlow<SmsDispatchReport?> = _lastDispatchEvent.asStateFlow()
+
+    fun clearLastDispatchEvent() {
+        _lastDispatchEvent.value = null
+    }
 
     suspend fun dispatchEmergencySms(
         context: Context,
@@ -61,8 +74,6 @@ object EmergencySmsDispatcher {
             Log.e(TAG, "Error querying contacts from DB: ${e.message}")
             emptyList()
         }
-
-
 
         val primaryPhone = contacts.firstOrNull()?.phone
 
@@ -101,7 +112,7 @@ object EmergencySmsDispatcher {
         }
 
         // 4. Construct SMS Message Body with Fused Location link
-        val messageBody = "🚨 [RAMISA SOS ALERT] আমি বিপদে আছি! $userName$bloodGroup needs immediate help!$customNoteText$batteryLevel Live GPS: $mapLink (at $timeStr, ±${String.format("%.0f", targetLocation.accuracyMeters)}m). Please call 999 or rescue immediately!"
+        val messageBody = "[RAMISA SOS ALERT] আমি বিপদে আছি! $userName$bloodGroup needs immediate help!$customNoteText$batteryLevel Live GPS: $mapLink (at $timeStr, ±${String.format("%.0f", targetLocation.accuracyMeters)}m). Please call 999 or rescue immediately!"
 
         // 5. Check SEND_SMS Permission
         val hasSmsPermission = ActivityCompat.checkSelfPermission(
@@ -123,7 +134,7 @@ object EmergencySmsDispatcher {
             )
         }
 
-        // 6. Send Multipart SMS via SIM Card to ALL contacts
+        // 6. Send Multipart SMS via SIM Card to ALL contacts with robust fallback
         val successNames = mutableListOf<String>()
         val failedNames = mutableListOf<String>()
 
@@ -186,7 +197,39 @@ object EmergencySmsDispatcher {
             failedNames.add("SmsManager Error: ${e.message}")
         }
 
-        SmsDispatchReport(
+        // Show System Status Bar Notification on successful dispatch
+        if (successNames.isNotEmpty()) {
+            try {
+                val notifManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                val channelId = "ramisa_sms_dispatch_channel"
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && notifManager != null) {
+                    val channel = NotificationChannel(
+                        channelId,
+                        "Emergency SMS Dispatch Confirmations",
+                        NotificationManager.IMPORTANCE_HIGH
+                    ).apply {
+                        description = "Shows confirmation when Emergency SMS is dispatched via SIM"
+                        enableVibration(true)
+                    }
+                    notifManager.createNotificationChannel(channel)
+                }
+
+                val notif = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle("RAMISA: Emergency SMS Dispatched")
+                    .setContentText("Offline SMS successfully sent to ${successNames.size} guardians: ${successNames.joinToString(", ")}")
+                    .setStyle(NotificationCompat.BigTextStyle().bigText("Emergency SMS with live Fused GPS location has been dispatched via SIM card to:\n${successNames.joinToString("\n• ")}"))
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setAutoCancel(true)
+                    .build()
+
+                notifManager?.notify(1099, notif)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error posting SMS confirmation notification: ${e.message}")
+            }
+        }
+
+        val finalReport = SmsDispatchReport(
             totalAttempted = contacts.size,
             successCount = successNames.size,
             successfulContactNames = successNames,
@@ -196,6 +239,8 @@ object EmergencySmsDispatcher {
             primaryContactPhone = primaryPhone,
             locationUsed = targetLocation
         )
+        _lastDispatchEvent.value = finalReport
+        finalReport
     }
 
     /**
@@ -251,7 +296,7 @@ object EmergencySmsDispatcher {
             val userName = userProfile?.name ?: "RAMISA User"
             val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
 
-            val message = "🟢 [RAMISA Safe Arrival] আলহামদুলিল্লাহ, $userName নিরাপদে $destination -এ পৌঁছেছেন (at $timeStr)। ধন্যবাদ!"
+            val message = "[RAMISA Safe Arrival] আলহামদুলিল্লাহ, $userName নিরাপদে $destination -এ পৌঁছেছেন (at $timeStr)। ধন্যবাদ!"
 
             val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.getSystemService(SmsManager::class.java)

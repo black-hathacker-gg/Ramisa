@@ -6,7 +6,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import com.example.ui.components.GlobalSmsConfirmationBanner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -76,11 +80,7 @@ import com.example.features.settings.SettingsScreen
 import com.example.features.settings.SettingsViewModel
 import com.example.features.threat.ThreatGuardScreen
 import com.example.features.threat.ThreatGuardViewModel
-import com.example.features.vault.VaultScreen
-import com.example.features.vault.VaultViewModel
 import com.example.features.toolshub.ToolsHubScreen
-import com.example.features.admin.AdminPanelScreen
-import com.example.features.admin.AdminViewModel
 import com.example.ui.theme.*
 
 @Composable
@@ -89,37 +89,9 @@ fun RamisaNavGraph(
   modifier: Modifier = Modifier,
   startDestination: String = Screen.Welcome.route
 ) {
-  val homeViewModel: HomeViewModel = viewModel()
-  val authViewModel: AuthViewModel = viewModel()
-  val profileViewModel: ProfileViewModel = viewModel()
-  val contactsViewModel: ContactsViewModel = viewModel()
-  val journeyViewModel: JourneyViewModel = viewModel()
   val emergencyViewModel: EmergencyViewModel = viewModel()
-  val offlineMapsViewModel: OfflineMapsViewModel = viewModel()
-  val batteryPingViewModel: BatteryPingViewModel = viewModel()
-  val historyViewModel: HistoryViewModel = viewModel()
-  val settingsViewModel: SettingsViewModel = viewModel()
-  val vaultViewModel: VaultViewModel = viewModel()
-  val safePlacesViewModel: SafePlacesViewModel = viewModel()
-  val fakeCallViewModel: FakeCallViewModel = viewModel()
-  val safetyGuideViewModel: SafetyGuideViewModel = viewModel()
-  val threatGuardViewModel: ThreatGuardViewModel = viewModel()
-  val communityViewModel: CommunityViewModel = viewModel()
-  val hardwareTriggerViewModel: HardwareTriggerViewModel = viewModel()
-  val meshNetworkViewModel: MeshNetworkViewModel = viewModel()
-  val stealthModeViewModel: StealthModeViewModel = viewModel()
-  val sirenStrobeViewModel: SirenStrobeViewModel = viewModel()
-  val rideSafetyViewModel: RideSafetyViewModel = viewModel()
-  val selfDefenseViewModel: SelfDefenseViewModel = viewModel()
-  val cyberCrimeViewModel: CyberCrimeViewModel = viewModel()
-  val wellnessViewModel: WellnessViewModel = viewModel()
-  val volunteerEscortViewModel: VolunteerEscortViewModel = viewModel()
-  val legalAidViewModel: LegalAidViewModel = viewModel()
-  val safetyTimerViewModel: SafetyTimerViewModel = viewModel()
-  val firstAidViewModel: FirstAidViewModel = viewModel()
-  val lockScreenSosViewModel: LockScreenSosViewModel = viewModel()
-  val dangerMapViewModel: DangerMapViewModel = viewModel()
-  val adminViewModel: AdminViewModel = viewModel()
+  val authViewModel: AuthViewModel = viewModel()
+
 
   val currentBackStackEntry by navController.currentBackStackEntryAsState()
   val currentRoute = currentBackStackEntry?.destination?.route
@@ -199,11 +171,12 @@ fun RamisaNavGraph(
       }
     }
   ) { innerPadding ->
-    NavHost(
-      navController = navController,
-      startDestination = startDestination,
-      modifier = Modifier.padding(innerPadding)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        modifier = Modifier.padding(innerPadding)
+      ) {
       // 0. Welcome Landing Screen
       composable(Screen.Welcome.route) {
         WelcomeScreen(
@@ -222,7 +195,7 @@ fun RamisaNavGraph(
       // 1. Home Dashboard
       composable(Screen.Home.route) {
         HomeScreen(
-          viewModel = homeViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<HomeViewModel>(),
           onNavigateToSafeJourney = { navController.navigate(Screen.SafeJourney.route) },
           onNavigateToContacts = { navController.navigate(Screen.EmergencyContacts.route) },
           onNavigateToHistory = { navController.navigate(Screen.History.route) },
@@ -235,7 +208,6 @@ fun RamisaNavGraph(
           onNavigateToCommunitySafety = { navController.navigate(Screen.CommunitySafety.route) },
           onNavigateToHardwareTrigger = { navController.navigate(Screen.HardwareTrigger.route) },
           onNavigateToMeshNetwork = { navController.navigate(Screen.MeshNetwork.route) },
-          onNavigateToVault = { navController.navigate(Screen.Vault.route) },
           onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
           onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
           onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
@@ -258,7 +230,7 @@ fun RamisaNavGraph(
       // 2. Login Screen
       composable(Screen.Login.route) {
         LoginScreen(
-          viewModel = authViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>(),
           onLoginSuccess = {
             navController.navigate(Screen.Home.route) {
               popUpTo(Screen.Login.route) { inclusive = true }
@@ -278,7 +250,7 @@ fun RamisaNavGraph(
       // 3. Register Screen
       composable(Screen.Register.route) {
         RegisterScreen(
-          viewModel = authViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>(),
           onRegisterSuccess = {
             navController.navigate(Screen.Home.route) {
               popUpTo(Screen.Register.route) { inclusive = true }
@@ -291,7 +263,7 @@ fun RamisaNavGraph(
       // 4. User Profile Screen
       composable(Screen.Profile.route) {
         ProfileScreen(
-          viewModel = profileViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<ProfileViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -299,7 +271,7 @@ fun RamisaNavGraph(
       // 5. Emergency Contacts Screen
       composable(Screen.EmergencyContacts.route) {
         EmergencyContactsScreen(
-          viewModel = contactsViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<ContactsViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -307,7 +279,7 @@ fun RamisaNavGraph(
       // 6. Safe Journey Live Tracking
       composable(Screen.SafeJourney.route) {
         SafeJourneyScreen(
-          viewModel = journeyViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<JourneyViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -319,7 +291,7 @@ fun RamisaNavGraph(
       // 7. Active SOS Emergency Mode
       composable(Screen.Emergency.route) {
         EmergencyScreen(
-          viewModel = emergencyViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<EmergencyViewModel>(),
           onResolveEmergency = { navController.popBackStack() }
         )
       }
@@ -327,7 +299,7 @@ fun RamisaNavGraph(
       // 8. Incident History & Logs
       composable(Screen.History.route) {
         HistoryScreen(
-          viewModel = historyViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<HistoryViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -335,11 +307,9 @@ fun RamisaNavGraph(
       // 9. Settings Screen
       composable(Screen.Settings.route) {
         SettingsScreen(
-          viewModel = settingsViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SettingsViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
-          onNavigateToVault = { navController.navigate(Screen.Vault.route) },
-          onNavigateToAdmin = { navController.navigate(Screen.AdminPanel.route) },
           onLogout = {
             authViewModel.logout {
               navController.navigate(Screen.Welcome.route) {
@@ -350,18 +320,11 @@ fun RamisaNavGraph(
         )
       }
 
-      // 10. Safety Vault (Audio Evidence)
-      composable(Screen.Vault.route) {
-        VaultScreen(
-          viewModel = vaultViewModel,
-          onNavigateBack = { navController.popBackStack() }
-        )
-      }
 
       // 11. Safe Places Radar
       composable(Screen.SafePlaces.route) {
         SafePlacesScreen(
-          viewModel = safePlacesViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SafePlacesViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -369,7 +332,7 @@ fun RamisaNavGraph(
       // 12. Fake Escape Call
       composable(Screen.FakeCall.route) {
         FakeCallScreen(
-          viewModel = fakeCallViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<FakeCallViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -377,7 +340,7 @@ fun RamisaNavGraph(
       // 13. Safety Guide & Rights
       composable(Screen.SafetyGuide.route) {
         SafetyGuideScreen(
-          viewModel = safetyGuideViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SafetyGuideViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -385,7 +348,7 @@ fun RamisaNavGraph(
       // 14. AI Threat Guard
       composable(Screen.ThreatGuard.route) {
         ThreatGuardScreen(
-          viewModel = threatGuardViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<ThreatGuardViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -397,7 +360,7 @@ fun RamisaNavGraph(
       // 15. Community Safety Zones
       composable(Screen.CommunitySafety.route) {
         CommunitySafetyScreen(
-          viewModel = communityViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<CommunityViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -405,7 +368,7 @@ fun RamisaNavGraph(
       // 16. Hardware Trigger Setup
       composable(Screen.HardwareTrigger.route) {
         HardwareTriggerScreen(
-          viewModel = hardwareTriggerViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<HardwareTriggerViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -417,7 +380,7 @@ fun RamisaNavGraph(
       // 17. Offline Mesh Network
       composable(Screen.MeshNetwork.route) {
         MeshNetworkScreen(
-          viewModel = meshNetworkViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<MeshNetworkViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -426,7 +389,7 @@ fun RamisaNavGraph(
       // 19. Stealth Calculator Mode
       composable(Screen.StealthMode.route) {
         StealthModeScreen(
-          viewModel = stealthModeViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<StealthModeViewModel>(),
           onTriggerSilentSos = {
             emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
@@ -442,7 +405,7 @@ fun RamisaNavGraph(
       // 20. Siren & Strobe Alarm
       composable(Screen.SirenStrobe.route) {
         SirenStrobeScreen(
-          viewModel = sirenStrobeViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SirenStrobeViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -450,7 +413,7 @@ fun RamisaNavGraph(
       // 21. Rickshaw & Ride Safety
       composable(Screen.RideSafety.route) {
         RideSafetyScreen(
-          viewModel = rideSafetyViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<RideSafetyViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -464,7 +427,7 @@ fun RamisaNavGraph(
       // 23. Practical Self Defense Techniques
       composable(Screen.SelfDefense.route) {
         SelfDefenseScreen(
-          viewModel = selfDefenseViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SelfDefenseViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -476,7 +439,7 @@ fun RamisaNavGraph(
       // 24. Cyber Harassment & PCSW Support
       composable(Screen.CyberCrimeSupport.route) {
         CyberCrimeSupportScreen(
-          viewModel = cyberCrimeViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<CyberCrimeViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -484,7 +447,7 @@ fun RamisaNavGraph(
       // 25. Trauma Recovery & Counseling
       composable(Screen.WellnessCounseling.route) {
         WellnessCounselingScreen(
-          viewModel = wellnessViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<WellnessViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -492,7 +455,7 @@ fun RamisaNavGraph(
       // 26. Volunteer Peer Escort Network
       composable(Screen.VolunteerEscort.route) {
         VolunteerEscortScreen(
-          viewModel = volunteerEscortViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<VolunteerEscortViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -504,7 +467,7 @@ fun RamisaNavGraph(
       // 27. Free Legal Aid & GD Drafter
       composable(Screen.LegalAid.route) {
         LegalAidScreen(
-          viewModel = legalAidViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<LegalAidViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -512,7 +475,7 @@ fun RamisaNavGraph(
       // 28. Safety Check-in Timer (Dead Man's Switch)
       composable(Screen.SafetyTimer.route) {
         SafetyTimerScreen(
-          viewModel = safetyTimerViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SafetyTimerViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -524,7 +487,7 @@ fun RamisaNavGraph(
       // 29. Offline First Aid & Triage Guide
       composable(Screen.FirstAid.route) {
         FirstAidScreen(
-          viewModel = firstAidViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<FirstAidViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -534,7 +497,7 @@ fun RamisaNavGraph(
       // 31. Lock Screen & Offline SOS Guard
       composable(Screen.LockScreenSos.route) {
         LockScreenSosScreen(
-          viewModel = lockScreenSosViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<LockScreenSosViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -546,7 +509,7 @@ fun RamisaNavGraph(
       // 32. Danger & Sexual Harassment Incident Heatmap
       composable(Screen.DangerMap.route) {
         DangerMapScreen(
-          viewModel = dangerMapViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<DangerMapViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
@@ -558,14 +521,14 @@ fun RamisaNavGraph(
       // 34. Low-Battery Auto-Ping
       composable(Screen.BatteryPing.route) {
         BatteryPingScreen(
-          viewModel = batteryPingViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<BatteryPingViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
       // 35. Offline Maps
       composable(Screen.OfflineMaps.route) {
         OfflineMapsScreen(
-          viewModel = offlineMapsViewModel,
+          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<OfflineMapsViewModel>(),
           onNavigateBack = { navController.popBackStack() }
         )
       }
@@ -585,7 +548,6 @@ fun RamisaNavGraph(
           onNavigateToMeshNetwork = { navController.navigate(Screen.MeshNetwork.route) },
           onNavigateToHardwareTrigger = { navController.navigate(Screen.HardwareTrigger.route) },
           onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
-          onNavigateToVault = { navController.navigate(Screen.Vault.route) },
           onNavigateToHistory = { navController.navigate(Screen.History.route) },
           onNavigateToBatteryPing = { navController.navigate(Screen.BatteryPing.route) },
           onNavigateToOfflineMaps = { navController.navigate(Screen.OfflineMaps.route) },
@@ -595,21 +557,21 @@ fun RamisaNavGraph(
           onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
           onNavigateToSafeJourney = { navController.navigate(Screen.SafeJourney.route) },
           onNavigateToContacts = { navController.navigate(Screen.EmergencyContacts.route) },
-          onNavigateToAdmin = { navController.navigate(Screen.AdminPanel.route) },
           onTriggerSos = {
             emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
       }
-
-      // 36. Master SuperAdmin & Safety Control Room
-      composable(Screen.AdminPanel.route) {
-        AdminPanelScreen(
-          viewModel = adminViewModel,
-          onNavigateBack = { navController.popBackStack() }
-        )
-      }
     }
+
+    // Top Floating Confirmation Prompt for Offline SMS Delivery
+    GlobalSmsConfirmationBanner(
+      modifier = Modifier
+        .align(Alignment.TopCenter)
+        .padding(top = innerPadding.calculateTopPadding() + 4.dp),
+      isBangla = false
+    )
+  }
   }
 }

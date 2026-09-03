@@ -136,9 +136,9 @@ class CommunityViewModel : ViewModel() {
       it.copy(
         isCreatePostDialogVisible = false,
         testSosSuccessMessage = if (it.isOfflineMode)
-          "📥 Post saved to Offline Cache & will sync automatically!"
+          "Post saved to Offline Cache & will sync automatically!"
         else
-          "🎉 Discussion posted to RAMISA Central Community!"
+          "Discussion posted to RAMISA Central Community!"
       )
     }
   }
@@ -198,7 +198,7 @@ class CommunityViewModel : ViewModel() {
     )
     _uiState.update {
       it.copy(
-        testSosSuccessMessage = "🚨 Emergency SOS Broadcast sent to RAMISA Central Community! Alert ID: ${alert.id}"
+        testSosSuccessMessage = "Emergency SOS Broadcast sent to RAMISA Central Community! Alert ID: ${alert.id}"
       )
     }
   }
@@ -224,7 +224,7 @@ class CommunityViewModel : ViewModel() {
   fun verifyPin() {
     val pin = _uiState.value.pinInput.trim()
     if (CommunityManager.verifyOrUnlockPin(pin)) {
-      _uiState.update { it.copy(pinSuccessMessage = "✓ Verified Central Sisterhood Member", pinError = null) }
+      _uiState.update { it.copy(pinSuccessMessage = "Verified Central Sisterhood Member", pinError = null) }
     } else {
       _uiState.update { it.copy(pinError = "ভুল পিন নম্বর! (Try default 1234)") }
     }

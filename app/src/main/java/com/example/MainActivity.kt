@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
         @Suppress("DEPRECATION")
         vibrator?.vibrate(longArrayOf(0, 300, 200, 300, 200, 500), -1)
       }
-      Toast.makeText(this, "🚨 Volume Trigger SOS Activated!", Toast.LENGTH_SHORT).show()
+      Toast.makeText(this, "Volume Trigger SOS Activated!", Toast.LENGTH_SHORT).show()
       
       // Dispatch emergency SMS immediately
       FusedLocationBackgroundService.startLocationService(this)

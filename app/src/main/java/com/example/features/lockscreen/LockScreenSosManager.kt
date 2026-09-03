@@ -104,11 +104,11 @@ object LockScreenSosManager {
 
     val notification = NotificationCompat.Builder(context, CHANNEL_ID)
       .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-      .setContentTitle("🚨 RAMISA Lock Screen Safety Guard")
+      .setContentTitle("RAMISA Lock Screen Safety Guard")
       .setContentText("Direct SIM SMS Guard Active • Tap below for instant Offline SOS")
       .setStyle(
         NotificationCompat.BigTextStyle()
-          .bigText("Phone locked or no internet? Tap '🚨 TRIGGER OFFLINE SOS' to send automated SIM SMS with live GPS to guardians without unlocking.")
+          .bigText("Phone locked or no internet? Tap 'TRIGGER OFFLINE SOS' to send automated SIM SMS with live GPS to guardians without unlocking.")
       )
       .setPriority(NotificationCompat.PRIORITY_MAX)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // Visible on locked lockscreen
@@ -116,7 +116,7 @@ object LockScreenSosManager {
       .setContentIntent(openPendingIntent)
       .addAction(
         android.R.drawable.ic_dialog_alert,
-        "🚨 TRIGGER OFFLINE SOS",
+        "TRIGGER OFFLINE SOS",
         sosPendingIntent
       )
       .addAction(

@@ -19,6 +19,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.R
 import com.example.core.service.RamisaSafetyService
+import com.example.core.sms.EmergencySmsDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -87,8 +91,8 @@ object BatteryMonitorManager {
         
         if (currentLevel <= threshold) {
             val currentTime = System.currentTimeMillis()
-            val thirtyMinutes = 30 * 60 * 1000L
-            if (currentTime - _lastPingSentTime.value > thirtyMinutes) {
+            // Send immediately (no 30-minute waiting throttle) if not sent in the last 60 seconds
+            if (currentTime - _lastPingSentTime.value > 60000L) {
                 sendLowBatteryPing(context, currentLevel)
                 _lastPingSentTime.value = currentTime
             }
@@ -99,42 +103,18 @@ object BatteryMonitorManager {
         }
     }
     
-    private fun getLastKnownLocation(context: Context): String {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return "https://maps.google.com/?q=23.7937,90.4066" // fallback
-        }
-        val providers = locationManager.getProviders(true)
-        var bestLocation: Location? = null
-        for (provider in providers) {
-            val l = locationManager.getLastKnownLocation(provider) ?: continue
-            if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
-                bestLocation = l
-            }
-        }
-        return if (bestLocation != null) {
-            "https://maps.google.com/?q=${bestLocation.latitude},${bestLocation.longitude}"
-        } else {
-            "https://maps.google.com/?q=23.7937,90.4066" // fallback
-        }
-    }
-
     private fun sendLowBatteryPing(context: Context, batteryLevel: Int) {
-        Log.d("BatteryMonitorManager", "Triggering Low Battery Auto-Ping at $batteryLevel%")
-        val locationLink = getLastKnownLocation(context)
-        val message = "RAMISA ALERT: My phone battery is critically low ($batteryLevel%). My last known location is: $locationLink"
-        
-        try {
-            val smsManager = context.getSystemService(SmsManager::class.java)
-            val mockContacts = listOf("+8801700000000")
-            for (contact in mockContacts) {
-                // smsManager.sendTextMessage(contact, null, message, null, null)
-                Log.d("BatteryMonitorManager", "Mock SMS Sent to $contact: $message")
+        Log.d("BatteryMonitorManager", "Triggering Immediate Low Battery Auto-Ping at $batteryLevel%")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                EmergencySmsDispatcher.dispatchEmergencySms(
+                    context = context,
+                    customNote = "CRITICAL BATTERY ALERT: $batteryLevel%"
+                )
+                showSafetySharedNotification(context, batteryLevel)
+            } catch (e: Exception) {
+                Log.e("BatteryMonitorManager", "Error dispatching low battery emergency SMS: ${e.message}")
             }
-            showSafetySharedNotification(context, batteryLevel)
-        } catch (e: Exception) {
-            Log.e("BatteryMonitorManager", "Error sending low battery ping: ${e.message}")
         }
     }
     

@@ -1,8 +1,10 @@
 package com.example.features.community
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.community.CommunityManager
+import com.example.core.location.EmergencyLocationManager
 import com.example.data.repository.AppSessionManager
 import com.example.domain.model.AreaSafetyReport
 import com.example.domain.model.CentralCommunityInfo
@@ -17,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import java.util.UUID
 
 data class CommunityUiState(
@@ -51,7 +54,7 @@ data class CommunityUiState(
   val testSosSuccessMessage: String? = null
 )
 
-class CommunityViewModel : ViewModel() {
+class CommunityViewModel(application: Application) : AndroidViewModel(application) {
 
   private val _uiState = MutableStateFlow(CommunityUiState())
   val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
@@ -191,15 +194,19 @@ class CommunityViewModel : ViewModel() {
 
   // --- SOS Management ---
   fun broadcastManualSosToCommunity(triggerType: String = "Manual Central SOS Trigger") {
-    val alert = CommunityManager.broadcastSosAlert(
-      triggerTypeLabel = triggerType,
-      location = GeoLocation(23.7258, 90.3976, "Curzon Hall, Dhaka University"),
-      note = "URGENT: I need emergency help and escort assistance!"
-    )
-    _uiState.update {
-      it.copy(
-        testSosSuccessMessage = "Emergency SOS Broadcast sent to RAMISA Central Community! Alert ID: ${alert.id}"
+    viewModelScope.launch(Dispatchers.IO) {
+      val context = getApplication<Application>()
+      val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
+      val alert = CommunityManager.broadcastSosAlert(
+        triggerTypeLabel = triggerType,
+        location = loc,
+        note = "URGENT: I need emergency help and escort assistance!"
       )
+      _uiState.update {
+        it.copy(
+          testSosSuccessMessage = "Emergency SOS Broadcast sent to RAMISA Central Community! Alert ID: ${alert.id}"
+        )
+      }
     }
   }
 

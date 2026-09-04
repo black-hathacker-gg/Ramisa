@@ -174,7 +174,7 @@ class EmergencyViewModel(
       val context = getApplication<Application>()
       val accurateLoc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
       
-      val res = emergencyRepository.triggerSos(triggerType, customNote = note)
+      val res = emergencyRepository.triggerSos(accurateLoc, triggerType, customNote = note)
       val event = res.getOrNull()
       val eventId = event?.id ?: "EMG-${System.currentTimeMillis() % 10000}"
       _uiState.update {

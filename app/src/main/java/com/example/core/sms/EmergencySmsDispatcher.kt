@@ -111,8 +111,8 @@ object EmergencySmsDispatcher {
             ""
         }
 
-        // 4. Construct SMS Message Body with Fused Location link
-        val messageBody = "[RAMISA SOS ALERT] আমি বিপদে আছি! $userName$bloodGroup needs immediate help!$customNoteText$batteryLevel Live GPS: $mapLink (at $timeStr, ±${String.format("%.0f", targetLocation.accuracyMeters)}m). Please call 999 or rescue immediately!"
+        // 4. Construct SMS Message Body
+        val messageBody = "SOS! $userName$bloodGroup needs help!$customNoteText$batteryLevel GPS: $mapLink (at $timeStr). Please rescue!"
 
         // 5. Check SEND_SMS Permission
         val hasSmsPermission = ActivityCompat.checkSelfPermission(
@@ -296,7 +296,7 @@ object EmergencySmsDispatcher {
             val userName = userProfile?.name ?: "RAMISA User"
             val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
 
-            val message = "[RAMISA Safe Arrival] আলহামদুলিল্লাহ, $userName নিরাপদে $destination -এ পৌঁছেছেন (at $timeStr)। ধন্যবাদ!"
+            val message = "[RAMISA] $userName has safely arrived at $destination (at $timeStr)."
 
             val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.getSystemService(SmsManager::class.java)

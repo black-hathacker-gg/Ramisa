@@ -12,7 +12,7 @@ interface EmergencyRepository {
   val emergencyHistory: StateFlow<List<EmergencyEvent>>
   val currentLocation: StateFlow<GeoLocation>
 
-  suspend fun triggerSos(
+  suspend fun triggerSos(location: GeoLocation? = null, 
     triggerType: TriggerType,
     customNote: String = "",
     sendSilentAlarm: Boolean = false

@@ -138,9 +138,11 @@ object LockScreenSosManager {
   fun triggerOfflineEmergency(context: Context, note: String = "Lock Screen Trigger") {
     CoroutineScope(Dispatchers.IO).launch {
       // 1. Dispatch SIM SMS to all database emergency contacts
+      val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
       val report: SmsDispatchReport = EmergencySmsDispatcher.dispatchEmergencySms(
         context = context,
-        customNote = "Lock Screen Direct Trigger"
+        customNote = "Lock Screen Direct Trigger",
+        location = loc
       )
 
       _offlineSmsSentCount.value += report.successCount
@@ -153,7 +155,6 @@ object LockScreenSosManager {
 
       // Broadcast to Community Safety Network
       try {
-        val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
         CommunityManager.broadcastSosAlert(
           triggerTypeLabel = "Lock Screen 1-Tap SOS",
           location = loc,

@@ -58,11 +58,12 @@ class EmergencyRepositoryImpl : EmergencyRepository {
   override val emergencyHistory: StateFlow<List<EmergencyEvent>> = _emergencyHistory.asStateFlow()
 
   override suspend fun triggerSos(
+    location: GeoLocation?,
     triggerType: TriggerType,
     customNote: String,
     sendSilentAlarm: Boolean
   ): Result<EmergencyEvent> {
-    val loc = _currentLocation.value
+    val loc = location ?: _currentLocation.value
     val event = EmergencyEvent(
       id = "EMG-${System.currentTimeMillis() % 10000}",
       triggerType = triggerType,

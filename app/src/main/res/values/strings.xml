@@ -1,5 +1,6 @@
 <resources>
     <string name="app_name">RAMISA</string>
+    <string name="app_name_ghost">Calculator</string>
     <string name="app_full_name">RAMISA — Women\'s &amp; Children\'s Personal Safety System</string>
     <string name="status_safe">SAFE</string>
     <string name="status_safe_desc">All safety systems active &amp; normal</string>

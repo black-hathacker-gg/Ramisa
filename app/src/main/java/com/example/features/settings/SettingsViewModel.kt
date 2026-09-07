@@ -15,6 +15,7 @@ data class SettingsUiState(
   val language: AppLanguage = AppLanguage.ENGLISH,
   val isSmsFallbackEnabled: Boolean = true,
   val isAutoRecordEnabled: Boolean = false,
+  val isGhostModeEnabled: Boolean = false,
   val emergencyPin: String = "1234",
   val nationalHotline: String = "999",
   val womenChildHelpline: String = "109",
@@ -28,5 +29,6 @@ class SettingsViewModel : ViewModel() {
   fun setLanguage(lang: AppLanguage) = _uiState.update { it.copy(language = lang) }
   fun toggleSmsFallback() = _uiState.update { it.copy(isSmsFallbackEnabled = !it.isSmsFallbackEnabled) }
   fun toggleAutoRecord() = _uiState.update { it.copy(isAutoRecordEnabled = !it.isAutoRecordEnabled) }
+  fun setGhostModeState(enabled: Boolean) = _uiState.update { it.copy(isGhostModeEnabled = enabled) }
   fun updatePin(newPin: String) = _uiState.update { it.copy(emergencyPin = newPin) }
 }

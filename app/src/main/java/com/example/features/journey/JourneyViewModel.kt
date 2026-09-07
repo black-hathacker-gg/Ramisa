@@ -25,6 +25,7 @@ data class JourneyUiState(
   val notes: String = "",
   val activeJourney: Journey? = null,
   val isJourneyActive: Boolean = false,
+  val isJourneyCompleted: Boolean = false,
   val elapsedMinutes: Int = 0,
   val elapsedSeconds: Int = 0,
   val isSafetyPromptVisible: Boolean = false,
@@ -126,10 +127,16 @@ class JourneyViewModel(
         it.copy(
           isJourneyActive = false,
           isSafetyPromptVisible = false,
+          isDeviationAlertTriggered = false,
+          isJourneyCompleted = true,
           statusMessage = confirmationMsg
         )
       }
     }
+  }
+
+  fun dismissCompletedJourney() {
+    _uiState.update { it.copy(isJourneyCompleted = false, statusMessage = null) }
   }
 
   fun cancelJourney() {

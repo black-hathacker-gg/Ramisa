@@ -105,7 +105,13 @@ class MainActivity : ComponentActivity() {
       openEmergency -> Screen.Emergency.route
       openFakeCall -> Screen.FakeCall.route
       openSafeJourney -> Screen.SafeJourney.route
-      else -> Screen.Welcome.route
+      else -> {
+        if (com.example.core.utils.GhostModeManager.isGhostModeEnabled(this)) {
+          Screen.StealthMode.route
+        } else {
+          Screen.Welcome.route
+        }
+      }
     }
 
     setContent {

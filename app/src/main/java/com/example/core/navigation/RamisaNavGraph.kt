@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
@@ -97,11 +100,29 @@ fun RamisaNavGraph(
   val currentRoute = currentBackStackEntry?.destination?.route
 
   val showBottomBar = currentRoute == Screen.Home.route || 
-                      currentRoute == Screen.ToolsHub.route || 
+                      currentRoute == Screen.SafeJourney.route || 
+                      currentRoute == Screen.DangerMap.route || 
                       currentRoute == Screen.Settings.route
 
   Scaffold(
     modifier = modifier,
+    floatingActionButton = {
+      if (showBottomBar) {
+        androidx.compose.material3.FloatingActionButton(
+          onClick = { navController.navigate(Screen.Emergency.route) },
+          containerColor = PinkPrimary,
+          contentColor = Color.White,
+          shape = androidx.compose.foundation.shape.CircleShape,
+          modifier = Modifier.size(64.dp)
+        ) {
+          Text(
+            text = "SOS",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold)
+          )
+        }
+      }
+    },
+    floatingActionButtonPosition = androidx.compose.material3.FabPosition.Center,
     bottomBar = {
       if (showBottomBar) {
         NavigationBar(
@@ -110,7 +131,7 @@ fun RamisaNavGraph(
         ) {
           NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
+            label = { Text("Home", style = MaterialTheme.typography.labelSmall) },
             selected = currentRoute == Screen.Home.route,
             onClick = {
               if (currentRoute != Screen.Home.route) {
@@ -124,17 +145,17 @@ fun RamisaNavGraph(
             colors = NavigationBarItemDefaults.colors(
               selectedIconColor = PinkPrimary,
               selectedTextColor = PinkPrimary,
-              indicatorColor = PinkAccentLilac.copy(alpha = 0.5f)
+              indicatorColor = PinkContainer
             )
           )
 
           NavigationBarItem(
-            icon = { Icon(Icons.Default.GridView, contentDescription = "Tools Hub") },
-            label = { Text("Tools Hub") },
-            selected = currentRoute == Screen.ToolsHub.route,
+            icon = { Icon(androidx.compose.material.icons.Icons.Default.DirectionsWalk, contentDescription = "Journey") },
+            label = { Text("Journey", style = MaterialTheme.typography.labelSmall) },
+            selected = currentRoute == Screen.SafeJourney.route,
             onClick = {
-              if (currentRoute != Screen.ToolsHub.route) {
-                navController.navigate(Screen.ToolsHub.route) {
+              if (currentRoute != Screen.SafeJourney.route) {
+                navController.navigate(Screen.SafeJourney.route) {
                   popUpTo(Screen.Home.route) { saveState = true }
                   launchSingleTop = true
                   restoreState = true
@@ -144,13 +165,46 @@ fun RamisaNavGraph(
             colors = NavigationBarItemDefaults.colors(
               selectedIconColor = PinkPrimary,
               selectedTextColor = PinkPrimary,
-              indicatorColor = PinkAccentLilac.copy(alpha = 0.5f)
+              indicatorColor = PinkContainer
+            )
+          )
+
+          // Placeholder for the center SOS button to keep spacing
+          NavigationBarItem(
+            icon = { Spacer(modifier = Modifier.size(24.dp)) },
+            label = { },
+            selected = false,
+            onClick = { },
+            enabled = false,
+            colors = NavigationBarItemDefaults.colors(
+              disabledIconColor = Color.Transparent,
+              disabledTextColor = Color.Transparent
             )
           )
 
           NavigationBarItem(
-            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-            label = { Text("Settings") },
+            icon = { Icon(androidx.compose.material.icons.Icons.Default.Map, contentDescription = "Map") },
+            label = { Text("Map", style = MaterialTheme.typography.labelSmall) },
+            selected = currentRoute == Screen.DangerMap.route,
+            onClick = {
+              if (currentRoute != Screen.DangerMap.route) {
+                navController.navigate(Screen.DangerMap.route) {
+                  popUpTo(Screen.Home.route) { saveState = true }
+                  launchSingleTop = true
+                  restoreState = true
+                }
+              }
+            },
+            colors = NavigationBarItemDefaults.colors(
+              selectedIconColor = PinkPrimary,
+              selectedTextColor = PinkPrimary,
+              indicatorColor = PinkContainer
+            )
+          )
+
+          NavigationBarItem(
+            icon = { Icon(Icons.Default.Person, contentDescription = "You") },
+            label = { Text("You", style = MaterialTheme.typography.labelSmall) },
             selected = currentRoute == Screen.Settings.route,
             onClick = {
               if (currentRoute != Screen.Settings.route) {
@@ -164,7 +218,7 @@ fun RamisaNavGraph(
             colors = NavigationBarItemDefaults.colors(
               selectedIconColor = PinkPrimary,
               selectedTextColor = PinkPrimary,
-              indicatorColor = PinkAccentLilac.copy(alpha = 0.5f)
+              indicatorColor = PinkContainer
             )
           )
         }

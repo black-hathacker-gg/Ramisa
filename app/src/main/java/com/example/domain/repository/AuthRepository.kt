@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 sealed interface AuthResult<out T> {
   data class Success<T>(val data: T) : AuthResult<T>
+  data object EmailConfirmationRequired : AuthResult<Nothing>
   data class Error(val message: String) : AuthResult<Nothing>
 }
 
@@ -14,7 +15,7 @@ interface AuthRepository {
   val currentUser: StateFlow<UserProfile?>
   val isAuthenticated: StateFlow<Boolean>
 
-  suspend fun login(email: String, pinOrPassword: String): AuthResult<UserProfile>
+  suspend fun login(email: String, password: String): AuthResult<UserProfile>
   suspend fun loginAsGuest(): AuthResult<UserProfile>
   suspend fun register(
     name: String,

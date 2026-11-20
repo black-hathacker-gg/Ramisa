@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,14 +45,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.core.utils.GhostModeManager
+import com.example.data.local.AppDatabase
 import com.example.ui.theme.PinkContainer
 import com.example.ui.theme.PinkPrimary
 import com.example.ui.theme.PinkPrimaryDark
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +69,20 @@ fun StealthModeScreen(
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  val context = LocalContext.current
   var showHintSheet by remember { mutableStateOf(false) }
+  var emergencyPin by remember { mutableStateOf<String?>(null) }
+  var savedProfileRead by remember { mutableStateOf(false) }
+
+  LaunchedEffect(context) {
+    val profiles = withContext(Dispatchers.IO) {
+      AppDatabase.getDatabase(context.applicationContext).userDao().getProfile()
+    }
+    profiles.catch { savedProfileRead = false }.collect { profile ->
+      emergencyPin = profile?.emergencyPin?.takeIf(String::isNotBlank)
+      savedProfileRead = true
+    }
+  }
 
   Scaffold(
     topBar = {
@@ -80,7 +100,7 @@ fun StealthModeScreen(
           ) {
             Icon(
               imageVector = Icons.Default.Info,
-              contentDescription = "Stealth Instructions",
+              contentDescription = "Calculator help",
               tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
           }
@@ -123,21 +143,29 @@ fun StealthModeScreen(
               Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = PinkPrimary, modifier = Modifier.size(16.dp))
               Spacer(modifier = Modifier.size(6.dp))
               Text(
-                text = "CAMOUFLAGE STEALTH ENGINE",
+                text = "Calculator shortcuts",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = PinkPrimaryDark
               )
             }
             Text(
-              text = "• Enter '9999' and tap '=' for Silent SOS Broadcast",
+              text = "Enter 999 or 911 and tap = to open SOS review.",
               style = MaterialTheme.typography.bodySmall,
               color = PinkPrimaryDark
             )
-            Text(
-              text = "• Enter '1234' and tap '=' to return to RAMISA Home",
-              style = MaterialTheme.typography.bodySmall,
-              color = PinkPrimaryDark
-            )
+            if (emergencyPin != null) {
+              Text(
+                text = "Enter your emergency PIN and tap = to open RAMISA.",
+                style = MaterialTheme.typography.bodySmall,
+                color = PinkPrimaryDark
+              )
+            } else if (savedProfileRead) {
+              Text("Set an emergency PIN in RAMISA before enabling camouflage.")
+              Button(onClick = {
+                GhostModeManager.setGhostMode(context, false)
+                onExitStealthToHome()
+              }) { Text("Open RAMISA") }
+            }
           }
         }
       }
@@ -178,20 +206,6 @@ fun StealthModeScreen(
             modifier = Modifier.testTag("calc_display_text")
           )
 
-          if (uiState.isSecretSosTriggered) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Surface(
-              shape = RoundedCornerShape(8.dp),
-              color = PinkContainer
-            ) {
-              Text(
-                text = "Background SOS Signal Sent",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = PinkPrimaryDark,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-              )
-            }
-          }
         }
       }
 
@@ -206,8 +220,8 @@ fun StealthModeScreen(
           horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
           CalcKey(text = "C", isSpecial = true, onClick = { viewModel.onClear() }, modifier = Modifier.weight(1f), testTag = "key_clear")
-          CalcKey(text = "±", isSpecial = true, onClick = { /* no-op */ }, modifier = Modifier.weight(1f), testTag = "key_plus_minus")
-          CalcKey(text = "%", isSpecial = true, onClick = { /* no-op */ }, modifier = Modifier.weight(1f), testTag = "key_percent")
+          CalcKey(text = "±", isSpecial = true, onClick = viewModel::changeSign, modifier = Modifier.weight(1f), testTag = "key_plus_minus")
+          CalcKey(text = "%", isSpecial = true, onClick = viewModel::percent, modifier = Modifier.weight(1f), testTag = "key_percent")
           CalcKey(text = "÷", isOperator = true, onClick = { viewModel.onOperator("÷") }, modifier = Modifier.weight(1f), testTag = "key_div")
         }
 
@@ -256,6 +270,7 @@ fun StealthModeScreen(
             isPrimary = true,
             onClick = {
               viewModel.onEquals(
+                unlockPin = emergencyPin,
                 onSecretSos = onTriggerSilentSos,
                 onUnlockApp = onExitStealthToHome
               )

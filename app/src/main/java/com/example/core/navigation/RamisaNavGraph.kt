@@ -1,17 +1,24 @@
 package com.example.core.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import com.example.ui.components.GlobalSmsConfirmationBanner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -24,6 +31,7 @@ import com.example.features.auth.AuthViewModel
 import com.example.features.auth.LoginScreen
 import com.example.features.auth.RegisterScreen
 import com.example.features.auth.WelcomeScreen
+import com.example.data.repository.AppSessionManager
 import com.example.features.contacts.ContactsViewModel
 import com.example.features.contacts.EmergencyContactsScreen
 import com.example.features.emergency.EmergencyScreen
@@ -81,7 +89,7 @@ import com.example.features.settings.SettingsViewModel
 import com.example.features.threat.ThreatGuardScreen
 import com.example.features.threat.ThreatGuardViewModel
 import com.example.features.toolshub.ToolsHubScreen
-import com.example.ui.theme.*
+import androidx.compose.ui.graphics.vector.ImageVector
 
 @Composable
 fun RamisaNavGraph(
@@ -91,82 +99,47 @@ fun RamisaNavGraph(
 ) {
   val emergencyViewModel: EmergencyViewModel = viewModel()
   val authViewModel: AuthViewModel = viewModel()
+  val isBangla by AppSessionManager.isBanglaLanguage.collectAsStateWithLifecycle()
 
 
   val currentBackStackEntry by navController.currentBackStackEntryAsState()
   val currentRoute = currentBackStackEntry?.destination?.route
 
-  val showBottomBar = currentRoute == Screen.Home.route || 
-                      currentRoute == Screen.ToolsHub.route || 
-                      currentRoute == Screen.Settings.route
+  val showBottomBar = primaryDestinations.any { it.screen.route == currentRoute }
+
+  fun navigateToPrimary(screen: Screen) {
+    if (currentRoute == screen.route) return
+    navController.navigate(screen.route) {
+      popUpTo(Screen.Home.route) { saveState = true }
+      launchSingleTop = true
+      restoreState = true
+    }
+  }
 
   Scaffold(
     modifier = modifier,
     bottomBar = {
       if (showBottomBar) {
-        NavigationBar(
-          containerColor = MaterialTheme.colorScheme.surface,
-          tonalElevation = 8.dp
-        ) {
-          NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
-            selected = currentRoute == Screen.Home.route,
-            onClick = {
-              if (currentRoute != Screen.Home.route) {
-                navController.navigate(Screen.Home.route) {
-                  popUpTo(Screen.Home.route) { saveState = true }
-                  launchSingleTop = true
-                  restoreState = true
-                }
-              }
-            },
-            colors = NavigationBarItemDefaults.colors(
-              selectedIconColor = PinkPrimary,
-              selectedTextColor = PinkPrimary,
-              indicatorColor = PinkAccentLilac.copy(alpha = 0.5f)
-            )
-          )
-
-          NavigationBarItem(
-            icon = { Icon(Icons.Default.GridView, contentDescription = "Tools Hub") },
-            label = { Text("Tools Hub") },
-            selected = currentRoute == Screen.ToolsHub.route,
-            onClick = {
-              if (currentRoute != Screen.ToolsHub.route) {
-                navController.navigate(Screen.ToolsHub.route) {
-                  popUpTo(Screen.Home.route) { saveState = true }
-                  launchSingleTop = true
-                  restoreState = true
-                }
-              }
-            },
-            colors = NavigationBarItemDefaults.colors(
-              selectedIconColor = PinkPrimary,
-              selectedTextColor = PinkPrimary,
-              indicatorColor = PinkAccentLilac.copy(alpha = 0.5f)
-            )
-          )
-
-          NavigationBarItem(
-            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-            label = { Text("Settings") },
-            selected = currentRoute == Screen.Settings.route,
-            onClick = {
-              if (currentRoute != Screen.Settings.route) {
-                navController.navigate(Screen.Settings.route) {
-                  popUpTo(Screen.Home.route) { saveState = true }
-                  launchSingleTop = true
-                  restoreState = true
-                }
-              }
-            },
-            colors = NavigationBarItemDefaults.colors(
-              selectedIconColor = PinkPrimary,
-              selectedTextColor = PinkPrimary,
-              indicatorColor = PinkAccentLilac.copy(alpha = 0.5f)
-            )
-          )
+        Column {
+          HorizontalDivider()
+          NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
+          ) {
+            primaryDestinations.forEach { destination ->
+              NavigationBarItem(
+                icon = { Icon(destination.icon, contentDescription = null) },
+                label = { Text(if (isBangla) destination.banglaLabel else destination.label) },
+                selected = currentRoute == destination.screen.route,
+                onClick = { navigateToPrimary(destination.screen) },
+                colors = NavigationBarItemDefaults.colors(
+                  selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                  selectedTextColor = MaterialTheme.colorScheme.primary,
+                  indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                )
+              )
+            }
+          }
         }
       }
     }
@@ -175,17 +148,29 @@ fun RamisaNavGraph(
       NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = Modifier.padding(innerPadding)
+        modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding).testTag("route_$currentRoute")
       ) {
       // 0. Welcome Landing Screen
       composable(Screen.Welcome.route) {
+        val authState by authViewModel.uiState.collectAsState()
+        LaunchedEffect(authState.restoredSession) {
+          if (authState.restoredSession) {
+            navController.navigate(Screen.Home.route) {
+              popUpTo(Screen.Welcome.route) { inclusive = true }
+              launchSingleTop = true
+            }
+          }
+        }
         WelcomeScreen(
           onNavigateToLogin = { navController.navigate(Screen.Login.route) },
           onNavigateToRegister = { navController.navigate(Screen.Register.route) },
+          isLoading = authState.isLoading,
+          errorMessage = authState.errorMessage,
           onContinueAsGuest = {
             authViewModel.loginAsGuest {
               navController.navigate(Screen.Home.route) {
                 popUpTo(Screen.Welcome.route) { inclusive = true }
+                launchSingleTop = true
               }
             }
           }
@@ -194,36 +179,23 @@ fun RamisaNavGraph(
 
       // 1. Home Dashboard
       composable(Screen.Home.route) {
+        val homeViewModel = androidx.lifecycle.viewmodel.compose.viewModel<HomeViewModel>()
+        val context = LocalContext.current.applicationContext
+        LaunchedEffect(homeViewModel, context) { homeViewModel.observeContacts(context) }
         HomeScreen(
-          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<HomeViewModel>(),
+          viewModel = homeViewModel,
           onNavigateToSafeJourney = { navController.navigate(Screen.SafeJourney.route) },
           onNavigateToContacts = { navController.navigate(Screen.EmergencyContacts.route) },
           onNavigateToHistory = { navController.navigate(Screen.History.route) },
-          onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
           onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
-          onNavigateToSafePlaces = { navController.navigate(Screen.SafePlaces.route) },
           onNavigateToFakeCall = { navController.navigate(Screen.FakeCall.route) },
-          onNavigateToSafetyGuide = { navController.navigate(Screen.SafetyGuide.route) },
-          onNavigateToThreatGuard = { navController.navigate(Screen.ThreatGuard.route) },
           onNavigateToCommunitySafety = { navController.navigate(Screen.CommunitySafety.route) },
           onNavigateToHardwareTrigger = { navController.navigate(Screen.HardwareTrigger.route) },
-          onNavigateToMeshNetwork = { navController.navigate(Screen.MeshNetwork.route) },
-          onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
-          onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
-          onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
-          onNavigateToSelfDefense = { navController.navigate(Screen.SelfDefense.route) },
-          onNavigateToCyberCrimeSupport = { navController.navigate(Screen.CyberCrimeSupport.route) },
-          onNavigateToWellness = { navController.navigate(Screen.WellnessCounseling.route) },
-          onNavigateToVolunteerEscort = { navController.navigate(Screen.VolunteerEscort.route) },
-          onNavigateToLegalAid = { navController.navigate(Screen.LegalAid.route) },
           onNavigateToSafetyTimer = { navController.navigate(Screen.SafetyTimer.route) },
-          onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
-          onNavigateToLockScreenSos = { navController.navigate(Screen.LockScreenSos.route) },
+          onNavigateToSafePlaces = { navController.navigate(Screen.SafePlaces.route) },
           onNavigateToDangerMap = { navController.navigate(Screen.DangerMap.route) },
-          onTriggerSos = {
-            emergencyViewModel.triggerSos()
-            navController.navigate(Screen.Emergency.route)
-          }
+          onNavigateToTools = { navigateToPrimary(Screen.ToolsHub) },
+          onTriggerSos = { navController.navigate(Screen.Emergency.route) }
         )
       }
 
@@ -233,15 +205,13 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>(),
           onLoginSuccess = {
             navController.navigate(Screen.Home.route) {
-              popUpTo(Screen.Login.route) { inclusive = true }
+              popUpTo(Screen.Welcome.route) { inclusive = true }
             }
           },
           onNavigateToRegister = { navController.navigate(Screen.Register.route) },
           onContinueAsGuest = {
-            authViewModel.loginAsGuest {
-              navController.navigate(Screen.Home.route) {
-                popUpTo(Screen.Login.route) { inclusive = true }
-              }
+            navController.navigate(Screen.Home.route) {
+              popUpTo(Screen.Welcome.route) { inclusive = true }
             }
           }
         )
@@ -253,10 +223,17 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>(),
           onRegisterSuccess = {
             navController.navigate(Screen.Home.route) {
-              popUpTo(Screen.Register.route) { inclusive = true }
+              popUpTo(Screen.Welcome.route) { inclusive = true }
             }
           },
-          onNavigateBack = { navController.popBackStack() }
+          onNavigateBack = { navController.popBackStack() },
+          onNavigateToSignIn = {
+            if (!navController.popBackStack(Screen.Login.route, inclusive = false)) {
+              navController.navigate(Screen.Login.route) {
+                popUpTo(Screen.Register.route) { inclusive = true }
+              }
+            }
+          }
         )
       }
 
@@ -282,7 +259,6 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<JourneyViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -291,8 +267,9 @@ fun RamisaNavGraph(
       // 7. Active SOS Emergency Mode
       composable(Screen.Emergency.route) {
         EmergencyScreen(
-          viewModel = androidx.lifecycle.viewmodel.compose.viewModel<EmergencyViewModel>(),
-          onResolveEmergency = { navController.popBackStack() }
+          viewModel = emergencyViewModel,
+          onResolveEmergency = { navController.popBackStack() },
+          onManageContacts = { navController.navigate(Screen.EmergencyContacts.route) }
         )
       }
 
@@ -308,10 +285,12 @@ fun RamisaNavGraph(
       composable(Screen.Settings.route) {
         SettingsScreen(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SettingsViewModel>(),
-          onNavigateBack = { navController.popBackStack() },
           onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
+          onNavigateToLockScreenSos = { navController.navigate(Screen.LockScreenSos.route) },
+          onNavigateToMesh = { navController.navigate(Screen.MeshNetwork.route) },
           onLogout = {
             authViewModel.logout {
+              com.example.core.community.CommunityManager.clearSession()
               navController.navigate(Screen.Welcome.route) {
                 popUpTo(0) { inclusive = true }
               }
@@ -351,7 +330,6 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<ThreatGuardViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -371,7 +349,7 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<HardwareTriggerViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
+            // A simulated trigger opens the review screen and never sends a live alert.
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -391,12 +369,17 @@ fun RamisaNavGraph(
         StealthModeScreen(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<StealthModeViewModel>(),
           onTriggerSilentSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           },
           onExitStealthToHome = {
-            navController.navigate(Screen.Home.route) {
-              popUpTo(Screen.Home.route) { inclusive = true }
+            val target = if (com.example.data.repository.AppSessionManager.currentUser.value == null) {
+              Screen.Welcome.route
+            } else {
+              Screen.Home.route
+            }
+            navController.navigate(target) {
+              popUpTo(Screen.StealthMode.route) { inclusive = true }
+              launchSingleTop = true
             }
           }
         )
@@ -416,7 +399,6 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<RideSafetyViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -430,7 +412,6 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SelfDefenseViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -458,7 +439,6 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<VolunteerEscortViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -478,7 +458,10 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<SafetyTimerViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
+            emergencyViewModel.triggerSos(
+              triggerType = com.example.domain.model.TriggerType.SAFETY_CHECK_TIMEOUT,
+              note = "Safety check-in timer expired."
+            )
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -500,7 +483,7 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<LockScreenSosViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
+            // A simulated trigger opens the review screen and never sends a live alert.
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -512,7 +495,6 @@ fun RamisaNavGraph(
           viewModel = androidx.lifecycle.viewmodel.compose.viewModel<DangerMapViewModel>(),
           onNavigateBack = { navController.popBackStack() },
           onTriggerSos = {
-            emergencyViewModel.triggerSos()
             navController.navigate(Screen.Emergency.route)
           }
         )
@@ -535,32 +517,8 @@ fun RamisaNavGraph(
       // 33. Tools Hub Screen
       composable(Screen.ToolsHub.route) {
         ToolsHubScreen(
-          onNavigateToSafetyGuide = { navController.navigate(Screen.SafetyGuide.route) },
-          onNavigateToCyberCrimeSupport = { navController.navigate(Screen.CyberCrimeSupport.route) },
-          onNavigateToLegalAid = { navController.navigate(Screen.LegalAid.route) },
-          onNavigateToFirstAid = { navController.navigate(Screen.FirstAid.route) },
-          onNavigateToWellness = { navController.navigate(Screen.WellnessCounseling.route) },
-          onNavigateToSelfDefense = { navController.navigate(Screen.SelfDefense.route) },
-          onNavigateToSafetyTimer = { navController.navigate(Screen.SafetyTimer.route) },
-          onNavigateToSafePlaces = { navController.navigate(Screen.SafePlaces.route) },
-          onNavigateToThreatGuard = { navController.navigate(Screen.ThreatGuard.route) },
-          onNavigateToRideSafety = { navController.navigate(Screen.RideSafety.route) },
-          onNavigateToMeshNetwork = { navController.navigate(Screen.MeshNetwork.route) },
-          onNavigateToHardwareTrigger = { navController.navigate(Screen.HardwareTrigger.route) },
-          onNavigateToStealthMode = { navController.navigate(Screen.StealthMode.route) },
-          onNavigateToHistory = { navController.navigate(Screen.History.route) },
-          onNavigateToBatteryPing = { navController.navigate(Screen.BatteryPing.route) },
-          onNavigateToOfflineMaps = { navController.navigate(Screen.OfflineMaps.route) },
-          onNavigateToVolunteerEscort = { navController.navigate(Screen.VolunteerEscort.route) },
-          onNavigateToCommunitySafety = { navController.navigate(Screen.CommunitySafety.route) },
-          onNavigateToFakeCall = { navController.navigate(Screen.FakeCall.route) },
-          onNavigateToSirenStrobe = { navController.navigate(Screen.SirenStrobe.route) },
-          onNavigateToSafeJourney = { navController.navigate(Screen.SafeJourney.route) },
-          onNavigateToContacts = { navController.navigate(Screen.EmergencyContacts.route) },
-          onTriggerSos = {
-            emergencyViewModel.triggerSos()
-            navController.navigate(Screen.Emergency.route)
-          }
+          onNavigate = { destination -> navController.navigate(destination.route) },
+          onTriggerSos = { navController.navigate(Screen.Emergency.route) }
         )
       }
     }
@@ -570,8 +528,21 @@ fun RamisaNavGraph(
       modifier = Modifier
         .align(Alignment.TopCenter)
         .padding(top = innerPadding.calculateTopPadding() + 4.dp),
-      isBangla = false
+      isBangla = isBangla
     )
   }
   }
 }
+
+private data class PrimaryDestination(
+  val screen: Screen,
+  val icon: ImageVector,
+  val label: String,
+  val banglaLabel: String
+)
+
+private val primaryDestinations = listOf(
+  PrimaryDestination(Screen.Home, Icons.Default.Home, "Home", "হোম"),
+  PrimaryDestination(Screen.ToolsHub, Icons.Default.GridView, "Tools", "টুল"),
+  PrimaryDestination(Screen.Settings, Icons.Default.Settings, "Settings", "সেটিংস")
+)

@@ -79,20 +79,20 @@ class FakeCallViewModel : ViewModel() {
   }
 
   fun triggerCallSchedule() {
+    timerJob?.cancel()
     val delaySecs = _uiState.value.delaySeconds
     if (delaySecs == 0) {
-      _uiState.update { it.copy(state = FakeCallState.RINGING) }
+      _uiState.update { it.copy(state = FakeCallState.RINGING, countdownRemaining = 0) }
       return
     }
 
     _uiState.update { it.copy(state = FakeCallState.COUNTDOWN, countdownRemaining = delaySecs) }
-    timerJob?.cancel()
     timerJob = viewModelScope.launch {
       for (i in delaySecs downTo 1) {
         _uiState.update { it.copy(countdownRemaining = i) }
         delay(1000)
       }
-      _uiState.update { it.copy(state = FakeCallState.RINGING) }
+      _uiState.update { it.copy(state = FakeCallState.RINGING, countdownRemaining = 0) }
     }
   }
 

@@ -45,35 +45,28 @@ class JourneyRepositoryImpl : JourneyRepository {
   }
 
   override suspend fun updateLocation(location: GeoLocation): Result<Boolean> {
+    if (!location.isAvailable || _activeJourney.value == null) return Result.success(false)
+    _activeJourney.update { it?.copy(lastLocation = location) }
     return Result.success(true)
   }
 
   override suspend fun completeJourney(journeyId: String): Result<Boolean> {
-    _activeJourney.update { current ->
-      if (current?.id == journeyId) current.copy(status = JourneyStatus.SAFE_ARRIVED) else current
-    }
-    val completed = _activeJourney.value
-    _activeJourney.value = null
-    if (completed != null) {
-      _journeyHistory.update { list ->
-        list.map { if (it.id == journeyId) completed else it }
-      }
-    }
-    return Result.success(true)
+    return finishJourney(journeyId, JourneyStatus.SAFE_ARRIVED)
   }
 
   override suspend fun cancelJourney(journeyId: String): Result<Boolean> {
-    _activeJourney.update { current ->
-      if (current?.id == journeyId) current.copy(status = JourneyStatus.CANCELLED) else current
-    }
-    _activeJourney.value = null
+    return finishJourney(journeyId, JourneyStatus.CANCELLED)
+  }
+
+  private fun finishJourney(journeyId: String, status: JourneyStatus): Result<Boolean> {
+    val active = _activeJourney.value?.takeIf { it.id == journeyId } ?: return Result.success(false)
+    if (!_activeJourney.compareAndSet(active, null)) return Result.success(false)
+    _journeyHistory.update { entries -> entries.map { if (it.id == journeyId) active.copy(status = status) else it } }
     return Result.success(true)
   }
 
   override suspend fun respondToSafetyCheck(safe: Boolean): Result<Boolean> {
-    if (!safe) {
-      _activeJourney.update { it?.copy(status = JourneyStatus.ALERT_TRIGGERED) }
-    }
+    _isDeviationDetected.value = !safe
     return Result.success(safe)
   }
 }

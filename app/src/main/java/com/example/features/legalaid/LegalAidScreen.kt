@@ -63,6 +63,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.core.utils.BangladeshHotlines
 import com.example.ui.theme.PinkContainer
 import com.example.ui.theme.PinkPrimary
 import com.example.ui.theme.PinkPrimaryDark
@@ -192,7 +193,7 @@ fun LegalAidScreen(
                   color = PinkPrimaryDark
                 )
                 Text(
-                  text = "ডায়াল করুন: ১৬৪৩০ (টোল ফ্রি)",
+                  text = "ডায়াল করুন: ${BangladeshHotlines.LEGAL_AID_BANGLA} (টোল ফ্রি)",
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                   color = MaterialTheme.colorScheme.onSurface
                 )
@@ -206,14 +207,14 @@ fun LegalAidScreen(
 
             Button(
               onClick = {
-                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:16430"))
+                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${BangladeshHotlines.LEGAL_AID}"))
                 context.startActivity(intent)
               },
               colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
               shape = RoundedCornerShape(10.dp),
-              modifier = Modifier.testTag("btn_dial_16430")
+              modifier = Modifier.testTag("btn_dial_legal_aid")
             ) {
-              Text("16430", fontWeight = FontWeight.Bold)
+              Text(BangladeshHotlines.LEGAL_AID, fontWeight = FontWeight.Bold)
             }
           }
         }

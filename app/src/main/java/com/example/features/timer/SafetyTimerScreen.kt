@@ -331,7 +331,7 @@ fun SafetyTimerScreen(
             )
 
             Text(
-              text = "1. Set the estimated time for your trip or dangerous situation.\n2. Before the timer reaches 00:00, tap 'I'm Safe' to confirm safety.\n3. If you fail to respond (or phone is seized/offline), RAMISA automatically broadcasts SOS with your last recorded GPS coordinates to all guardians.",
+              text = "Starting the timer authorizes an SMS attempt to enabled contacts if you miss check-in. Tap ‘I’m Safe’ to cancel. Keep this screen open. SMS requires permission and cellular service, and location is included only when available.",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )

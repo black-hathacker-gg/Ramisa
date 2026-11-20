@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -69,6 +70,7 @@ fun RegisterScreen(
   viewModel: AuthViewModel,
   onRegisterSuccess: () -> Unit,
   onNavigateBack: () -> Unit,
+  onNavigateToSignIn: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -79,7 +81,7 @@ fun RegisterScreen(
       TopAppBar(
         title = {
           Text(
-            text = "Create Protection Profile",
+            text = "Create account",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
           )
         },
@@ -99,20 +101,33 @@ fun RegisterScreen(
     modifier = modifier.fillMaxSize(),
     containerColor = MaterialTheme.colorScheme.background
   ) { paddingValues ->
+    if (uiState.awaitingEmailConfirmation) {
+      Column(
+        modifier = Modifier.padding(paddingValues).padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+      ) {
+        Text("Confirm your email", style = MaterialTheme.typography.headlineSmall)
+        Text("Open the confirmation link sent to ${uiState.email}, then return to sign in.")
+        Button(onClick = onNavigateToSignIn) { Text("Go to sign in") }
+      }
+      return@Scaffold
+    }
+
     Column(
       modifier = Modifier
         .fillMaxWidth()
         .padding(paddingValues)
+        .imePadding()
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
       Text(
-        text = "Join RAMISA Safety Network",
+        text = "Your safety profile",
         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         color = MaterialTheme.colorScheme.onBackground
       )
       Text(
-        text = "Your safety profile is stored securely to assist responders and guardians.",
+        text = "Your emergency PIN and medical notes stay on this device.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
       )
@@ -195,8 +210,6 @@ fun RegisterScreen(
 
       Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
       // Email Input
       OutlinedTextField(
         value = uiState.email,
@@ -210,6 +223,8 @@ fun RegisterScreen(
           .fillMaxWidth()
           .testTag("input_reg_email")
       )
+
+      Spacer(modifier = Modifier.height(12.dp))
 
       // Phone Number
       OutlinedTextField(
@@ -266,14 +281,27 @@ fun RegisterScreen(
         value = uiState.emergencyPin,
         onValueChange = { if (it.length <= 4) viewModel.onEmergencyPinChanged(it) },
         label = { Text("4-Digit Emergency Cancellation PIN") },
-        placeholder = { Text("e.g. 1234") },
-        supportingText = { Text("Required to verify false alarms or resolve emergency SOS") },
+        supportingText = { Text("Used to verify cancellation of an SOS") },
         leadingIcon = { Icon(imageVector = Icons.Default.Pin, contentDescription = null) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        visualTransformation = PasswordVisualTransformation(),
         singleLine = true,
         modifier = Modifier
           .fillMaxWidth()
           .testTag("input_reg_pin")
+      )
+
+      Spacer(modifier = Modifier.height(12.dp))
+
+      OutlinedTextField(
+        value = uiState.confirmPin,
+        onValueChange = { if (it.length <= 4) viewModel.onConfirmPinChanged(it) },
+        label = { Text("Confirm emergency PIN") },
+        leadingIcon = { Icon(imageVector = Icons.Default.Pin, contentDescription = null) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        visualTransformation = PasswordVisualTransformation(),
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().testTag("input_reg_confirm_pin")
       )
 
       Spacer(modifier = Modifier.height(12.dp))
@@ -323,7 +351,7 @@ fun RegisterScreen(
           )
         } else {
           Text(
-            text = "CREATE SAFETY ACCOUNT",
+            text = "CREATE ACCOUNT",
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
           )
         }

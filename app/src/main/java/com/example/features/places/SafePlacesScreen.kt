@@ -1,7 +1,5 @@
 package com.example.features.places
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -34,13 +33,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -49,6 +49,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,9 +63,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.PlaceType
 import com.example.domain.model.SafePlace
+import com.example.features.map.openDialer
+import com.example.features.map.openMapDirections
+import kotlinx.coroutines.launch
 import com.example.ui.theme.SafeGreenContainer
 import com.example.ui.theme.SafeGreenDark
-import com.example.ui.theme.SafeGreenPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,23 +78,23 @@ fun SafePlacesScreen(
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val snackbar = remember { SnackbarHostState() }
+  val scope = rememberCoroutineScope()
 
   LaunchedEffect(uiState.dialIntentNumber) {
     uiState.dialIntentNumber?.let { phone ->
-      val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-      try {
-        context.startActivity(intent)
-      } catch (_: Exception) {}
       viewModel.clearDialIntent()
+      if (!openDialer(context, phone)) snackbar.showSnackbar("No dialer app is available.")
     }
   }
 
   Scaffold(
+    snackbarHost = { SnackbarHost(snackbar) },
     topBar = {
       TopAppBar(
         title = {
           Text(
-            text = "Safe Places Radar (নিরাপদ স্থান)",
+            text = "Safe places",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
           )
         },
@@ -122,7 +126,7 @@ fun SafePlacesScreen(
       OutlinedTextField(
         value = uiState.searchQuery,
         onValueChange = viewModel::onSearchQueryChanged,
-        placeholder = { Text("Search Thana, Hospital, Area (ধানমন্ডি, মিরপুর...)") },
+        placeholder = { Text("Search name or area") },
         leadingIcon = {
           Icon(imageVector = Icons.Default.Search, contentDescription = null)
         },
@@ -135,50 +139,52 @@ fun SafePlacesScreen(
 
       Spacer(modifier = Modifier.height(10.dp))
 
-      // Filter Chips Row
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-      ) {
-        FilterChip(
-          selected = uiState.selectedFilter == null,
-          onClick = { viewModel.onFilterSelected(null) },
-          label = { Text("All", fontSize = 11.sp) }
-        )
-        FilterChip(
-          selected = uiState.selectedFilter == PlaceType.POLICE_STATION,
-          onClick = { viewModel.onFilterSelected(PlaceType.POLICE_STATION) },
-          label = { Text("Police / থানা", fontSize = 11.sp) }
-        )
-        FilterChip(
-          selected = uiState.selectedFilter == PlaceType.HOSPITAL,
-          onClick = { viewModel.onFilterSelected(PlaceType.HOSPITAL) },
-          label = { Text("Hospitals", fontSize = 11.sp) }
-        )
-        FilterChip(
-          selected = uiState.selectedFilter == PlaceType.WOMEN_SUPPORT_CENTER,
-          onClick = { viewModel.onFilterSelected(PlaceType.WOMEN_SUPPORT_CENTER) },
-          label = { Text("Women Crisis (OCC)", fontSize = 11.sp) }
-        )
+      LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        item {
+          FilterChip(
+            selected = uiState.selectedFilter == null,
+            onClick = { viewModel.onFilterSelected(null) },
+            label = { Text("All") }
+          )
+        }
+        items(PlaceType.entries) { type ->
+          val label = when (type) {
+            PlaceType.POLICE_STATION -> "Police"
+            PlaceType.HOSPITAL -> "Hospitals"
+            PlaceType.WOMEN_SUPPORT_CENTER -> "Crisis support"
+            PlaceType.SAFE_ZONE -> "Safe zones"
+          }
+          FilterChip(
+            selected = uiState.selectedFilter == type,
+            onClick = { viewModel.onFilterSelected(type) },
+            label = { Text(label) }
+          )
+        }
       }
 
-      Spacer(modifier = Modifier.height(12.dp))
-
+      Text(
+        "Dhaka directory. Check hours and contact details before visiting.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+      Spacer(modifier = Modifier.height(10.dp))
       // Safe places list
       LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
+        if (uiState.places.isEmpty()) {
+          item { Text("No places match those filters.") }
+        }
         items(uiState.places, key = { it.id }) { place ->
           SafePlaceCard(
             place = place,
+            hasFreshLocation = uiState.hasFreshLocation,
             onCall = { viewModel.onCallPlace(place.phoneNumber) },
             onNavigate = {
-              val gmmIntentUri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${Uri.encode(place.name)}")
-              val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-              try {
-                context.startActivity(mapIntent)
-              } catch (_: Exception) {}
+              if (!openMapDirections(context, place.latitude, place.longitude, place.name)) {
+                scope.launch { snackbar.showSnackbar("No map or browser app is available.") }
+              }
             }
           )
         }
@@ -194,6 +200,7 @@ fun SafePlacesScreen(
 @Composable
 private fun SafePlaceCard(
   place: SafePlace,
+  hasFreshLocation: Boolean,
   onCall: () -> Unit,
   onNavigate: () -> Unit
 ) {
@@ -206,7 +213,7 @@ private fun SafePlaceCard(
 
   val typeTag = when (place.type) {
     PlaceType.POLICE_STATION -> "POLICE THANA"
-    PlaceType.HOSPITAL -> "24/7 HOSPITAL"
+    PlaceType.HOSPITAL -> "HOSPITAL"
     PlaceType.WOMEN_SUPPORT_CENTER -> "CRISIS HELPDESK"
     PlaceType.SAFE_ZONE -> "SAFE HAVEN"
   }
@@ -241,26 +248,28 @@ private fun SafePlaceCard(
           )
         }
 
-        Surface(
-          shape = RoundedCornerShape(8.dp),
-          color = SafeGreenContainer
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
+        if (hasFreshLocation) {
+          Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = SafeGreenContainer
           ) {
-            Icon(
-              imageVector = Icons.Default.LocationOn,
-              contentDescription = null,
-              tint = SafeGreenDark,
-              modifier = Modifier.size(12.dp)
-            )
-            Spacer(modifier = Modifier.width(2.dp))
-            Text(
-              text = "${place.distanceKm} km away",
-              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
-              color = SafeGreenDark
-            )
+            Row(
+              modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = SafeGreenDark,
+                modifier = Modifier.size(12.dp)
+              )
+              Spacer(modifier = Modifier.width(2.dp))
+              Text(
+                text = "${place.distanceKm} km away",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+                color = SafeGreenDark
+              )
+            }
           }
         }
       }

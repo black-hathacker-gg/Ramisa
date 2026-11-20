@@ -1,6 +1,7 @@
 package com.example.features.legalaid
 
 import androidx.lifecycle.ViewModel
+import com.example.core.utils.BangladeshHotlines
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -78,13 +79,13 @@ class LegalAidViewModel : ViewModel() {
       ),
       LegalAidOrg(
         id = "org_gov_legal_aid",
-        name = "National Legal Aid Services Organization (NLASO)",
-        nameBengali = "জাতীয় আইনগত সহায়তা প্রদান সংস্থা (১৬৪৩০)",
+        name = "Bangladesh Legal Aid Department",
+        nameBengali = "বাংলাদেশ আইনগত সহায়তা অধিদপ্তর (${BangladeshHotlines.LEGAL_AID_BANGLA})",
         serviceType = "Government Free Legal Service Hotline",
-        hotline = "16430",
+        hotline = BangladeshHotlines.LEGAL_AID,
         address = "Ministry of Law, Justice and Parliamentary Affairs, Dhaka",
         rightsSummary = listOf(
-          "Dial 16430 (Toll-Free) 24/7 for government-funded legal representation.",
+          "Call ${BangladeshHotlines.LEGAL_AID} toll-free for information about government-funded legal assistance.",
           "Government panel lawyers assigned at district judge courts across all 64 districts."
         )
       )

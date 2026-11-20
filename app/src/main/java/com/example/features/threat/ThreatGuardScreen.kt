@@ -1,15 +1,10 @@
 package com.example.features.threat
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,27 +14,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,32 +34,28 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.domain.model.ThreatLevel
-import com.example.ui.theme.SafeGreenDark
-import com.example.ui.theme.SafeGreenPrimary
-import com.example.ui.theme.SafetyRedDark
-import com.example.ui.theme.SafetyRedLight
-import com.example.ui.theme.SafetyRedPrimary
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.BuildConfig
+import com.example.domain.model.AudioInputSource
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,411 +66,173 @@ fun ThreatGuardScreen(
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  val context = LocalContext.current
+  val lifecycle = LocalLifecycleOwner.current.lifecycle
+  val microphonePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    if (granted) viewModel.startMonitoring() else viewModel.onMicrophonePermissionDenied()
+  }
 
-  LaunchedEffect(uiState.triggeredAutoSos) {
-    if (uiState.triggeredAutoSos) {
-      onTriggerSos()
+  DisposableEffect(lifecycle, viewModel) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_STOP) viewModel.stopMonitoring("Paused because this screen is no longer active. Tap Start to resume.")
+    }
+    lifecycle.addObserver(observer)
+    onDispose {
+      lifecycle.removeObserver(observer)
+      viewModel.stopMonitoring()
     }
   }
 
-  val infiniteTransition = rememberInfiniteTransition(label = "pulse_radar")
-  val pulseScale by infiniteTransition.animateFloat(
-    initialValue = 1f,
-    targetValue = if (uiState.isMonitoring) 1.25f else 1f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(1000, easing = FastOutSlowInEasing),
-      repeatMode = RepeatMode.Reverse
-    ),
-    label = "pulse_radar_scale"
-  )
+  LaunchedEffect(uiState.triggeredAutoSos) {
+    if (uiState.triggeredAutoSos && viewModel.consumeSosRequest()) onTriggerSos()
+  }
 
-  val threatColor by animateColorAsState(
-    targetValue = when (uiState.analysisResult.threatLevel) {
-      ThreatLevel.LOW -> SafeGreenPrimary
-      ThreatLevel.MEDIUM -> Color(0xFFE65100)
-      ThreatLevel.HIGH -> SafetyRedPrimary
-      ThreatLevel.CRITICAL -> SafetyRedDark
-    },
-    label = "threat_color"
-  )
+  val pendingSource = uiState.pendingConfirmationSource
+  if (pendingSource != null) {
+    val livePrompt = pendingSource == AudioInputSource.LIVE_MICROPHONE
+    AlertDialog(
+      onDismissRequest = viewModel::cancelConfirmation,
+      title = { Text(if (livePrompt) "Possible scream — do you need help?" else "Manual prompt preview") },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(if (livePrompt)
+            "Two successive audio windows resembled screaming. This model cannot verify danger. Open your SOS flow only if you need help."
+          else "This is an interface preview. No sound was classified and this preview cannot send an alert.")
+          Text("Closes in ${uiState.confirmationSecondsRemaining}s. Nothing sends automatically.")
+        }
+      },
+      confirmButton = {
+        TextButton(onClick = viewModel::confirmSos, modifier = Modifier.testTag("confirm_acoustic_sos")) {
+          Text(if (livePrompt) "Open SOS" else "Close preview")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = viewModel::cancelConfirmation, modifier = Modifier.testTag("cancel_acoustic_sos")) { Text("I'm safe / Cancel") }
+      }
+    )
+  }
 
   Scaffold(
+    modifier = modifier.fillMaxSize(),
     topBar = {
       TopAppBar(
-        title = {
-          Text(
-            text = "AI Threat Guard (শব্দ ও বিপদ মনিটর)",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-          )
-        },
-        navigationIcon = {
-          IconButton(onClick = onNavigateBack) {
-            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
-          }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.primary,
-          titleContentColor = Color.White,
-          navigationIconContentColor = Color.White,
-          actionIconContentColor = Color.White
-        )
+        title = { Text("AI sound monitor", fontWeight = FontWeight.Bold) },
+        navigationIcon = { IconButton(onClick = onNavigateBack) { Icon(Icons.Default.ArrowBack, "Back") } }
       )
-    },
-    modifier = modifier.fillMaxSize(),
-    containerColor = MaterialTheme.colorScheme.background
-  ) { paddingValues ->
+    }
+  ) { contentPadding ->
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(paddingValues)
-        .verticalScroll(rememberScrollState())
-        .padding(horizontal = 20.dp),
-      horizontalAlignment = Alignment.CenterHorizontally
+      modifier = Modifier.fillMaxSize().padding(contentPadding).verticalScroll(rememberScrollState()).padding(20.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-      Spacer(modifier = Modifier.height(8.dp))
+      Text("শব্দ পর্যবেক্ষণ", style = MaterialTheme.typography.titleMedium)
+      Text("On-device YAMNet recognises sound categories. It cannot establish that you are safe or in danger, and it does not recognise spoken SOS phrases.",
+        style = MaterialTheme.typography.bodyMedium)
 
-      // Status Bar
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-          containerColor = if (uiState.isMonitoring) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant
-        )
-      ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-              modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(if (uiState.isMonitoring) SafeGreenPrimary.copy(alpha = 0.15f) else Color.Gray.copy(alpha = 0.2f)),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(
-                imageVector = if (uiState.isMonitoring) Icons.Default.Sensors else Icons.Default.MicOff,
-                contentDescription = null,
-                tint = if (uiState.isMonitoring) SafeGreenPrimary else Color.Gray,
-                modifier = Modifier.size(20.dp)
-              )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-              Text(
-                text = if (uiState.isMonitoring) "ACTIVE LISTENING" else "MONITORING OFF",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = if (uiState.isMonitoring) SafeGreenDark else Color.Gray
-              )
-              Text(
-                text = if (uiState.isMonitoring) "Acoustic sensor processing" else "Tap below to begin",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-              )
+      Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(if (uiState.isMonitoring) Icons.Default.Mic else Icons.Default.MicOff, contentDescription = null)
+            Text(when {
+              uiState.isStarting -> "Starting model…"
+              uiState.isMonitoring -> "Microphone active"
+              uiState.isReplaying -> "Recorded sample replay"
+              else -> "Microphone off"
+            }, fontWeight = FontWeight.Bold)
+          }
+          Text(uiState.statusMessage, style = MaterialTheme.typography.bodySmall)
+          if (uiState.isStarting || uiState.isReplaying) CircularProgressIndicator()
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+              enabled = !uiState.isStarting && !uiState.isReplaying,
+              modifier = Modifier.testTag("toggle_audio_monitor"),
+              onClick = {
+                if (uiState.isMonitoring) viewModel.stopMonitoring()
+                else if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                  viewModel.startMonitoring()
+                } else microphonePermission.launch(Manifest.permission.RECORD_AUDIO)
+              }
+            ) { Text(if (uiState.isMonitoring) "Stop" else "Start microphone") }
+            if (uiState.isStarting || uiState.isReplaying) {
+              TextButton(onClick = { viewModel.stopMonitoring() }) { Text("Cancel") }
             }
           }
-
-          Button(
-            onClick = { viewModel.toggleMonitoring() },
-            colors = ButtonDefaults.buttonColors(
-              containerColor = if (uiState.isMonitoring) SafetyRedPrimary else MaterialTheme.colorScheme.primary
-            ),
-            shape = RoundedCornerShape(12.dp)
-          ) {
-            Text(if (uiState.isMonitoring) "STOP" else "START")
-          }
+          Text("Monitoring pauses when you leave this screen or lock the phone. Audio is not saved or uploaded.",
+            style = MaterialTheme.typography.bodySmall)
         }
       }
 
-      Spacer(modifier = Modifier.height(24.dp))
-
-      // Circular Acoustic Radar / Visualizer
-      Box(
-        modifier = Modifier
-          .size(190.dp)
-          .testTag("acoustic_radar_box"),
-        contentAlignment = Alignment.Center
-      ) {
-        if (uiState.isMonitoring) {
-          Box(
-            modifier = Modifier
-              .size(180.dp)
-              .scale(pulseScale)
-              .clip(CircleShape)
-              .background(threatColor.copy(alpha = 0.15f))
-          )
+      uiState.errorMessage?.let { error ->
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+          Text(error, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
         }
+      }
 
-        Surface(
-          modifier = Modifier
-            .size(140.dp)
-            .clip(CircleShape),
-          color = MaterialTheme.colorScheme.surface,
-          shape = CircleShape,
-          tonalElevation = 4.dp
-        ) {
-          Box(
-            modifier = Modifier
-              .fillMaxSize()
-              .border(3.dp, threatColor.copy(alpha = 0.6f), CircleShape),
-            contentAlignment = Alignment.Center
-          ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              Icon(
-                imageVector = Icons.Default.GraphicEq,
-                contentDescription = null,
-                tint = threatColor,
-                modifier = Modifier.size(28.dp)
-              )
-              Spacer(modifier = Modifier.height(4.dp))
-              Text(
-                text = "${uiState.currentDecibels} dB",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                color = MaterialTheme.colorScheme.onSurface
-              )
-              Text(
-                text = uiState.analysisResult.threatLevel.name,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = threatColor
-              )
-            }
+      Card(modifier = Modifier.fillMaxWidth().testTag("audio_analysis_result")) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Text("Latest acoustic result", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+          Text(when (uiState.analysisResult.source) {
+            AudioInputSource.LIVE_MICROPHONE -> "Source: live microphone"
+            AudioInputSource.PRERECORDED_REPLAY -> "Source: bundled recording — alerts disabled"
+            AudioInputSource.MANUAL_PREVIEW -> "Source: manual preview — alerts disabled"
+            AudioInputSource.NONE -> "No audio result yet"
+          }, style = MaterialTheme.typography.labelMedium)
+          Text(uiState.analysisResult.recommendedAction)
+          val score = uiState.analysisResult.screamModelScore
+          if (score != null) {
+            Text(String.format(Locale.US, "Screaming model score: %.3f", score), fontWeight = FontWeight.Bold,
+              modifier = Modifier.testTag("scream_model_score"))
+            Text("A model score is not a calibrated probability of danger.", style = MaterialTheme.typography.bodySmall)
           }
-        }
-      }
-
-      Spacer(modifier = Modifier.height(18.dp))
-
-      // Realtime Audio Waveform Visualizer Bars
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(48.dp)
-          .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-          .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        uiState.audioSamplePoints.forEach { sample ->
-          val barHeight = (sample.coerceIn(0.1f, 1f) * 36).dp
-          Box(
-            modifier = Modifier
-              .width(6.dp)
-              .height(barHeight)
-              .clip(RoundedCornerShape(3.dp))
-              .background(
-                if (sample > 0.75f) SafetyRedPrimary
-                else if (sample > 0.45f) Color(0xFFE65100)
-                else MaterialTheme.colorScheme.primary
-              )
-          )
-        }
-      }
-
-      Spacer(modifier = Modifier.height(20.dp))
-
-      // Threat Analysis Diagnostic Card
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-      ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-        ) {
+          uiState.analysisResult.rmsDbfs?.let {
+            Text(String.format(Locale.US, "Recorded RMS level: %.1f dBFS", it))
+            Text("Relative digital amplitude, not calibrated environmental decibels.", style = MaterialTheme.typography.bodySmall)
+          }
           Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            Modifier.fillMaxWidth().height(48.dp).testTag("acoustic_waveform"),
+            horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically
           ) {
-            Text(
-              text = "Threat Analysis Status",
-              style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-            )
-            Surface(
-              shape = RoundedCornerShape(6.dp),
-              color = threatColor.copy(alpha = 0.15f)
-            ) {
-              Text(
-                text = "${(uiState.analysisResult.confidenceScore * 100).toInt()}% Confidence",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
-                color = threatColor,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-              )
+            uiState.audioSamplePoints.forEach { amplitude ->
+              Box(Modifier.width(5.dp).height((1 + amplitude.coerceIn(0f, 1f) * 46).dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(3.dp)))
             }
           }
-
-          Spacer(modifier = Modifier.height(10.dp))
-
-          Text(
-            text = uiState.analysisResult.recommendedAction,
-            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface
-          )
-          Spacer(modifier = Modifier.height(4.dp))
-          Text(
-            text = uiState.analysisResult.recommendedActionBn,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
-          )
-
-          if (uiState.analysisResult.detectedAnomalies.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-              text = "Detected Acoustic Anomalies:",
-              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-            )
-            uiState.analysisResult.detectedAnomalies.forEach { anomaly ->
-              Row(
-                modifier = Modifier.padding(top = 2.dp),
-                verticalAlignment = Alignment.CenterVertically
-              ) {
-                Icon(
-                  imageVector = Icons.Default.Warning,
-                  contentDescription = null,
-                  tint = SafetyRedPrimary,
-                  modifier = Modifier.size(12.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                  text = anomaly,
-                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                  color = SafetyRedDark
-                )
+          if (uiState.analysisResult.categories.isNotEmpty()) {
+            HorizontalDivider()
+            Text("Top sound categories", fontWeight = FontWeight.Bold)
+            uiState.analysisResult.categories.forEach { category ->
+              Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(category.label, modifier = Modifier.weight(1f))
+                Text(String.format(Locale.US, "%.3f", category.score))
               }
             }
           }
+          uiState.inferenceTimeMs?.let { Text("Last model run: ${it}ms", style = MaterialTheme.typography.labelSmall) }
         }
       }
 
-      Spacer(modifier = Modifier.height(16.dp))
-
-      // Voice-Activated SOS Hotwords Card
-      Card(
-        modifier = Modifier.fillMaxWidth().testTag("card_voice_hotword"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-      ) {
-        Column(
-          modifier = Modifier.fillMaxWidth().padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(imageVector = Icons.Default.Mic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.width(10.dp))
-              Column {
-                Text(
-                  text = "Voice SOS Hotwords (জরুরি ভয়েস সংকেত)",
-                  style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                  text = "Triggers SOS when spoken loudly or into mic",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-
-            Switch(
-              checked = uiState.isHotwordListeningEnabled,
-              onCheckedChange = { viewModel.toggleHotword(it) },
-              modifier = Modifier.testTag("switch_hotword_enabled")
-            )
+      Card(modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+          Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Offer an SOS confirmation", fontWeight = FontWeight.Bold)
+            Text("Off by default. Repeated scream candidates can offer a prompt. Sending still requires your explicit confirmation.",
+              style = MaterialTheme.typography.bodySmall)
           }
-
-          HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-          Text(
-            text = "Supported Phrases (Tap to Test Trigger):",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-          )
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-          ) {
-            Button(
-              onClick = { viewModel.triggerHotwordSOS("বাঁচাও (Bachao)") },
-              modifier = Modifier.weight(1f).testTag("btn_hotword_bachao"),
-              shape = RoundedCornerShape(10.dp),
-              colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary)
-            ) {
-              Text("\"বাঁচাও!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-
-            Button(
-              onClick = { viewModel.triggerHotwordSOS("Help Me RAMISA") },
-              modifier = Modifier.weight(1f).testTag("btn_hotword_help"),
-              shape = RoundedCornerShape(10.dp),
-              colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-            ) {
-              Text("\"Help Me!\"", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            }
-          }
+          Switch(uiState.isAutoSosEnabled, viewModel::toggleAutoSos, modifier = Modifier.testTag("switch_acoustic_sos_prompt"))
         }
       }
 
-      Spacer(modifier = Modifier.height(16.dp))
-
-      // Auto-SOS Escalation Toggle
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-      ) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Column(modifier = Modifier.weight(1f)) {
-            Text(
-              text = "Auto-Trigger SOS on Critical Threat",
-              style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-            )
-            Text(
-              text = "Automatically initiates emergency dispatch if scream / acoustic shock signature is confirmed.",
-              style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
-
-          Switch(
-            checked = uiState.isAutoSosEnabled,
-            onCheckedChange = { viewModel.toggleAutoSos(it) }
-          )
+      OutlinedButton(onClick = viewModel::previewConfirmation, modifier = Modifier.fillMaxWidth().testTag("preview_audio_prompt")) {
+        Text("Preview confirmation — no alerts")
+      }
+      if (BuildConfig.DEBUG) {
+        OutlinedButton(onClick = viewModel::replayBundledSpeech, enabled = !uiState.isReplaying,
+          modifier = Modifier.fillMaxWidth().testTag("replay_audio_sample")) {
+          Text("Replay speech sample — no alerts")
         }
       }
-
-      Spacer(modifier = Modifier.height(14.dp))
-
-      // Test Spike Simulation Button
-      OutlinedButton(
-        onClick = { viewModel.simulateThreatSpike() },
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
-      ) {
-        Icon(imageVector = Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Simulate Critical Distress Spike (Test)")
-      }
-
-      Spacer(modifier = Modifier.height(28.dp))
+      Spacer(Modifier.height(8.dp))
     }
   }
 }

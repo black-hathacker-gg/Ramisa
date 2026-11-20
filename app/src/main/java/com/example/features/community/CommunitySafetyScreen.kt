@@ -390,7 +390,7 @@ fun CommunitySafetyScreen(
             onReplyClick = { viewModel.openReplyDialog(it) },
             onRespondSos = { viewModel.respondToSosAlert(it) },
             onResolveSos = { viewModel.resolveSosAlert(it) },
-            onTriggerSosBroadcast = { viewModel.broadcastManualSosToCommunity() }
+            onTriggerSosBroadcast = { viewModel.previewCommunitySos() }
           )
         }
         1 -> {
@@ -400,7 +400,9 @@ fun CommunitySafetyScreen(
             isBangla = isBangla,
             onRespond = { viewModel.respondToSosAlert(it) },
             onResolve = { viewModel.resolveSosAlert(it) },
-            onTriggerTest = { viewModel.broadcastManualSosToCommunity() }
+            onTriggerTest = { viewModel.previewCommunitySos() },
+            onPublishHelp = viewModel::postCommunityHelpRequest,
+            isPublishing = uiState.isPublishingHelp
           )
         }
         2 -> {
@@ -683,7 +685,7 @@ fun CommunityPostCard(
               shape = RoundedCornerShape(6.dp)
             ) {
               Text(
-                text = if (isBangla) "অফলাইন সংরক্ষিত" else "Offline Queued",
+                text = if (isBangla) "অফলাইন সংরক্ষিত" else "This device only",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = Color(0xFFB45309)),
                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
               )
@@ -930,10 +932,27 @@ fun EmergencySosFeedView(
   isBangla: Boolean,
   onRespond: (String) -> Unit,
   onResolve: (String) -> Unit,
-  onTriggerTest: () -> Unit
+  onTriggerTest: () -> Unit,
+  onPublishHelp: () -> Unit,
+  isPublishing: Boolean
 ) {
   val context = LocalContext.current
   val activeList = alerts.filter { it.status != "RESOLVED" }
+  var confirmPublish by remember { mutableStateOf(false) }
+
+  if (confirmPublish) {
+    AlertDialog(
+      onDismissRequest = { confirmPublish = false },
+      title = { Text("Post a community help request?") },
+      text = { Text("Signed-in community members can read your request. Use SOS or the emergency dialer for immediate assistance.") },
+      confirmButton = {
+        TextButton(onClick = { confirmPublish = false; onPublishHelp() }) { Text("Post help request") }
+      },
+      dismissButton = {
+        TextButton(onClick = { confirmPublish = false }) { Text("Cancel") }
+      }
+    )
+  }
 
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
@@ -965,8 +984,8 @@ fun EmergencySosFeedView(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = SafetyRedDark)
               )
               Text(
-                text = if (isBangla) "৩ বার ঝাঁকালে বা লকস্ক্রিনে চাপলে এখানে স্বয়ংক্রিয়ভাবে লাইভ ব্রডকাস্ট হয়"
-                else "3x Phone Shake or Lock Screen SOS auto-broadcasts here with live location",
+                text = if (isBangla) "এই প্রিভিউ থেকে কোনো বার্তা পাঠানো হয় না"
+                else "Share a general help request with the community or see an on-device preview.",
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
                 color = SafetyRedDark
               )
@@ -976,15 +995,19 @@ fun EmergencySosFeedView(
           Spacer(modifier = Modifier.height(12.dp))
 
           Button(
-            onClick = onTriggerTest,
+            onClick = { confirmPublish = true },
+            enabled = !isPublishing,
             colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
           ) {
             Text(
-              text = if (isBangla) "জরুরি ব্রডকাস্ট টেস্ট করুন" else "Broadcast Emergency SOS Now",
+              text = if (isPublishing) "Posting…" else if (isBangla) "সাহায্যের অনুরোধ প্রকাশ করুন" else "Post help request",
               fontWeight = FontWeight.Bold
             )
+          }
+          TextButton(onClick = onTriggerTest, modifier = Modifier.fillMaxWidth()) {
+            Text(if (isBangla) "প্রিভিউ দেখুন" else "Preview community SOS")
           }
         }
       }
@@ -1084,6 +1107,7 @@ fun EmergencySosFeedView(
                   val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${alert.victimPhone}"))
                   context.startActivity(intent)
                 },
+                enabled = alert.victimPhone.isNotBlank(),
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary)
               ) {
@@ -1097,6 +1121,7 @@ fun EmergencySosFeedView(
                   val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(alert.mapUrl))
                   context.startActivity(mapIntent)
                 },
+                enabled = alert.mapUrl.isNotBlank(),
                 modifier = Modifier.weight(1f)
               ) {
                 Icon(imageVector = Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(16.dp))

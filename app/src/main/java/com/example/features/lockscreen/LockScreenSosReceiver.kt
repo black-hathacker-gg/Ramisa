@@ -10,13 +10,14 @@ class LockScreenSosReceiver : BroadcastReceiver() {
     Log.d("LockScreenSosReceiver", "Received intent action: ${intent.action}")
     when (intent.action) {
       LockScreenSosManager.ACTION_TRIGGER_LOCKSCREEN_SOS -> {
-        LockScreenSosManager.triggerOfflineEmergency(context, "Lock Screen Notification Action Trigger")
+        val pending = goAsync()
+        LockScreenSosManager.triggerOfflineEmergency(context, "Lock Screen Notification Action Trigger") { pending.finish() }
       }
       Intent.ACTION_BOOT_COMPLETED,
       Intent.ACTION_MY_PACKAGE_REPLACED,
       Intent.ACTION_SCREEN_OFF,
       Intent.ACTION_USER_PRESENT -> {
-        if (LockScreenSosManager.isLockScreenGuardEnabled.value) {
+        if (LockScreenSosManager.isGuardEnabled(context)) {
           LockScreenSosManager.showLockScreenNotification(context)
         }
       }

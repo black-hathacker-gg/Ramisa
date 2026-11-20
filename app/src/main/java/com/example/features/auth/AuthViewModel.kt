@@ -4,12 +4,14 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
+import com.example.data.repository.AppSessionManager
 import com.example.data.repository.AuthRepositoryImpl
 import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
 import com.example.domain.model.UserType
 import com.example.domain.repository.AuthRepository
 import com.example.domain.repository.AuthResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,37 +25,39 @@ data class AuthUiState(
   val password: String = "",
   val emergencyPin: String = "",
   val confirmPin: String = "",
-  val bloodGroup: String = "B+",
+  val bloodGroup: String = "",
   val emergencyNote: String = "",
   val userType: UserType = UserType.ADULT,
   val ageCategory: AgeCategory = AgeCategory.ADULT_18_PLUS,
   val isLoading: Boolean = false,
   val errorMessage: String? = null,
-  val isAuthenticated: Boolean = false
+  val isAuthenticated: Boolean = false,
+  val restoredSession: Boolean = false,
+  val awaitingEmailConfirmation: Boolean = false
 )
 
-class AuthViewModel(
-  application: Application
-) : AndroidViewModel(application) {
+class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
   private val authRepository: AuthRepository = AuthRepositoryImpl(
-      AppDatabase.getDatabase(application).userDao()
+    AppDatabase.getDatabase(application).userDao()
   )
 
   private val _uiState = MutableStateFlow(AuthUiState())
   val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
   init {
+    AppSessionManager.initializeLanguage(application)
     viewModelScope.launch {
-      try {
-        val restored = authRepository.restoreSession()
-        _uiState.update { it.copy(isAuthenticated = restored) }
-      
-        authRepository.isAuthenticated.collect { authed ->
-          _uiState.update { it.copy(isAuthenticated = authed) }
-        }
-      } catch (e: Exception) {
-        // Safe fallback
+      val restored = try {
+        authRepository.restoreSession()
+      } catch (e: CancellationException) {
+        throw e
+      } catch (_: Exception) {
+        false
+      }
+      _uiState.update { it.copy(restoredSession = restored) }
+      authRepository.isAuthenticated.collect { authenticated ->
+        _uiState.update { it.copy(isAuthenticated = authenticated) }
       }
     }
   }
@@ -71,100 +75,81 @@ class AuthViewModel(
 
   fun login(onSuccess: () -> Unit) {
     val state = _uiState.value
-    if (state.email.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Please enter your email") }
+    val email = state.email.trim()
+    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+      _uiState.update { it.copy(errorMessage = "Enter a valid email address.") }
       return
     }
-    if (state.password.isBlank() || state.password.length < 6) {
-      _uiState.update { it.copy(errorMessage = "Password must be at least 6 characters") }
+    if (state.password.isBlank()) {
+      _uiState.update { it.copy(errorMessage = "Enter your account password.") }
       return
     }
-
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-      when (val result = authRepository.login(state.email, state.password)) {
-        is AuthResult.Success -> {
-          _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
-          onSuccess()
-        }
-        is AuthResult.Error -> {
-          _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-        }
-      }
-    }
+    runAccountOperation(onSuccess) { authRepository.login(email, state.password) }
   }
 
   fun loginAsGuest(onSuccess: () -> Unit) {
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-      when (val result = authRepository.loginAsGuest()) {
-        is AuthResult.Success -> {
-          _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
-          onSuccess()
-        }
-        is AuthResult.Error -> {
-          _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
-        }
-      }
-    }
+    runAccountOperation(onSuccess) { authRepository.loginAsGuest() }
   }
 
   fun register(onSuccess: () -> Unit) {
     val state = _uiState.value
-    if (state.email.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Please enter your email address") }
-      return
+    val error = when {
+      !android.util.Patterns.EMAIL_ADDRESS.matcher(state.email.trim()).matches() -> "Enter a valid email address."
+      state.password.length < 6 -> "Use at least 6 characters for your account password."
+      state.name.isBlank() -> "Enter your full name."
+      state.phone.count(Char::isDigit) < 7 -> "Enter a valid phone number."
+      state.emergencyPin.length != 4 || state.emergencyPin.any { it !in '0'..'9' } ->
+        "Enter a 4-digit emergency PIN."
+      state.confirmPin != state.emergencyPin -> "The emergency PINs do not match."
+      else -> null
     }
-    if (state.password.isBlank() || state.password.length < 6) {
-      _uiState.update { it.copy(errorMessage = "Password must be at least 6 characters") }
-      return
-    }
-    if (state.name.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Please enter your full name") }
-      return
-    }
-    if (state.phone.isBlank()) {
-      _uiState.update { it.copy(errorMessage = "Please enter a valid phone number") }
-      return
-    }
-    if (state.emergencyPin.length != 4 || !state.emergencyPin.all { it.isDigit() }) {
-      _uiState.update { it.copy(errorMessage = "Emergency PIN must be exactly 4 digits") }
-      return
-    }
-    if (state.confirmPin.isNotEmpty() && state.confirmPin != state.emergencyPin) {
-      _uiState.update { it.copy(errorMessage = "Emergency PIN confirmation does not match") }
+    if (error != null) {
+      _uiState.update { it.copy(errorMessage = error) }
       return
     }
 
-    viewModelScope.launch {
-      _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-      val result = authRepository.register(
+    runAccountOperation(onSuccess) {
+      authRepository.register(
         name = state.name,
         email = state.email,
         phone = state.phone,
-        password = state.password.ifBlank { "Pass@1234" },
+        password = state.password,
         emergencyPin = state.emergencyPin,
         userType = state.userType,
         ageCategory = state.ageCategory,
         bloodGroup = state.bloodGroup,
         emergencyNote = state.emergencyNote
       )
-      when (result) {
+    }
+  }
+
+  private fun runAccountOperation(
+    onSuccess: () -> Unit,
+    operation: suspend () -> AuthResult<UserProfile>
+  ) {
+    if (_uiState.value.isLoading) return
+    val submittedEmail = _uiState.value.email.trim()
+    _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+    viewModelScope.launch {
+      when (val result = operation()) {
         is AuthResult.Success -> {
-          _uiState.update { it.copy(isLoading = false, isAuthenticated = true) }
+          _uiState.value = AuthUiState(isAuthenticated = authRepository.isAuthenticated.value)
           onSuccess()
         }
-        is AuthResult.Error -> {
-          _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
+        AuthResult.EmailConfirmationRequired -> {
+          _uiState.value = AuthUiState(email = submittedEmail, awaitingEmailConfirmation = true)
         }
+        is AuthResult.Error -> _uiState.update { it.copy(isLoading = false, errorMessage = result.message) }
       }
     }
   }
 
   fun logout(onLoggedOut: () -> Unit) {
+    if (_uiState.value.isLoading) return
+    _uiState.update { it.copy(isLoading = true) }
     viewModelScope.launch {
       authRepository.logout()
-      _uiState.update { it.copy(isAuthenticated = false) }
+      _uiState.value = AuthUiState()
       onLoggedOut()
     }
   }

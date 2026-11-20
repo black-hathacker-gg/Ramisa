@@ -32,5 +32,6 @@ data class DangerZone(
   val safeAlternativeRoute: String,
   val isLightingPoor: Boolean = true,
   val hasCctvCoverage: Boolean = false,
-  val userReportsCount: Int = 142
+  val userReportsCount: Int = 142,
+  val isLocalReport: Boolean = false
 )

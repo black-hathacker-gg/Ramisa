@@ -101,7 +101,7 @@ fun MeshNetworkScreen(
       TopAppBar(
         title = {
           Text(
-            text = "Offline Mesh SOS (ইন্টারনেটহীন মেশ)",
+            text = "Offline Mesh Preview",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
           )
         },
@@ -173,7 +173,7 @@ fun MeshNetworkScreen(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                   Text(
-                    text = if (uiState.isMeshBroadcasting) "PEER-TO-PEER MESH ACTIVE" else "MESH STANDBY",
+                    text = if (uiState.isMeshBroadcasting) "SIMULATION RUNNING" else "SIMULATION PAUSED",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = if (uiState.isMeshBroadcasting) SafeGreenDark else Color.Gray
                   )
@@ -237,11 +237,11 @@ fun MeshNetworkScreen(
               Spacer(modifier = Modifier.width(10.dp))
               Column {
                 Text(
-                  text = "Zero-Internet Emergency Broadcast",
+                  text = "Preview a mesh relay",
                   style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                 )
                 Text(
-                  text = "Broadcasts multi-hop distress packets to all nearby smartphones without 3G/4G/WiFi.",
+                  text = "Uses sample devices and messages for the preview. This screen cannot send an emergency alert.",
                   style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                   color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -258,7 +258,7 @@ fun MeshNetworkScreen(
             ) {
               Icon(imageVector = Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(18.dp))
               Spacer(modifier = Modifier.width(8.dp))
-              Text("Broadcast Offline Mesh Packet (Test)")
+              Text("Simulate mesh relay")
             }
           }
         }
@@ -292,7 +292,7 @@ fun MeshNetworkScreen(
         item {
           Spacer(modifier = Modifier.height(8.dp))
           Text(
-            text = "Relayed Offline Distress Packets",
+            text = "Simulated relay history",
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
           )
         }

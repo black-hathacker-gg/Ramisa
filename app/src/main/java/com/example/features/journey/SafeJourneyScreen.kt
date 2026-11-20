@@ -1,5 +1,8 @@
 package com.example.features.journey
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,15 +58,20 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.TravelMode
+import com.example.core.location.EmergencyLocationManager
 import com.example.ui.theme.SafeGreenContainer
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
@@ -79,6 +87,11 @@ fun SafeJourneyScreen(
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  val context = LocalContext.current
+  var confirmEnd by rememberSaveable { mutableStateOf(false) }
+  val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+    viewModel.useCurrentGpsLocation()
+  }
   val scrollState = rememberScrollState()
 
   Scaffold(
@@ -113,6 +126,10 @@ fun SafeJourneyScreen(
         .verticalScroll(scrollState)
         .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
+      uiState.statusMessage?.let { message ->
+        Text(message, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(12.dp))
+      }
       if (uiState.isJourneyActive) {
         // Active Journey Tracking Card
         Card(
@@ -175,6 +192,12 @@ fun SafeJourneyScreen(
               style = MaterialTheme.typography.bodySmall,
               color = SafeGreenDark.copy(alpha = 0.85f)
             )
+            Text(
+              text = uiState.activeJourney?.lastLocation?.description()?.let { "Last location: $it" }
+                ?: "Waiting for device location",
+              style = MaterialTheme.typography.bodySmall,
+              color = SafeGreenDark
+            )
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -207,7 +230,7 @@ fun SafeJourneyScreen(
               ) {
                 Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("ARRIVED SAFE", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Arrived · SMS", fontWeight = FontWeight.Bold, fontSize = 13.sp)
               }
 
               OutlinedButton(
@@ -226,10 +249,10 @@ fun SafeJourneyScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             TextButton(
-              onClick = { viewModel.cancelJourney() },
+              onClick = { confirmEnd = true },
               modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
-              Text("Cancel Journey Tracking", color = SafeGreenDark, fontSize = 12.sp)
+              Text("End journey", color = SafeGreenDark)
             }
           }
         }
@@ -260,7 +283,10 @@ fun SafeJourneyScreen(
         leadingIcon = { Icon(imageVector = Icons.Default.LocationOn, contentDescription = null) },
         trailingIcon = {
           IconButton(
-            onClick = { viewModel.useCurrentGpsLocation() },
+            onClick = {
+              if (EmergencyLocationManager.hasLocationPermission(context)) viewModel.useCurrentGpsLocation()
+              else locationPermission.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+            },
             modifier = Modifier.testTag("btn_use_current_gps")
           ) {
             Icon(
@@ -348,6 +374,7 @@ fun SafeJourneyScreen(
 
       Button(
         onClick = { viewModel.startJourney() },
+        enabled = !uiState.isJourneyActive,
         modifier = Modifier
           .fillMaxWidth()
           .height(52.dp)
@@ -360,7 +387,7 @@ fun SafeJourneyScreen(
         Icon(imageVector = Icons.Outlined.Shield, contentDescription = null)
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-          text = if (uiState.isJourneyActive) "RE-START SAFE JOURNEY" else "START SAFE JOURNEY",
+          text = "START SAFE JOURNEY",
           style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         )
       }
@@ -368,6 +395,16 @@ fun SafeJourneyScreen(
       Spacer(modifier = Modifier.height(24.dp))
     }
   }
+
+  if (confirmEnd) AlertDialog(
+    onDismissRequest = { confirmEnd = false },
+    title = { Text("End this journey?") },
+    text = { Text("This stops the arrival check and the current trip’s location tracking.") },
+    confirmButton = {
+      TextButton(onClick = { confirmEnd = false; viewModel.cancelJourney() }) { Text("End journey") }
+    },
+    dismissButton = { TextButton(onClick = { confirmEnd = false }) { Text("Keep tracking") } }
+  )
 
   // Safety Check Prompt Dialog
   if (uiState.isSafetyPromptVisible) {
@@ -398,7 +435,7 @@ fun SafeJourneyScreen(
             style = MaterialTheme.typography.bodyMedium
           )
           Text(
-            text = "Automatic SOS escalation in ${uiState.promptCountdownSeconds} seconds if unconfirmed.",
+            text = "Check-in closes in ${uiState.promptCountdownSeconds} seconds. Use ‘I need help’ to open SOS.",
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
             color = SafetyRedLight
           )

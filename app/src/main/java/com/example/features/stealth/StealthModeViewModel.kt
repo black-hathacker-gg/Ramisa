@@ -1,16 +1,15 @@
 package com.example.features.stealth
 
 import androidx.lifecycle.ViewModel
+import java.math.BigDecimal
+import java.math.MathContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
 data class StealthModeUiState(
   val displayText: String = "0",
-  val formulaText: String = "",
-  val isSecretSosTriggered: Boolean = false,
-  val feedbackToast: String? = null
+  val formulaText: String = ""
 )
 
 class StealthModeViewModel : ViewModel() {
@@ -19,97 +18,130 @@ class StealthModeViewModel : ViewModel() {
   val uiState: StateFlow<StealthModeUiState> = _uiState.asStateFlow()
 
   private var currentNumber = ""
-  private var firstOperand = 0.0
-  private var pendingOp = ""
+  private var firstOperand: BigDecimal? = null
+  private var pendingOperator: String? = null
+  private var rawInput = true
 
   fun onDigit(digit: String) {
-    if (currentNumber == "0") currentNumber = ""
+    if (pendingOperator == null && !rawInput) currentNumber = ""
+    if (currentNumber.length >= 16) return
     currentNumber += digit
-    _uiState.update {
-      it.copy(
-        displayText = currentNumber,
-        formulaText = if (pendingOp.isNotEmpty()) "$firstOperand $pendingOp $currentNumber" else currentNumber
-      )
-    }
+    rawInput = true
+    updateDisplay()
   }
 
-  fun onOperator(op: String) {
-    if (currentNumber.isNotEmpty()) {
-      firstOperand = currentNumber.toDoubleOrNull() ?: 0.0
-      pendingOp = op
-      currentNumber = ""
-      _uiState.update {
-        it.copy(formulaText = "$firstOperand $pendingOp")
+  fun onOperator(operator: String) {
+    val operand = currentNumber.toBigDecimalOrNull()
+    if (operand != null) {
+      val previous = firstOperand
+      val previousOperator = pendingOperator
+      val combined = if (previous != null && previousOperator != null) {
+        calculate(previous, operand, previousOperator)
+      } else operand
+      if (combined == null) {
+        showError()
+        return
       }
+      firstOperand = combined
+      currentNumber = ""
     }
+    if (firstOperand == null) return
+    pendingOperator = operator
+    rawInput = false
+    updateDisplay()
   }
 
   fun onDecimal() {
-    if (!currentNumber.contains(".")) {
-      if (currentNumber.isEmpty()) currentNumber = "0"
-      currentNumber += "."
-      _uiState.update { it.copy(displayText = currentNumber) }
-    }
+    if (pendingOperator == null && !rawInput) currentNumber = ""
+    if (currentNumber.contains('.') || currentNumber.length >= 16) return
+    currentNumber = currentNumber.ifEmpty { "0" } + '.'
+    rawInput = true
+    updateDisplay()
+  }
+
+  fun changeSign() {
+    val input = currentNumber.toBigDecimalOrNull() ?: return
+    currentNumber = input.negate().asDisplay()
+    rawInput = false
+    updateDisplay()
+  }
+
+  fun percent() {
+    val input = currentNumber.toBigDecimalOrNull() ?: return
+    currentNumber = input.movePointLeft(2).asDisplay()
+    rawInput = false
+    updateDisplay()
   }
 
   fun onClear() {
     currentNumber = ""
-    firstOperand = 0.0
-    pendingOp = ""
-    _uiState.update {
-      it.copy(
-        displayText = "0",
-        formulaText = "",
-        feedbackToast = null
-      )
-    }
+    firstOperand = null
+    pendingOperator = null
+    rawInput = true
+    _uiState.value = StealthModeUiState()
   }
 
   fun onEquals(
+    unlockPin: String?,
     onSecretSos: () -> Unit,
     onUnlockApp: () -> Unit
   ) {
-    // Check for Secret SOS Duress Codes
-    if (currentNumber == "9999" || currentNumber == "911" || currentNumber == "999") {
-      _uiState.update {
-        it.copy(
-          isSecretSosTriggered = true,
-          feedbackToast = "Calc sync complete" // Discreet decoy message
-        )
+    if (pendingOperator == null && rawInput) {
+      if (!unlockPin.isNullOrBlank() && currentNumber == unlockPin) {
+        onClear()
+        onUnlockApp()
+        return
       }
-      onSecretSos()
+      if (currentNumber in setOf("9999", "911", "999")) {
+        onClear()
+        onSecretSos()
+        return
+      }
+    }
+
+    val first = firstOperand ?: return
+    val second = currentNumber.toBigDecimalOrNull() ?: return
+    val operator = pendingOperator ?: return
+    val result = calculate(first, second, operator)
+    if (result == null) {
+      showError()
       return
     }
 
-    // Check for Unlock Code to exit Camouflage
-    if (currentNumber == "1234" || currentNumber == "0000") {
-      onUnlockApp()
-      return
-    }
-
-    // Standard Math Execution
-    if (pendingOp.isNotEmpty() && currentNumber.isNotEmpty()) {
-      val secondOperand = currentNumber.toDoubleOrNull() ?: 0.0
-      val result = when (pendingOp) {
-        "+" -> firstOperand + secondOperand
-        "-" -> firstOperand - secondOperand
-        "×", "*" -> firstOperand * secondOperand
-        "÷", "/" -> if (secondOperand != 0.0) firstOperand / secondOperand else 0.0
-        else -> secondOperand
-      }
-      val resultStr = if (result % 1.0 == 0.0) result.toInt().toString() else String.format("%.2f", result)
-      currentNumber = resultStr
-      pendingOp = ""
-      _uiState.update {
-        it.copy(
-          displayText = resultStr,
-          formulaText = ""
-        )
-      }
-    }
+    currentNumber = result.asDisplay()
+    firstOperand = null
+    pendingOperator = null
+    rawInput = false
+    updateDisplay()
   }
 
-  fun clearFeedback() {
-    _uiState.update { it.copy(feedbackToast = null) }
+  private fun updateDisplay() {
+    val first = firstOperand?.asDisplay()
+    _uiState.value = StealthModeUiState(
+      displayText = currentNumber.ifEmpty { first ?: "0" },
+      formulaText = if (pendingOperator != null) "$first $pendingOperator" else ""
+    )
+  }
+
+  private fun showError() {
+    onClear()
+    _uiState.value = StealthModeUiState(displayText = "Error")
+  }
+
+  private fun calculate(first: BigDecimal, second: BigDecimal, operator: String): BigDecimal? = when (operator) {
+    "+" -> first.add(second, MathContext.DECIMAL64)
+    "-" -> first.subtract(second, MathContext.DECIMAL64)
+    "×" -> first.multiply(second, MathContext.DECIMAL64)
+    "÷" -> if (second.signum() == 0) null else first.divide(second, MathContext.DECIMAL64)
+    else -> null
+  }
+
+  private fun BigDecimal.asDisplay(): String {
+    val value = stripTrailingZeros()
+    return if (value.precision() - value.scale() in -8..18) {
+      value.toPlainString()
+    } else {
+      value.toEngineeringString()
+    }
   }
 }

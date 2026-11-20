@@ -6,23 +6,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-data class VerifiedVolunteer(
+data class DemoVolunteer(
   val id: String,
   val name: String,
   val universityOrOrg: String,
-  val studentIdVerified: Boolean,
+  val showsIdBadge: Boolean,
   val ratingsCount: Int,
   val distanceMeters: Int,
-  val isAvailableNow: Boolean,
-  val phone: String
+  val isAvailableNow: Boolean
 )
 
 data class VolunteerEscortUiState(
   val pickupLocation: String = "TSC, Dhaka University",
   val destination: String = "Sufia Kamal Hall",
   val isEscortRequested: Boolean = false,
-  val matchedVolunteer: VerifiedVolunteer? = null,
-  val activeVolunteers: List<VerifiedVolunteer> = emptyList(),
+  val matchedVolunteer: DemoVolunteer? = null,
+  val activeVolunteers: List<DemoVolunteer> = emptyList(),
   val feedbackMessage: String? = null
 )
 
@@ -39,35 +38,32 @@ class VolunteerEscortViewModel : ViewModel() {
     _uiState.update {
       it.copy(
         activeVolunteers = listOf(
-          VerifiedVolunteer(
+          DemoVolunteer(
             id = "v_1",
-            name = "Sadia Afrin",
-            universityOrOrg = "Dhaka University (Rover Scout / NID Verified)",
-            studentIdVerified = true,
+            name = "Volunteer A",
+            universityOrOrg = "Campus volunteer",
+            showsIdBadge = true,
             ratingsCount = 42,
             distanceMeters = 180,
-            isAvailableNow = true,
-            phone = "+8801700112233"
+            isAvailableNow = true
           ),
-          VerifiedVolunteer(
+          DemoVolunteer(
             id = "v_2",
-            name = "Farzana Yasmin",
-            universityOrOrg = "BUET Women Safety Taskforce",
-            studentIdVerified = true,
+            name = "Volunteer B",
+            universityOrOrg = "Student safety volunteer",
+            showsIdBadge = true,
             ratingsCount = 29,
             distanceMeters = 350,
-            isAvailableNow = true,
-            phone = "+8801811223344"
+            isAvailableNow = true
           ),
-          VerifiedVolunteer(
+          DemoVolunteer(
             id = "v_3",
-            name = "Nusrat Jahan",
-            universityOrOrg = "Red Crescent Youth Volunteer",
-            studentIdVerified = true,
+            name = "Volunteer C",
+            universityOrOrg = "Community volunteer",
+            showsIdBadge = true,
             ratingsCount = 58,
             distanceMeters = 600,
-            isAvailableNow = false,
-            phone = "+8801911223344"
+            isAvailableNow = false
           )
         )
       )
@@ -83,12 +79,14 @@ class VolunteerEscortViewModel : ViewModel() {
   }
 
   fun requestEscort() {
-    val volunteer = _uiState.value.activeVolunteers.firstOrNull { it.isAvailableNow }
+    val state = _uiState.value
+    if (state.pickupLocation.isBlank() || state.destination.isBlank()) return
+    val volunteer = state.activeVolunteers.firstOrNull { it.isAvailableNow }
     _uiState.update {
       it.copy(
         isEscortRequested = true,
         matchedVolunteer = volunteer,
-        feedbackMessage = if (volunteer != null) "Verified volunteer ${volunteer.name} accepted your escort request!" else "Searching for verified escorts nearby..."
+        feedbackMessage = if (volunteer != null) "Practice match displayed. No escort was contacted." else "No example volunteers are available."
       )
     }
   }
@@ -98,7 +96,7 @@ class VolunteerEscortViewModel : ViewModel() {
       it.copy(
         isEscortRequested = false,
         matchedVolunteer = null,
-        feedbackMessage = "Escort request concluded safely."
+        feedbackMessage = "Practice run ended."
       )
     }
   }

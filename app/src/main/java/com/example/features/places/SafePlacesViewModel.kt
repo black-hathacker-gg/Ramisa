@@ -7,79 +7,59 @@ import com.example.data.repository.SafePlacesRepositoryImpl
 import com.example.domain.model.PlaceType
 import com.example.domain.model.SafePlace
 import com.example.domain.repository.SafePlacesRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class SafePlacesUiState(
   val searchQuery: String = "",
   val selectedFilter: PlaceType? = null,
   val places: List<SafePlace> = emptyList(),
-  val isLoading: Boolean = false,
-  val userLatitude: Double = 23.7465,
-  val userLongitude: Double = 90.3750,
   val dialIntentNumber: String? = null,
-  val isGpsActive: Boolean = false
+  val hasFreshLocation: Boolean = false
 )
 
-class SafePlacesViewModel : ViewModel() {
+class SafePlacesViewModel(
+  private val repository: SafePlacesRepository = SafePlacesRepositoryImpl()
+) : ViewModel() {
 
-  private val safePlacesRepository: SafePlacesRepository = SafePlacesRepositoryImpl()
-  private val _uiState = MutableStateFlow(SafePlacesUiState())
-  val uiState: StateFlow<SafePlacesUiState> = _uiState.asStateFlow()
+  private val controls = MutableStateFlow(SafePlacesUiState())
 
-  init {
-    loadPlaces()
-    viewModelScope.launch {
-      EmergencyLocationManager.latestLocation.collect { loc ->
-        if (loc != null) {
-          _uiState.update { 
-            it.copy(
-              userLatitude = loc.latitude, 
-              userLongitude = loc.longitude,
-              isGpsActive = true
-            ) 
-          }
-          loadPlaces()
-        }
-      }
+  @OptIn(ExperimentalCoroutinesApi::class)
+  val uiState: StateFlow<SafePlacesUiState> = combine(
+    controls, EmergencyLocationManager.latestLocation
+  ) { filters, location ->
+    filters to location
+  }.mapLatest { (filters, location) ->
+    val deviceFix = location?.takeIf { it.isAvailable && (it.locationAgeMillis ?: Long.MAX_VALUE) < 120_000L }
+    val matches = repository.searchPlaces(filters.searchQuery, filters.selectedFilter)
+    val displayed = if (deviceFix == null) {
+      matches
+    } else {
+      val ids = matches.mapTo(mutableSetOf(), SafePlace::id)
+      repository.getNearbyPlaces(deviceFix.latitude, deviceFix.longitude).filter { it.id in ids }
     }
-  }
+    filters.copy(places = displayed, hasFreshLocation = deviceFix != null)
+  }.stateIn(viewModelScope, SharingStarted.Eagerly, SafePlacesUiState())
 
   fun onSearchQueryChanged(query: String) {
-    _uiState.update { it.copy(searchQuery = query) }
-    filterPlaces()
+    controls.update { it.copy(searchQuery = query) }
   }
 
   fun onFilterSelected(type: PlaceType?) {
-    _uiState.update { it.copy(selectedFilter = if (it.selectedFilter == type) null else type) }
-    filterPlaces()
-  }
-
-  private fun loadPlaces() {
-    viewModelScope.launch {
-      val list = safePlacesRepository.getNearbyPlaces(_uiState.value.userLatitude, _uiState.value.userLongitude)
-      _uiState.update { it.copy(places = list) }
-    }
-  }
-
-  private fun filterPlaces() {
-    viewModelScope.launch {
-      val results = safePlacesRepository.searchPlaces(
-        query = _uiState.value.searchQuery,
-        filterType = _uiState.value.selectedFilter
-      )
-      _uiState.update { it.copy(places = results) }
-    }
+    controls.update { it.copy(selectedFilter = type.takeUnless { newType -> newType == it.selectedFilter }) }
   }
 
   fun onCallPlace(phoneNumber: String) {
-    _uiState.update { it.copy(dialIntentNumber = phoneNumber) }
+    controls.update { it.copy(dialIntentNumber = phoneNumber) }
   }
 
   fun clearDialIntent() {
-    _uiState.update { it.copy(dialIntentNumber = null) }
+    controls.update { it.copy(dialIntentNumber = null) }
   }
 }

@@ -1,7 +1,6 @@
 package com.example.features.wellness
 
-import android.content.Intent
-import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -55,6 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import com.example.features.map.openDialer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,6 +74,7 @@ fun WellnessCounselingScreen(
 ) {
   val uiState by viewModel.uiState.collectAsState()
   val context = LocalContext.current
+  val uriHandler = LocalUriHandler.current
 
   val animatedScale by animateFloatAsState(
     targetValue = if (uiState.isBreathingActive) {
@@ -88,11 +90,11 @@ fun WellnessCounselingScreen(
         title = {
           Column {
             Text(
-              text = "Trauma Recovery & Helplines",
+              text = "Wellness and support",
               style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-              text = "Mental wellness, panic de-escalation & counseling (মানসিক স্বাস্থ্য)",
+              text = "Breathing, grounding and support contacts",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -170,7 +172,7 @@ fun WellnessCounselingScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
           ) {
             Text(
-              text = "PANIC DE-ESCALATION (বক্স ব্রিদিং)",
+              text = "Guided breathing",
               style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
               color = PinkPrimaryDark
             )
@@ -205,7 +207,7 @@ fun WellnessCounselingScreen(
               modifier = Modifier.testTag("btn_toggle_breathing")
             ) {
               Text(
-                text = if (uiState.isBreathingActive) "Stop Breathing Loop" else "Start 4-4-4 Calming Breath",
+                text = if (uiState.isBreathingActive) "Stop exercise" else "Start breathing exercise",
                 fontWeight = FontWeight.Bold
               )
             }
@@ -267,7 +269,7 @@ fun WellnessCounselingScreen(
       // BANGLADESH EMOTIONAL & TRAUMA HELPLINES
       item {
         Text(
-          text = "CONFIDENTIAL PSYCHOSOCIAL COUNSELING",
+          text = "Counseling and support contacts",
           style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -299,16 +301,23 @@ fun WellnessCounselingScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
               )
               Text(
-                text = "Hours: ${item.available}",
+                text = item.available,
                 style = MaterialTheme.typography.labelSmall,
                 color = PinkPrimary
               )
+              TextButton(onClick = {
+                runCatching { uriHandler.openUri(item.sourceUrl) }
+                  .onFailure { Toast.makeText(context, "No browser app is available.", Toast.LENGTH_SHORT).show() }
+              }) {
+                Text("Official website", style = MaterialTheme.typography.labelSmall)
+              }
             }
 
             Button(
               onClick = {
-                val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${item.phone}"))
-                context.startActivity(intent)
+                if (!openDialer(context, item.phone)) {
+                  Toast.makeText(context, "Dial " + item.phone + " from a phone.", Toast.LENGTH_SHORT).show()
+                }
               },
               colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
               shape = RoundedCornerShape(8.dp)

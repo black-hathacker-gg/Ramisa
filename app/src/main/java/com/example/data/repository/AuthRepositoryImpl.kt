@@ -1,119 +1,85 @@
 package com.example.data.repository
 
+import android.content.Context
+import android.content.SharedPreferences
 import com.example.data.local.UserDao
 import com.example.data.local.toDomain
 import com.example.data.local.toEntity
+import com.example.data.remote.CloudAccountService
+import com.example.data.remote.SupabaseAccountService
+import com.example.data.remote.accountErrorMessage
 import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
 import com.example.domain.model.UserType
 import com.example.domain.repository.AuthRepository
-import com.example.data.remote.SupabaseConfig
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.exceptions.RestException
-import com.example.data.remote.SupabaseProfile
-import io.github.jan.supabase.postgrest.postgrest
 import com.example.domain.repository.AuthResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object AppSessionManager {
-  private val _currentUser = MutableStateFlow<UserProfile?>(
-    UserProfile(
-      id = "usr_ramisa_8801",
-      name = "RAMISA User",
-      phone = "+880 1712-345678",
-      ageCategory = AgeCategory.ADULT_18_PLUS,
-      userType = UserType.ADULT,
-      emergencyPin = "1234",
-      bloodGroup = "B+",
-      emergencyNote = "Asthmatic; carries emergency inhaler. In case of emergency, contact Amma or Sister immediately."
-    )
-  )
+  private val _currentUser = MutableStateFlow<UserProfile?>(null)
   val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
 
-  private val _isAuthenticated = MutableStateFlow(true)
+  private val _isAuthenticated = MutableStateFlow(false)
   val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
 
   private val _isBanglaLanguage = MutableStateFlow(false)
   val isBanglaLanguage: StateFlow<Boolean> = _isBanglaLanguage.asStateFlow()
+  private var languagePreferences: SharedPreferences? = null
+
+  fun initializeLanguage(context: Context) {
+    if (languagePreferences != null) return
+    val preferences = context.applicationContext.getSharedPreferences("ramisa_language", Context.MODE_PRIVATE)
+    languagePreferences = preferences
+    _isBanglaLanguage.value = preferences.getBoolean("bangla", false)
+  }
 
   fun toggleLanguage() {
-    _isBanglaLanguage.value = !_isBanglaLanguage.value
+    setBanglaLanguage(!_isBanglaLanguage.value)
   }
 
   fun setBanglaLanguage(isBangla: Boolean) {
     _isBanglaLanguage.value = isBangla
+    languagePreferences?.edit()?.putBoolean("bangla", isBangla)?.apply()
   }
 
-  fun setUser(user: UserProfile?) {
+  internal fun startSession(user: UserProfile, cloudAuthenticated: Boolean) {
     _currentUser.value = user
-    _isAuthenticated.value = (user != null)
+    _isAuthenticated.value = cloudAuthenticated
   }
 
-  fun updateUser(updater: (UserProfile) -> UserProfile) {
-    _currentUser.update { current ->
-      current?.let(updater) ?: UserProfile().let(updater)
-    }
+  internal fun setUser(user: UserProfile) {
+    if (_currentUser.value?.id == user.id) _currentUser.value = user
   }
 
-  fun logout() {
-    _currentUser.value = null
+  internal fun logout() {
     _isAuthenticated.value = false
+    _currentUser.value = null
   }
 }
 
-class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
+class AuthRepositoryImpl internal constructor(
+  private val userDao: UserDao,
+  private val cloudAccounts: CloudAccountService
+) : AuthRepository {
+  constructor(userDao: UserDao) : this(userDao, SupabaseAccountService)
+
   override val currentUser: StateFlow<UserProfile?> = AppSessionManager.currentUser
   override val isAuthenticated: StateFlow<Boolean> = AppSessionManager.isAuthenticated
 
-  override suspend fun login(phone: String, pinOrPassword: String): AuthResult<UserProfile> {
-    val cleanPhone = phone.trim()
-    val cleanPin = pinOrPassword.trim()
-    val entity = userDao.getProfileByPhone(cleanPhone) // Find exact user by phone
-    if (entity != null) {
-      if (entity.emergencyPin == cleanPin || cleanPin.length >= 4) {
-        // Log them back in by updating flag
-        val updatedEntity = entity.copy(isLoggedIn = true)
-        userDao.saveProfile(updatedEntity)
-        val domain = updatedEntity.toDomain()
-        AppSessionManager.setUser(domain)
-        return AuthResult.Success(domain)
-      } else {
-        return AuthResult.Error("ভুল পিন নম্বর। অনুগ্রহ করে পুনরায় চেষ্টা করুন।")
-      }
-    }
-    val profile = UserProfile(
-      id = "user_${System.currentTimeMillis()}",
-      name = "RAMISA User",
-      phone = cleanPhone.ifEmpty { "+880 1712-345678" },
-      emergencyPin = if (cleanPin.isNotEmpty()) cleanPin else "1234",
-      userType = UserType.ADULT,
-      ageCategory = AgeCategory.ADULT_18_PLUS,
-      bloodGroup = "B+",
-      emergencyNote = "Emergency contact: Amma / Sister"
-    )
-    userDao.saveProfile(profile.toEntity())
-    AppSessionManager.setUser(profile)
-    return AuthResult.Success(profile)
+  override suspend fun login(email: String, password: String): AuthResult<UserProfile> = accountOperation {
+    val account = cloudAccounts.signIn(email.trim(), password)
+    val profile = userDao.getProfileById(account.id)?.toDomain() ?: UserProfile(id = account.id)
+    activateProfile(profile, cloudAuthenticated = true)
   }
 
-  override suspend fun loginAsGuest(): AuthResult<UserProfile> {
-    val guest = UserProfile(
-      id = "guest_${System.currentTimeMillis()}",
-      name = "RAMISA User (Guest)",
-      phone = "+880 1712-345678",
-      emergencyPin = "1234",
-      userType = UserType.ADULT,
-      ageCategory = AgeCategory.ADULT_18_PLUS,
-      bloodGroup = "B+",
-      emergencyNote = "Emergency contact: Amma"
-    )
-    userDao.saveProfile(guest.toEntity())
-    AppSessionManager.setUser(guest)
-    return AuthResult.Success(guest)
+  override suspend fun loginAsGuest(): AuthResult<UserProfile> = accountOperation {
+    val guest = userDao.getGuestProfile()?.toDomain() ?: UserProfile(id = GUEST_ID, name = "Guest")
+    activateProfile(guest, cloudAuthenticated = false)
   }
 
   override suspend fun register(
@@ -126,69 +92,75 @@ class AuthRepositoryImpl(private val userDao: UserDao) : AuthRepository {
     ageCategory: AgeCategory,
     bloodGroup: String,
     emergencyNote: String
-  ): AuthResult<UserProfile> {
-    return try {
-        val signUpResult = SupabaseConfig.client.auth.signUpWith(Email) {
-            this.email = email
-            this.password = password
-        }
-        
-        // Use user returned by signUp if available, otherwise fallback
-        val supabaseUserId = SupabaseConfig.client.auth.currentUserOrNull()?.id ?: "user_${System.currentTimeMillis()}"
+  ): AuthResult<UserProfile> = accountOperation {
+    val registration = cloudAccounts.signUp(email.trim(), password)
+    val profile = UserProfile(
+      id = registration.userId,
+      name = name.trim(),
+      phone = phone.trim(),
+      emergencyPin = emergencyPin,
+      userType = userType,
+      ageCategory = ageCategory,
+      bloodGroup = bloodGroup.trim().ifEmpty { "Unknown" },
+      emergencyNote = emergencyNote.trim()
+    )
 
-        val remoteProfile = SupabaseProfile(
-            id = supabaseUserId,
-            name = name.trim().ifEmpty { "RAMISA User" },
-            email = email.trim(),
-            phone = phone.trim(),
-            emergencyPin = emergencyPin.trim().ifEmpty { "1234" },
-            userType = userType.name,
-            ageCategory = ageCategory.name,
-            bloodGroup = bloodGroup.ifEmpty { "B+" },
-            emergencyNote = emergencyNote
-        )
-        
-        // Insert into Supabase profiles table
-        try {
-            SupabaseConfig.client.postgrest["profiles"].insert(remoteProfile)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Continue even if profile insert fails (maybe table doesn't exist yet)
-        }
-
-        val newProfile = UserProfile(
-          id = supabaseUserId,
-          name = remoteProfile.name,
-          phone = remoteProfile.phone,
-          emergencyPin = remoteProfile.emergencyPin,
-          userType = userType,
-          ageCategory = ageCategory,
-          bloodGroup = remoteProfile.bloodGroup,
-          emergencyNote = remoteProfile.emergencyNote
-        )
-        
-        userDao.saveProfile(newProfile.toEntity().copy(isLoggedIn = true))
-        AppSessionManager.setUser(newProfile)
-        AuthResult.Success(newProfile)
-    } catch (e: Exception) {
-        e.printStackTrace()
-        AuthResult.Error(e.message ?: "রেজিস্ট্রেশন ব্যর্থ হয়েছে। অন্য ইমেইল ব্যবহার করুন।")
+    if (registration.authenticated) {
+      activateProfile(profile, cloudAuthenticated = true)
+    } else {
+      userDao.savePendingProfile(profile.toEntity().copy(isLoggedIn = false))
+      AuthResult.EmailConfirmationRequired
     }
   }
 
-  override suspend fun logout(): Boolean {
-    userDao.clearProfile()
-    AppSessionManager.logout()
-    return true
-  }
-
-  override suspend fun restoreSession(): Boolean {
-    val saved = userDao.getProfileSync()?.toDomain()
-    return if (saved != null) {
-      AppSessionManager.setUser(saved)
+  override suspend fun logout(): Boolean = sessionMutex.withLock {
+    try {
+      userDao.clearProfile()
+      AppSessionManager.logout()
+      cloudAccounts.endSession()
       true
-    } else {
+    } catch (e: CancellationException) {
+      throw e
+    } catch (_: Exception) {
       false
     }
+  }
+
+  override suspend fun restoreSession(): Boolean = sessionMutex.withLock {
+    if (currentUser.value != null) return@withLock true
+
+    val stored = userDao.getProfileSync() ?: return@withLock false
+    if (stored.id.startsWith("guest_")) {
+      AppSessionManager.startSession(stored.toDomain(), cloudAuthenticated = false)
+      return@withLock true
+    }
+
+    val account = cloudAccounts.restoredAccount() ?: return@withLock false
+    val profile = userDao.getProfileById(account.id)?.takeIf { it.isLoggedIn }
+      ?: return@withLock false
+    activateProfile(profile.toDomain(), cloudAuthenticated = true)
+    true
+  }
+
+  private suspend fun activateProfile(profile: UserProfile, cloudAuthenticated: Boolean): AuthResult<UserProfile> {
+    userDao.activateProfile(profile.toEntity())
+    AppSessionManager.startSession(profile, cloudAuthenticated)
+    return AuthResult.Success(profile)
+  }
+
+  private suspend fun accountOperation(block: suspend () -> AuthResult<UserProfile>): AuthResult<UserProfile> =
+    sessionMutex.withLock {
+      try {
+        block()
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        AuthResult.Error(accountErrorMessage(e))
+      }
+    }
+
+  private companion object {
+    const val GUEST_ID = "guest_ramisa_local"
+    val sessionMutex = Mutex()
   }
 }

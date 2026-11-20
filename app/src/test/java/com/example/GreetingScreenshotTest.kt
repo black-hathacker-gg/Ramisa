@@ -30,7 +30,6 @@ class GreetingScreenshotTest {
           onNavigateToSafeJourney = {},
           onNavigateToContacts = {},
           onNavigateToHistory = {},
-          onNavigateToSettings = {},
           onTriggerSos = {}
         )
       }

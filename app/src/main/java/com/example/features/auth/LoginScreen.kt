@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,9 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -53,18 +51,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.theme.SafetyRedPrimary
 
 @Composable
 fun LoginScreen(
   viewModel: AuthViewModel,
   onLoginSuccess: () -> Unit,
   onNavigateToRegister: () -> Unit,
-  onContinueAsGuest: () -> Unit = {},
+  onContinueAsGuest: () -> Unit,
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
@@ -79,6 +75,7 @@ fun LoginScreen(
         .fillMaxWidth()
         .statusBarsPadding()
         .navigationBarsPadding()
+        .imePadding()
         .verticalScroll(scrollState)
         .padding(horizontal = 24.dp, vertical = 24.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
@@ -123,32 +120,6 @@ fun LoginScreen(
 
       Spacer(modifier = Modifier.height(24.dp))
 
-      // Inspirational Quote Highlight
-      Surface(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 8.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-      ) {
-        Column(
-          modifier = Modifier.padding(12.dp),
-          horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-          Text(
-            text = "\"Please don't stop flying, fly freely to your desired sky\"",
-            style = MaterialTheme.typography.labelLarge.copy(
-              fontWeight = FontWeight.Bold,
-              fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-            ),
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
-          )
-        }
-      }
-
-      Spacer(modifier = Modifier.height(24.dp))
-
       // Login Card
       Card(
         modifier = Modifier
@@ -170,13 +141,7 @@ fun LoginScreen(
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onSurface
           )
-          Text(
-            text = "Enter your email address to access protection",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-
-          Spacer(modifier = Modifier.height(20.dp))
+          Spacer(modifier = Modifier.height(12.dp))
 
           // Email Address Input
           OutlinedTextField(
@@ -188,6 +153,7 @@ fun LoginScreen(
               Icon(imageVector = Icons.Default.Email, contentDescription = null)
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            enabled = !uiState.isLoading,
             singleLine = true,
             modifier = Modifier
               .fillMaxWidth()
@@ -206,6 +172,7 @@ fun LoginScreen(
             },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            enabled = !uiState.isLoading,
             singleLine = true,
             modifier = Modifier
               .fillMaxWidth()
@@ -269,7 +236,8 @@ fun LoginScreen(
 
           // Guest Login Button
           OutlinedButton(
-            onClick = { viewModel.loginAsGuest(onLoginSuccess) },
+            onClick = { viewModel.loginAsGuest(onContinueAsGuest) },
+            enabled = !uiState.isLoading,
             modifier = Modifier
               .fillMaxWidth()
               .height(48.dp)
@@ -305,6 +273,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.width(4.dp))
         TextButton(
           onClick = onNavigateToRegister,
+          enabled = !uiState.isLoading,
           modifier = Modifier.testTag("btn_go_to_register")
         ) {
           Text(

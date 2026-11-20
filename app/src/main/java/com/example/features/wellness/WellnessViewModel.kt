@@ -17,7 +17,7 @@ data class HelplineContact(
   val organization: String,
   val phone: String,
   val available: String,
-  val isFree: Boolean
+  val sourceUrl: String
 )
 
 data class WellnessUiState(
@@ -47,34 +47,34 @@ class WellnessViewModel : ViewModel() {
           HelplineContact(
             id = "hl_kanpati",
             name = "Kaan Pete Roi (কান পেতে রই)",
-            organization = "First Emotional Support Helpline in Bangladesh",
-            phone = "+8801779554391",
-            available = "3:00 PM - 3:00 AM Daily",
-            isFree = false
+            organization = "Confidential emotional support",
+            phone = "+8809612119911",
+            available = "See provider page for availability",
+            sourceUrl = "https://www.facebook.com/kaan.pete.roi/"
           ),
           HelplineContact(
             id = "hl_moner_bondhu",
             name = "Moner Bondhu (মনের বন্ধু)",
-            organization = "Psychosocial Support & Trauma Counseling for Women",
+            organization = "Mental health support and counseling inquiries",
             phone = "+8801776632344",
-            available = "24/7 Helpline",
-            isFree = false
+            available = "24/7 support",
+            sourceUrl = "https://www.monerbondhu.com/"
           ),
           HelplineContact(
             id = "hl_gov_mental",
-            name = "National Institute of Mental Health (NIMH)",
-            organization = "Government Mental Health Services (Sherebanglanagar)",
-            phone = "02-9118171",
-            available = "8:00 AM - 2:30 PM",
-            isFree = true
+            name = "National Institute of Mental Health",
+            organization = "Government mental health hospital in Dhaka",
+            phone = "+8801340337733",
+            available = "Ask NIMH for department hours",
+            sourceUrl = "https://nimh.gov.bd/contact_en.php"
           ),
           HelplineContact(
-            id = "hl_brac_maya",
-            name = "Maya Apa & BRAC Mental Care",
-            organization = "Digital anonymous counseling support",
+            id = "hl_women_children",
+            name = "Women and children’s support",
+            organization = "Bangladesh national helpline for violence against women and children",
             phone = "109",
-            available = "24/7 Free Call",
-            isFree = true
+            available = "National service",
+            sourceUrl = "https://www.police.gov.bd/en/hot_line_number"
           )
         )
       )
@@ -90,12 +90,12 @@ class WellnessViewModel : ViewModel() {
   }
 
   private fun startBreathing() {
-    _uiState.update { it.copy(isBreathingActive = true, feedbackMessage = "Follow the soothing 4-4-4 box breathing cycle.") }
+    _uiState.update { it.copy(isBreathingActive = true, feedbackMessage = "Breathe gently. Pause the exercise if you feel uncomfortable.") }
     breathingJob?.cancel()
     breathingJob = viewModelScope.launch {
       while (isActive) {
         // Inhale 4s
-        _uiState.update { it.copy(breathingPhase = "Inhale Deeply (শ্বাস নিন)", breathingProgress = 1f) }
+        _uiState.update { it.copy(breathingPhase = "Inhale gently (শ্বাস নিন)", breathingProgress = 1f) }
         delay(4000)
 
         // Hold 4s

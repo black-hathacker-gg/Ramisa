@@ -1,7 +1,9 @@
 package com.example.features.hardware
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.example.core.sensor.ShakeDetectorManager
+import com.example.features.lockscreen.LockScreenSosManager
 import com.example.domain.model.HardwareTriggerConfig
 import com.example.domain.model.HardwareTriggerEvent
 import com.example.domain.model.HardwareTriggerType
@@ -9,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class HardwareTriggerUiState(
   val config: HardwareTriggerConfig = HardwareTriggerConfig(),
@@ -19,9 +20,13 @@ data class HardwareTriggerUiState(
   val triggerTriggeredSos: Boolean = false
 )
 
-class HardwareTriggerViewModel : ViewModel() {
+class HardwareTriggerViewModel(application: Application) : AndroidViewModel(application) {
 
-  private val _uiState = MutableStateFlow(HardwareTriggerUiState())
+  private val _uiState = MutableStateFlow(HardwareTriggerUiState(config = HardwareTriggerConfig(
+    isVolumeShortcutEnabled = LockScreenSosManager.isVolumeShortcutEnabled(application),
+    isShakeTriggerEnabled = ShakeDetectorManager.isEnabled(application),
+    shakeSensitivity = ShakeDetectorManager.sensitivity(application)
+  )))
   val uiState: StateFlow<HardwareTriggerUiState> = _uiState.asStateFlow()
 
   fun togglePowerTriplePress(enabled: Boolean) {
@@ -29,14 +34,17 @@ class HardwareTriggerViewModel : ViewModel() {
   }
 
   fun toggleVolumeShortcut(enabled: Boolean) {
+    LockScreenSosManager.setVolumeShortcutEnabled(getApplication(), enabled)
     _uiState.update { it.copy(config = it.config.copy(isVolumeShortcutEnabled = enabled)) }
   }
 
   fun toggleShakeTrigger(enabled: Boolean) {
+    ShakeDetectorManager.setShakeDetectionEnabled(enabled, getApplication())
     _uiState.update { it.copy(config = it.config.copy(isShakeTriggerEnabled = enabled)) }
   }
 
   fun updateShakeSensitivity(sensitivity: Float) {
+    ShakeDetectorManager.setSensitivity(getApplication(), sensitivity)
     _uiState.update { it.copy(config = it.config.copy(shakeSensitivity = sensitivity)) }
   }
 

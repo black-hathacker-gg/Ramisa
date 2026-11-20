@@ -1,5 +1,6 @@
 package com.example.features.ridesafety
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,6 +63,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -78,6 +80,7 @@ fun RideSafetyScreen(
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  val context = LocalContext.current
 
   Scaffold(
     topBar = {
@@ -229,6 +232,21 @@ fun RideSafetyScreen(
                   style = MaterialTheme.typography.bodyMedium,
                   color = MaterialTheme.colorScheme.onSurface
                 )
+              }
+
+              OutlinedButton(
+                onClick = {
+                  val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, viewModel.rideShareText())
+                  }
+                  context.startActivity(Intent.createChooser(share, "Share ride"))
+                },
+                modifier = Modifier.fillMaxWidth().testTag("btn_share_ride")
+              ) {
+                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Share ride")
               }
 
               // Action buttons during active ride

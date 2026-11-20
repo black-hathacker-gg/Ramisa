@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import com.example.core.utils.BangladeshHotlines
 import com.example.domain.model.SafetyTip
 import com.example.domain.model.TipCategory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,8 +26,8 @@ class SafetyGuideRepository {
       titleBn = "নারী ও শিশু নির্যাতন দমন আইন ২০০০",
       summaryEn = "Know your legal protections and direct assistance mechanisms under Bangladesh law.",
       summaryBn = "বাংলাদেশ আইনের অধীনে আপনার আইনি সুরক্ষা ও তাৎক্ষণিক সহায়তার অধিকার জানুন।",
-      detailsEn = "Under Section 10 and 9(ক) of the Women & Children Repression Prevention Act (Amended 2003/2020), sexual harassment, stalking, and physical abuse in public or private spaces are non-bailable criminal offenses punishable with rigorous imprisonment. Free legal aid is available via 16430 (National Legal Aid Services).",
-      detailsBn = "নারী ও শিশু নির্যাতন দমন আইনের ১০ ধারা অনুযায়ী রাস্তাঘাটে বা যেকোনো স্থানে যৌন হয়রানি, ইভটিজিং বা অশালীন আচরণ জামিন অযোগ্য অপরাধ। জাতীয় আইনগত সহায়তা সংস্থার টোল-ফ্রি হটলাইন ১৬৪৩০ নম্বরে কল করে সরকারি খরচে বিনামূল্যে আইনি সহায়তা পাওয়া যায়।",
+      detailsEn = "The Women and Children Repression Prevention Act sets out protections against specific forms of violence and abuse. Call ${BangladeshHotlines.LEGAL_AID} toll-free to ask the Legal Aid Department about applicable protections and legal assistance.",
+      detailsBn = "নারী ও শিশু নির্যাতন দমন আইনে নির্দিষ্ট ধরনের সহিংসতা ও নির্যাতনের বিরুদ্ধে সুরক্ষার বিধান রয়েছে। আইনি সুরক্ষা ও সহায়তার বিষয়ে জানতে আইনগত সহায়তা অধিদপ্তরের টোল-ফ্রি নম্বর ${BangladeshHotlines.LEGAL_AID_BANGLA}-তে কল করুন।",
       category = TipCategory.LEGAL_RIGHTS,
       legalActRef = "Women & Children Repression Act 2000 (Act VIII of 2000)"
     ),

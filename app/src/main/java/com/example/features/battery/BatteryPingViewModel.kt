@@ -18,6 +18,7 @@ class BatteryPingViewModel(application: Application) : AndroidViewModel(applicat
     val uiState: StateFlow<BatteryPingUiState> = _uiState.asStateFlow()
 
     init {
+        BatteryMonitorManager.initialize(application)
         // Sync with manager
         _uiState.update { 
             it.copy(
@@ -34,14 +35,13 @@ class BatteryPingViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateThreshold(threshold: Float) {
         val intThreshold = threshold.toInt()
-        BatteryMonitorManager.setBatteryThreshold(intThreshold)
+        BatteryMonitorManager.setBatteryThreshold(getApplication(), intThreshold)
         _uiState.update { it.copy(threshold = intThreshold) }
     }
 
     fun simulatePing() {
-        BatteryMonitorManager.simulateLowBatteryEvent(getApplication())
         _uiState.update { state ->
-            val newEvent = "Simulated Ping Sent at ${state.threshold}% battery"
+            val newEvent = "Preview at ${state.threshold}% battery. No SMS sent."
             state.copy(
                 recentPingEvents = (listOf(newEvent) + state.recentPingEvents).take(5)
             )

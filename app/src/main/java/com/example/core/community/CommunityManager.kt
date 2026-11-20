@@ -1,8 +1,6 @@
 package com.example.core.community
 
-import android.util.Log
 import com.example.data.repository.AppSessionManager
-import com.example.domain.model.AreaSafetyReport
 import com.example.domain.model.CentralCommunityInfo
 import com.example.domain.model.CentralCommunityPost
 import com.example.domain.model.CommunityChatMessage
@@ -11,17 +9,20 @@ import com.example.domain.model.CommunityMember
 import com.example.domain.model.CommunityReply
 import com.example.domain.model.CommunitySosAlert
 import com.example.domain.model.CommunityTopicCategory
-import com.example.domain.model.GeoLocation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import com.example.data.remote.SupabaseConfig
 import com.example.data.remote.SupabaseCommunityMessage
+import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
-import kotlinx.coroutines.GlobalScope
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.query.Columns
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -30,217 +31,119 @@ import java.util.UUID
  * Features:
  * 1. Single Central Community for all users (No fragmented circles).
  * 2. Messenger/Forum-style topic channels for female-related issues (Harassment, Legal, Health, Safe-Walk, Sisterhood).
- * 3. Automatic Emergency SOS broadcast (via Shake, Lock Screen, SOS Button).
+ * 3. Community help posts and a local alert preview.
  * 4. Anonymous Posting for sensitive issues.
- * 5. Full Offline Resilience (Offline cached reading & queued posts).
+ * 5. On-device previews when offline.
  */
 object CommunityManager {
 
-  private const val TAG = "CommunityManager"
+  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+  private const val HELP_REQUEST = "A RAMISA member has asked the community for help."
 
   // Single Central Community Profile
   private val _communityInfo = MutableStateFlow(
     CentralCommunityInfo(
       name = "RAMISA Central Sisterhood & Safety Community",
       nameBn = "রমিসা সেন্ট্রাল নারী সুরক্ষা ও সহায়তা ফোরাম",
-      totalMembers = 3450,
-      activeOnline = 186,
+      totalMembers = 0,
+      activeOnline = 0,
       accessPin = "1234",
       isUnlocked = true
     )
   )
   val communityInfo: StateFlow<CentralCommunityInfo> = _communityInfo.asStateFlow()
 
-  init {
-    GlobalScope.launch(Dispatchers.IO) {
-      while (true) {
-        try {
-          val remoteMessages = SupabaseConfig.client.postgrest["community_messages"]
-              .select()
-              .decodeList<SupabaseCommunityMessage>()
-              .sortedByDescending { it.createdAt ?: "" }
-          
-          val mappedPosts = remoteMessages.map { msg ->
-              CentralCommunityPost(
-                  id = msg.id ?: UUID.randomUUID().toString(),
-                  category = if (msg.isSosAlert) CommunityTopicCategory.EMERGENCY_SOS else CommunityTopicCategory.SISTERHOOD_GENERAL,
-                  authorName = if (msg.isSosAlert) "SOS BROADCAST: ${msg.userName}" else msg.userName,
-                  authorRole = if (msg.isSosAlert) "Emergency Dispatch" else "Verified Member",
-                  authorPhone = "Protected",
-                  isAnonymous = false,
-                  title = if (msg.isSosAlert) "CRISIS SOS: ${msg.userName} needs immediate help!" else "Community Update",
-                  content = msg.message,
-                  locationTag = "Live Area",
-                  timestamp = System.currentTimeMillis(), // We could parse createdAt but this is easier for now
-                  supportCount = 0,
-                  helpfulCount = 0,
-                  isSosAlert = msg.isSosAlert,
-                  sosDetails = if (msg.isSosAlert) CommunitySosAlert(
-                      id = "SOS-${msg.id}",
-                      victimName = msg.userName,
-                      victimPhone = "",
-                      triggerTypeLabel = "Emergency Alert",
-                      locationName = "Location protected",
-                      latitude = 23.7258,
-                      longitude = 90.3976,
-                      mapUrl = "https://maps.google.com/?q=23.7258,90.3976",
-                      customNote = msg.message
-                  ) else null
-              )
-          }
+  private val _communityPosts = MutableStateFlow<List<CentralCommunityPost>>(emptyList())
+  val communityPosts: StateFlow<List<CentralCommunityPost>> = _communityPosts.asStateFlow()
 
-          // Merge keeping local replies and states, but for simplicity we just replace the ones that come from Supabase.
-          // Or even simpler: we just update the _communityPosts to include these.
-          _communityPosts.update { currentList ->
-              val all = (currentList + mappedPosts).distinctBy { it.id }
-              all.sortedByDescending { it.timestamp }
-          }
-        } catch (e: Exception) {
-          Log.e(TAG, "Failed to poll Supabase community messages", e)
-        }
-        delay(3000) // Poll every 3 seconds
-      }
-    }
+  private fun authenticatedClient(): SupabaseClient? {
+    if (!AppSessionManager.isAuthenticated.value) return null
+    val userId = AppSessionManager.currentUser.value?.id ?: return null
+    return SupabaseConfig.clientOrNull?.takeIf { it.auth.currentUserOrNull()?.id == userId }
   }
 
-  // Pre-seeded female-related discussions (Messenger community topics)
-  private val initialPosts = listOf(
-    CentralCommunityPost(
-      id = "post_sos_1",
-      category = CommunityTopicCategory.EMERGENCY_SOS,
-      authorName = "Nusrat Jahan",
-      authorRole = "Campus Guard Proctor",
-      authorPhone = "+880 1711-889900",
-      isAnonymous = false,
-      title = "Notice: Extra Volunteers Stationed Near Curzon & Nilkhet",
-      content = "To all students and night commuters: 4 female student volunteers and campus proctors are on duty along Curzon Hall gate and Nilkhet till 10:30 PM. Call anytime if you need safe walk assistance.",
-      locationTag = "Dhaka University Campus",
-      timestamp = System.currentTimeMillis() - 1000 * 60 * 25,
-      supportCount = 42,
-      helpfulCount = 19,
-      replies = listOf(
-        CommunityReply(
-          id = "rep_1",
-          postId = "post_sos_1",
-          authorName = "Tasnim Hossain",
-          authorRole = "Volunteer",
-          content = "I am near TSC tea stalls. If anyone needs an escort to Rokeya hall, let me know here!",
-          timestamp = System.currentTimeMillis() - 1000 * 60 * 18,
-          likes = 8
+  suspend fun refreshPosts() {
+    val client = authenticatedClient() ?: return
+    val userId = client.auth.currentUserOrNull()?.id ?: return
+    try {
+      val remote = client.postgrest["community_messages"]
+        .select(Columns.list("id", "user_name", "message", "is_sos_alert", "created_at")) {
+        order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+        limit(50)
+      }.decodeList<SupabaseCommunityMessage>().filter { it.id != null }
+      val posts = remote.filterNot { it.isSosAlert }.map { message ->
+        CentralCommunityPost(
+          id = requireNotNull(message.id),
+          category = CommunityTopicCategory.SISTERHOOD_GENERAL,
+          authorName = message.userName,
+          authorRole = "Community member",
+          authorPhone = "",
+          isAnonymous = message.userName == "Anonymous",
+          title = "Community post",
+          content = message.message,
+          locationTag = "",
+          timestamp = if (android.os.Build.VERSION.SDK_INT >= 26) {
+            runCatching { java.time.Instant.parse(message.createdAt).toEpochMilli() }.getOrDefault(0L)
+          } else 0L
         )
-      )
-    ),
-    CentralCommunityPost(
-      id = "post_harass_1",
-      category = CommunityTopicCategory.HARASSMENT_ALERT,
-      authorName = "বেনামী বোন (Anonymous Sister)",
-      authorRole = "Verified Member",
-      authorPhone = "Hidden",
-      isAnonymous = true,
-      title = "Beware: Dim lighting near Farmgate Footbridge West Exit",
-      content = "Today around 7:45 PM near the west staircase of Farmgate overbridge, a group of suspicious boys were making inappropriate catcalls. I used Ramisa's Fake Call tool and safely moved into the nearby pharmacy. Please avoid that staircase after sunset or walk in groups.",
-      locationTag = "Farmgate, Dhaka",
-      timestamp = System.currentTimeMillis() - 1000 * 60 * 80,
-      supportCount = 58,
-      helpfulCount = 34,
-      replies = listOf(
-        CommunityReply(
-          id = "rep_2",
-          postId = "post_harass_1",
-          authorName = "Advocate Farzana Karim",
-          authorRole = "Legal Advisor",
-          content = "Thank you for reporting, sister! We have notified the Tejgaon police patrol beat box. If this persists, file a report to Police Cyber & Women Support Center hotline 01320000888.",
-          timestamp = System.currentTimeMillis() - 1000 * 60 * 45,
-          likes = 14
+      }
+      if (authenticatedClient() != client || client.auth.currentUserOrNull()?.id != userId) return
+      _communityPosts.update { current -> (current + posts).distinctBy { it.id }.sortedByDescending { it.timestamp } }
+      val requests = remote.filter { it.isSosAlert && it.message == HELP_REQUEST }.map { message ->
+        CommunitySosAlert(
+          id = requireNotNull(message.id),
+          victimName = "RAMISA member",
+          victimPhone = "",
+          victimBloodGroup = "",
+          triggerTypeLabel = "Community help request",
+          locationName = "Location private",
+          latitude = 0.0,
+          longitude = 0.0,
+          mapUrl = "",
+          customNote = HELP_REQUEST
         )
-      )
-    ),
-    CentralCommunityPost(
-      id = "post_legal_1",
-      category = CommunityTopicCategory.LEGAL_CYBER_HELP,
-      authorName = "Advocate Farzana Karim",
-      authorRole = "Legal & Cyber Advisor",
-      authorPhone = "+880 1812-445566",
-      isAnonymous = false,
-      title = "Steps to Take if Someone is Threatening or Stalking on Facebook/WhatsApp",
-      content = "Important legal guideline for all sisters:\n1. Do NOT delete threatening chats or audio—take clear screenshots showing phone numbers/URLs.\n2. Back up screenshots securely to your private device storage.\n3. You can lodge an official complaint via Cyber Crime Investigation Division (CID) or 999 without having to visit the police station alone.\nFeel free to ask your questions below, I am here to help.",
-      locationTag = "Dhaka / Bangladesh",
-      timestamp = System.currentTimeMillis() - 1000 * 60 * 180,
-      supportCount = 112,
-      helpfulCount = 89,
-      replies = listOf(
-        CommunityReply(
-          id = "rep_3",
-          postId = "post_legal_1",
-          authorName = "Anonymous Sister",
-          authorRole = "Member",
-          isAnonymous = true,
-          content = "Can we file a GD completely anonymously if we are scared of family knowing?",
-          timestamp = System.currentTimeMillis() - 1000 * 60 * 120,
-          likes = 5
-        ),
-        CommunityReply(
-          id = "rep_4",
-          postId = "post_legal_1",
-          authorName = "Advocate Farzana Karim",
-          authorRole = "Legal Advisor",
-          content = "Yes! You can contact the Women Support and Investigation Division where dedicated female officers maintain strict privacy.",
-          timestamp = System.currentTimeMillis() - 1000 * 60 * 90,
-          likes = 11
-        )
-      )
-    ),
-    CentralCommunityPost(
-      id = "post_health_1",
-      category = CommunityTopicCategory.HEALTH_WELLNESS,
-      authorName = "Dr. Samia Chowdhury",
-      authorRole = "Women's Health Consultant",
-      authorPhone = "+880 1913-776655",
-      isAnonymous = false,
-      title = "Managing Severe Dysmenorrhea (Period Cramps) during Work & Commute",
-      content = "For sisters who experience debilitating pain during travel or university:\n1. Keep a thermos with warm ginger water and magnesium-rich snacks.\n2. Avoid caffeine on the first 2 days.\n3. If pain is unbearable, check with a gynecologist for endometriosis screening.\nShare your self-care remedies or ask health questions comfortably here.",
-      locationTag = "Health Forum",
-      timestamp = System.currentTimeMillis() - 1000 * 60 * 320,
-      supportCount = 76,
-      helpfulCount = 61,
-      replies = emptyList()
-    ),
-    CentralCommunityPost(
-      id = "post_walk_1",
-      category = CommunityTopicCategory.SAFE_WALK_BUDDY,
-      authorName = "Momena Akter",
-      authorRole = "Verified Member",
-      authorPhone = "+880 1614-223344",
-      isAnonymous = false,
-      title = "Metro Commuters: Evening Group from Agargaon to Mirpur 10",
-      content = "I take the metro daily at 8:15 PM from Agargaon to Mirpur 10. Any other sisters travelling on the same train? Let's board the Women's Dedicated Coach together for a safe and comfortable ride!",
-      locationTag = "Agargaon Metro Station",
-      timestamp = System.currentTimeMillis() - 1000 * 60 * 140,
-      supportCount = 35,
-      helpfulCount = 20,
-      replies = emptyList()
-    )
-  )
-
-  private val _communityPosts = MutableStateFlow<List<CentralCommunityPost>>(initialPosts)
-  val communityPosts: StateFlow<List<CentralCommunityPost>> = _communityPosts.asStateFlow()
+      }
+      _activeSosAlerts.update { current -> (current + requests).distinctBy { it.id } }
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Exception) {
+      // A failed refresh leaves on-device posts and the last successful result visible.
+    }
+  }
 
   // Live Community SOS Alerts
   private val _activeSosAlerts = MutableStateFlow<List<CommunitySosAlert>>(emptyList())
   val activeSosAlerts: StateFlow<List<CommunitySosAlert>> = _activeSosAlerts.asStateFlow()
 
+  fun clearSession() {
+    _communityPosts.value = emptyList()
+    _activeSosAlerts.value = emptyList()
+  }
+
+  suspend fun publishHelpRequest(): Boolean {
+    val client = authenticatedClient() ?: return false
+    val userId = client.auth.currentUserOrNull()?.id ?: return false
+    return try {
+      client.postgrest["community_messages"].insert(
+        SupabaseCommunityMessage(
+          id = UUID.randomUUID().toString(),
+          userId = userId,
+          userName = "RAMISA member",
+          message = HELP_REQUEST,
+          isSosAlert = true
+        )
+      )
+      refreshPosts()
+      true
+    } catch (cancelled: CancellationException) {
+      throw cancelled
+    } catch (_: Exception) {
+      false
+    }
+  }
+
   // Community Members
-  private val _communityMembers = MutableStateFlow<List<CommunityMember>>(
-    listOf(
-      CommunityMember("mem_1", "RAMISA User (You)", "+880 1712-345678", "Verified Member", "Active & Guarding", true, "R"),
-      CommunityMember("mem_2", "Nusrat Jahan", "+880 1711-889900", "Circle Admin / Proctor", "On Duty Patrol", true, "N"),
-      CommunityMember("mem_3", "Advocate Farzana Karim", "+880 1812-445566", "Legal Advisor", "Active for Help", true, "F"),
-      CommunityMember("mem_4", "Dr. Samia Chowdhury", "+880 1913-776655", "Health Consultant", "Consulting", true, "S"),
-      CommunityMember("mem_5", "Tasnim Hossain", "+880 1913-223344", "Volunteer Responder", "Nearby TSC", true, "T"),
-      CommunityMember("mem_6", "Farhana Yasmin", "+880 1614-556677", "Member", "Safe & Connected", true, "F"),
-      CommunityMember("mem_7", "Khadija Begum", "+880 1515-998877", "Campus Security Wing", "Stationed Gate 2", true, "K")
-    )
-  )
+  private val _communityMembers = MutableStateFlow<List<CommunityMember>>(emptyList())
   val communityMembers: StateFlow<List<CommunityMember>> = _communityMembers.asStateFlow()
 
   // Backward compatibility group list containing the single central community
@@ -253,8 +156,8 @@ object CommunityManager {
         description = "Unified national safety network & women's empowerment forum.",
         joinPin = "1234",
         locationTag = "Dhaka / Bangladesh Nationwide",
-        memberCount = 3450,
-        isVerified = true,
+        memberCount = 0,
+        isVerified = false,
         creatorName = "RAMISA Safety Council",
         creatorPhone = "999",
         isJoined = true,
@@ -280,21 +183,21 @@ object CommunityManager {
    * Supports Anonymous posting for harassment/sensitive issues!
    * Supports offline queueing.
    */
-  fun createPost(
+  suspend fun createPost(
     category: CommunityTopicCategory,
     title: String,
     content: String,
     locationTag: String = "Dhaka",
     isAnonymous: Boolean = false,
     isOffline: Boolean = false
-  ): CentralCommunityPost {
+  ): Boolean {
     val currentUser = AppSessionManager.currentUser.value
-    val authorName = if (isAnonymous) "বেনামী বোন (Anonymous Sister)" else (currentUser?.name ?: "RAMISA User")
-    val authorPhone = if (isAnonymous) "Protected" else (currentUser?.phone ?: "+880 1712-345678")
-    val authorRole = if (isAnonymous) "Anonymous Sister" else "Verified Member"
+    val authorName = if (isAnonymous) "Anonymous" else (currentUser?.name?.takeIf { it.isNotBlank() } ?: "RAMISA member")
+    val authorPhone = ""
+    val authorRole = if (isAnonymous) "Anonymous" else "Community member"
 
     val newPost = CentralCommunityPost(
-      id = "post_${UUID.randomUUID().toString().take(8)}",
+      id = UUID.randomUUID().toString(),
       category = category,
       authorName = authorName,
       authorRole = authorRole,
@@ -313,24 +216,26 @@ object CommunityManager {
       isOfflineQueued = isOffline
     )
 
-    _communityPosts.update { listOf(newPost) + it }
-    GlobalScope.launch(Dispatchers.IO) {
+    val client = if (isOffline) null else authenticatedClient()
+    val published = if (client != null && currentUser != null) {
       try {
-        val user = AppSessionManager.currentUser.value
-        val userId = user?.id ?: "unknown"
-        val message = SupabaseCommunityMessage(
-          userId = userId,
+        client.postgrest["community_messages"].insert(SupabaseCommunityMessage(
+          id = newPost.id,
+          userId = currentUser.id,
           userName = authorName,
-          message = content.trim(),
-          isSosAlert = false
-        )
-        SupabaseConfig.client.postgrest["community_messages"].insert(message)
-      } catch(e: Exception) {
-        e.printStackTrace()
+          message = "${newPost.title}\n\n${newPost.content}"
+        ))
+        true
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (_: Exception) {
+        false
       }
+    } else false
+    if (AppSessionManager.currentUser.value?.id == currentUser?.id) {
+      _communityPosts.update { listOf(newPost.copy(isOfflineQueued = !published)) + it }
     }
-    Log.d(TAG, "Created community post [${category.name}] by $authorName (Offline queued: $isOffline)")
-    return newPost
+    return published
   }
 
   /**
@@ -392,94 +297,23 @@ object CommunityManager {
     }
   }
 
-  /**
-   * Broadcast an urgent SOS Alert directly into the Central Community.
-   * Called automatically when user shakes device 3x, taps lock screen SOS, or hits the SOS button!
-   */
-  fun broadcastSosAlert(
-    victimName: String? = null,
-    victimPhone: String? = null,
-    victimBloodGroup: String? = null,
-    triggerTypeLabel: String = "Urgent Emergency SOS Trigger",
-    location: GeoLocation = GeoLocation(23.7258, 90.3976, "Curzon Hall, Dhaka University"),
-    note: String = ""
-  ): CommunitySosAlert {
-    val currentUser = AppSessionManager.currentUser.value
-    val name = victimName ?: currentUser?.name ?: "RAMISA User"
-    val phone = victimPhone ?: currentUser?.phone ?: "+880 1712-345678"
-    val blood = victimBloodGroup ?: currentUser?.bloodGroup ?: "B+"
-
-    val mapUrl = "https://maps.google.com/?q=${location.latitude},${location.longitude}"
-
+  /** On-device preview. Never publishes or discloses device location. */
+  fun previewSos(): CommunitySosAlert {
     val alert = CommunitySosAlert(
-      id = "SOS-${System.currentTimeMillis() % 100000}",
-      communityId = "ramisa_central",
-      communityName = "RAMISA Central Community",
-      victimName = name,
-      victimPhone = phone,
-      victimBloodGroup = blood,
-      triggerTypeLabel = triggerTypeLabel,
-      locationName = location.addressName,
-      latitude = location.latitude,
-      longitude = location.longitude,
-      mapUrl = mapUrl,
-      timestamp = System.currentTimeMillis(),
-      customNote = note.ifBlank { "Immediate crisis assistance required. Please coordinate rescue or call." },
-      respondingCount = 2,
-      respondingMembers = listOf("Nusrat Jahan (Proctor)", "Tasnim Hossain"),
-      status = "CRITICAL_ACTIVE"
+      id = UUID.randomUUID().toString(),
+      victimName = "Example member",
+      victimPhone = "",
+      victimBloodGroup = "",
+      triggerTypeLabel = "On-device preview",
+      locationName = "Example location",
+      latitude = 0.0,
+      longitude = 0.0,
+      mapUrl = "",
+      customNote = "Example request. No alert was sent.",
+      respondingCount = 0,
+      respondingMembers = emptyList()
     )
-
-    Log.w(TAG, "BROADCASTING SOS TO CENTRAL COMMUNITY: $name at ${location.addressName}")
-
-    // Update active alerts list
-    _activeSosAlerts.update { listOf(alert) + it }
-
-    // Auto-create top Emergency SOS post in the Central Community Feed
-    val sosPost = CentralCommunityPost(
-      id = "post_sos_${alert.id}",
-      category = CommunityTopicCategory.EMERGENCY_SOS,
-      authorName = "SOS BROADCAST: $name",
-      authorRole = "Emergency Dispatch",
-      authorPhone = phone,
-      isAnonymous = false,
-      title = "CRISIS SOS: $name needs immediate help!",
-      content = "Triggered via [$triggerTypeLabel] at ${location.addressName}.\nBlood Group: $blood | Phone: $phone\nLive Location: $mapUrl\nNote: ${alert.customNote}",
-      locationTag = location.addressName,
-      timestamp = System.currentTimeMillis(),
-      supportCount = 15,
-      helpfulCount = 8,
-      replies = listOf(
-        CommunityReply(
-          id = "rep_sos_1",
-          postId = "post_sos_${alert.id}",
-          authorName = "Nusrat Jahan (Proctor)",
-          authorRole = "Responder",
-          content = "I am contacting the local beat police patrol and heading towards the spot right now!",
-          timestamp = System.currentTimeMillis(),
-          likes = 6
-        )
-      ),
-      isSosAlert = true,
-      sosDetails = alert
-    )
-
-    _communityPosts.update { listOf(sosPost) + it }
-    GlobalScope.launch(Dispatchers.IO) {
-      try {
-        val user = AppSessionManager.currentUser.value
-        val userId = user?.id ?: "unknown"
-        val message = SupabaseCommunityMessage(
-          userId = userId,
-          userName = name,
-          message = sosPost.content,
-          isSosAlert = true
-        )
-        SupabaseConfig.client.postgrest["community_messages"].insert(message)
-      } catch(e: Exception) {
-        e.printStackTrace()
-      }
-    }
+    _activeSosAlerts.update { existing -> listOf(alert) + existing.filter { it.triggerTypeLabel != "On-device preview" } }
     return alert
   }
 
@@ -526,11 +360,9 @@ object CommunityManager {
     return communities.value.first()
   }
   fun sendMessage(communityId: String, text: String) {
-    createPost(
-      category = CommunityTopicCategory.SISTERHOOD_GENERAL,
-      title = "Quick Community Update",
-      content = text
-    )
+    scope.launch {
+      createPost(CommunityTopicCategory.SISTERHOOD_GENERAL, "Quick Community Update", text)
+    }
   }
   val communityMessages: StateFlow<List<CommunityChatMessage>> = MutableStateFlow(emptyList<CommunityChatMessage>()).asStateFlow()
 }

@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import com.example.core.sms.EmergencySmsDispatcher
 import com.example.data.local.EmergencyContactDao
 import com.example.domain.model.EmergencyContact
 import com.example.domain.repository.EmergencyContactRepository
@@ -10,6 +11,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import java.util.UUID
 
 class EmergencyContactRepositoryImpl(
     private val dao: EmergencyContactDao
@@ -25,23 +27,30 @@ class EmergencyContactRepositoryImpl(
         )
 
     override suspend fun addContact(name: String, phone: String, relationship: String): Result<EmergencyContact> {
-        val currentContacts = contacts.value
+        val currentContacts = dao.getAllContacts().first()
         if (currentContacts.size >= 7) {
             return Result.failure(IllegalStateException("Maximum limit of 7 contacts reached"))
         }
         if (name.isBlank() || phone.isBlank()) {
             return Result.failure(IllegalArgumentException("Name and phone number cannot be blank"))
         }
+        val normalizedPhone = EmergencySmsDispatcher.normalizePhone(phone)
+        if (!EmergencySmsDispatcher.isUsablePhone(normalizedPhone)) {
+            return Result.failure(IllegalArgumentException("Enter a valid phone number with at least seven digits."))
+        }
+        if (currentContacts.any { EmergencySmsDispatcher.normalizePhone(it.phone) == normalizedPhone }) {
+            return Result.failure(IllegalArgumentException("That phone number is already saved."))
+        }
         val newContact = EmergencyContact(
-            id = "c_${System.currentTimeMillis() % 100000}",
+            id = UUID.randomUUID().toString(),
             name = name.trim(),
-            phone = phone.trim(),
+            phone = normalizedPhone,
             relationship = relationship.trim(),
             priority = currentContacts.size + 1,
             smsEnabled = true,
             callEnabled = true,
-            pushEnabled = true,
-            isVerified = true
+            pushEnabled = false,
+            isVerified = false
         )
         dao.insertContact(newContact)
         return Result.success(newContact)

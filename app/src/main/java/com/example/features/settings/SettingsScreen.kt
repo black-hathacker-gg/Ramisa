@@ -1,502 +1,358 @@
 package com.example.features.settings
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ChildCare
-import androidx.compose.material.icons.filled.FolderSpecial
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.ui.theme.SafeGreenDark
-import com.example.ui.theme.SafeGreenPrimary
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.BuildConfig
+import com.example.core.utils.BangladeshHotlines
+import com.example.data.repository.AppSessionManager
+import com.example.ui.components.SafetyActionRow
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
   viewModel: SettingsViewModel,
-  onNavigateBack: () -> Unit,
   onLogout: () -> Unit,
-  onNavigateToProfile: () -> Unit = {},
+  onNavigateToProfile: () -> Unit,
+  onNavigateToLockScreenSos: () -> Unit,
+  onNavigateToMesh: () -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val uiState by viewModel.uiState.collectAsState()
-  val scrollState = rememberScrollState()
-  val context = androidx.compose.ui.platform.LocalContext.current
+  val context = LocalContext.current
+  val state by viewModel.uiState.collectAsStateWithLifecycle()
+  val currentUser by AppSessionManager.currentUser.collectAsStateWithLifecycle()
+  val isBangla by AppSessionManager.isBanglaLanguage.collectAsStateWithLifecycle()
+  val hasExistingPin = !currentUser?.emergencyPin.isNullOrBlank()
+  var showPinDialog by remember { mutableStateOf(false) }
 
-  androidx.compose.runtime.LaunchedEffect(Unit) {
-    viewModel.setGhostModeState(com.example.core.utils.GhostModeManager.isGhostModeEnabled(context))
+  LifecycleResumeEffect(Unit) {
+    viewModel.refreshDeviceSettings()
+    onPauseOrDispose { }
   }
 
-  var isChangePinDialogVisible by remember { mutableStateOf(false) }
-  var newPinInput by remember { mutableStateOf("") }
+  val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    if (granted) viewModel.setLockScreenGuard(true)
+    else Toast.makeText(context, "Allow notifications to show the lock screen shortcut.", Toast.LENGTH_LONG).show()
+  }
+  val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    if (granted) viewModel.setDirectSms(true)
+    else Toast.makeText(context, "Allow SMS to enable the direct SMS shortcut.", Toast.LENGTH_LONG).show()
+  }
 
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = {
-          Text(
-            text = "Settings & Security",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-          )
-        },
-        navigationIcon = {
-          IconButton(onClick = onNavigateBack) {
-            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-          }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.primary,
-          titleContentColor = Color.White,
-          navigationIconContentColor = Color.White,
-          actionIconContentColor = Color.White
+  Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Box(contentAlignment = Alignment.TopCenter) {
+      Column(
+        modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth()
+          .verticalScroll(rememberScrollState())
+          .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+      ) {
+        Text(
+          text = if (isBangla) "সেটিংস" else "Settings",
+          style = MaterialTheme.typography.headlineMedium,
+          fontWeight = FontWeight.SemiBold
         )
-      )
-    },
-    modifier = modifier.fillMaxSize(),
-    containerColor = MaterialTheme.colorScheme.background
-  ) { paddingValues ->
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(paddingValues)
-        .verticalScroll(scrollState)
-        .padding(horizontal = 20.dp, vertical = 12.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-      // User Profile Header Card
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clickable { onNavigateToProfile() }
-          .testTag("settings_profile_card"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-      ) {
+        SettingsGroup(title = if (isBangla) "প্রোফাইল ও ভাষা" else "Profile & language") {
+          SafetyActionRow(
+            title = currentUser?.name?.takeIf { it.isNotBlank() } ?: if (isBangla) "নিরাপত্তা প্রোফাইল" else "Safety profile",
+            subtitle = if (isBangla) "ব্যক্তিগত ও জরুরি তথ্য" else "Personal and emergency details",
+            icon = Icons.Default.Person,
+            onClick = onNavigateToProfile,
+            modifier = Modifier.testTag("settings_profile_card")
+          )
+          HorizontalDivider()
+          Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp).testTag("settings_lang_card")
+          ) {
+            Text(
+              text = if (isBangla) "অ্যাপের ভাষা" else "App language",
+              fontWeight = FontWeight.SemiBold,
+              style = MaterialTheme.typography.titleSmall
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+              FilterChip(
+                selected = !isBangla,
+                onClick = { AppSessionManager.setBanglaLanguage(false) },
+                label = { Text("English") },
+                modifier = Modifier.testTag("chip_lang_en")
+              )
+              FilterChip(
+                selected = isBangla,
+                onClick = { AppSessionManager.setBanglaLanguage(true) },
+                label = { Text("বাংলা") },
+                modifier = Modifier.testTag("chip_lang_bn")
+              )
+            }
+          }
+        }
+
+        SettingsGroup(title = if (isBangla) "নিরাপত্তা ও গোপনীয়তা" else "Safety & privacy") {
+          SafetyActionRow(
+            title = if (hasExistingPin) "Change safety PIN" else "Set safety PIN",
+            subtitle = "Used to resolve emergency alerts",
+            icon = Icons.Default.Lock,
+            onClick = { viewModel.clearPinError(); showPinDialog = true }
+          )
+          HorizontalDivider()
+          SettingsSwitch(
+            title = "Lock screen shortcut",
+            description = "Show the SOS notification when your device is locked",
+            checked = state.isLockScreenGuardEnabled,
+            onCheckedChange = { enabled ->
+              when {
+                !enabled -> viewModel.setLockScreenGuard(false)
+                NotificationManagerCompat.from(context).areNotificationsEnabled() -> viewModel.setLockScreenGuard(true)
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                  notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                else -> context.startActivity(
+                  Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                )
+              }
+            },
+            testTag = "switch_lockscreen_guard_settings"
+          )
+          HorizontalDivider()
+          SettingsSwitch(
+            title = "Direct SOS SMS shortcut",
+            description = "Add a Send SOS SMS action to the lock screen notification",
+            checked = state.isDirectSmsEnabled,
+            enabled = state.isLockScreenGuardEnabled,
+            onCheckedChange = { enabled ->
+              if (enabled && ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+                smsPermission.launch(Manifest.permission.SEND_SMS)
+              } else {
+                viewModel.setDirectSms(enabled)
+              }
+            },
+            testTag = "switch_sms_fallback"
+          )
+          HorizontalDivider()
+          SafetyActionRow(
+            title = "Lock screen options",
+            subtitle = "Review and test available shortcuts",
+            icon = Icons.Default.Lock,
+            onClick = onNavigateToLockScreenSos
+          )
+          HorizontalDivider()
+          SafetyActionRow(
+            title = "Offline mesh",
+            subtitle = "Bluetooth relay settings",
+            icon = Icons.Default.Hub,
+            onClick = onNavigateToMesh
+          )
+          HorizontalDivider()
+          SettingsSwitch(
+            title = "Ghost mode",
+            description = if (hasExistingPin) "Disguise the launcher icon. Enter your safety PIN to return to RAMISA."
+              else "Set a safety PIN before enabling the Calculator disguise.",
+            checked = state.isGhostModeEnabled,
+            enabled = hasExistingPin || state.isGhostModeEnabled,
+            onCheckedChange = viewModel::setGhostMode,
+            testTag = "switch_ghost_mode_settings"
+          )
+        }
+
+        SettingsGroup(title = if (isBangla) "বাংলাদেশের হটলাইন" else "Bangladesh hotlines") {
+          val numbers = listOf(
+            BangladeshHotlines.EMERGENCY to "Emergency services",
+            BangladeshHotlines.VIOLENCE_SUPPORT to "Violence against women and children",
+            BangladeshHotlines.CHILD_HELP to "Child helpline",
+            BangladeshHotlines.LEGAL_AID to "National legal aid"
+          )
+          numbers.forEachIndexed { index, (number, title) ->
+            if (index > 0) HorizontalDivider()
+            SafetyActionRow(
+              title = title,
+              subtitle = number,
+              icon = Icons.Default.Call,
+              onClick = {
+                if (!BangladeshHotlines.openDialer(context, number)) {
+                  Toast.makeText(context, "$title $number", Toast.LENGTH_LONG).show()
+                }
+              }
+            )
+          }
+        }
+
         Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            val currentUser by com.example.data.repository.AppSessionManager.currentUser.collectAsState()
-            val userName = currentUser?.name ?: "RAMISA User"
-            val initials = userName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("").ifEmpty { "RU" }
-
-            Surface(
-              shape = CircleShape,
-              color = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(44.dp)
-            ) {
-              Box(contentAlignment = Alignment.Center) {
-                Text(
-                  text = initials,
-                  style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                  color = Color.White
-                )
-              }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-              Text(
-                text = userName,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-              )
-              Text(
-                text = "View & Edit Safety Profile, Blood Group, Guardian",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-              )
-            }
-          }
-
-          Text(
-            text = "VIEW",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary
-          )
-        }
-      }
-
-
-      // Language Card
-      Card(
-        modifier = Modifier.fillMaxWidth().testTag("settings_lang_card"),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-      ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-              imageVector = Icons.Default.Language,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(22.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-              text = "Language (ভাষা)",
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-          }
-
-          Spacer(modifier = Modifier.height(12.dp))
-
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-          ) {
-            FilterChip(
-              selected = uiState.language == AppLanguage.ENGLISH,
-              onClick = { viewModel.setLanguage(AppLanguage.ENGLISH) },
-              label = { Text("English") },
-              modifier = Modifier.testTag("chip_lang_en")
-            )
-            FilterChip(
-              selected = uiState.language == AppLanguage.BANGLA,
-              onClick = { viewModel.setLanguage(AppLanguage.BANGLA) },
-              label = { Text("বাংলা (Bangla)") },
-              modifier = Modifier.testTag("chip_lang_bn")
-            )
-          }
-        }
-      }
-
-      // Offline & Safety Toggles
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-      ) {
-        Column(
-          modifier = Modifier.fillMaxWidth().padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(14.dp)
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
         ) {
           Text(
-            text = "SAFETY AUTOMATIONS",
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-
-          // Lock Screen SOS Guard
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-              Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.width(12.dp))
-              Column {
-                Text(
-                  text = "Lock Screen SOS Guard",
-                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                  text = "1-Tap emergency button on locked screen • Send native SMS without unlocking",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-            Switch(
-              checked = true,
-              onCheckedChange = { },
-              modifier = Modifier.testTag("switch_lockscreen_guard_settings")
-            )
-          }
-
-          HorizontalDivider()
-
-          // Ghost Mode / Stealth Camouflage
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-              Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.width(12.dp))
-              Column {
-                Text(
-                  text = "Ghost Mode (Camouflage)",
-                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                  text = "Changes App Icon & Name to 'Calculator' to hide from attackers",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-            Switch(
-              checked = uiState.isGhostModeEnabled,
-              onCheckedChange = { 
-                viewModel.setGhostModeState(it)
-                com.example.core.utils.GhostModeManager.setGhostMode(context, it)
-              },
-              modifier = Modifier.testTag("switch_ghost_mode_settings")
-            )
-          }
-
-          HorizontalDivider()
-
-          // SMS Fallback Toggle
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-              Icon(imageVector = Icons.Default.Sms, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.width(12.dp))
-              Column {
-                Text(
-                  text = "Cellular Direct SMS & Offline Mesh",
-                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                  text = "Automatically dispatch direct SMS & Bluetooth mesh when zero internet",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-            Switch(
-              checked = uiState.isSmsFallbackEnabled,
-              onCheckedChange = { viewModel.toggleSmsFallback() },
-              modifier = Modifier.testTag("switch_sms_fallback")
-            )
-          }
-
-
-        }
-      }
-
-      // Bangladesh Emergency Hotlines Directory
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-      ) {
-        Column(
-          modifier = Modifier.fillMaxWidth().padding(16.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-              text = "Bangladesh Emergency Directory",
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-          }
-
-          EmergencyHotlineRow("National Emergency (পুলিশ/অ্যাম্বুলেন্স)", "999")
-          EmergencyHotlineRow("Women & Child Abuse Prevention (নারী ও শিশু নির্যাতন)", "109")
-          EmergencyHotlineRow("Child Helpline (শিশু সুরক্ষা সহায়তা)", "1098")
-          EmergencyHotlineRow("National Legal Aid (আইনি সহায়তা)", "16430")
-        }
-      }
-
-      // Security PIN Management
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-      ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .clickable { isChangePinDialogVisible = true }
-            .padding(16.dp)
-        ) {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.width(12.dp))
-              Column {
-                Text(
-                  text = "Emergency & Duress PIN",
-                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                  text = "PIN is currently active • Tap to update",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
-            }
-
-            Text(
-              text = "EDIT",
-              style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-              color = MaterialTheme.colorScheme.primary
-            )
-          }
-
-        }
-      }
-
-      // About & Version
-      Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-      ) {
-        Column(
-          modifier = Modifier.fillMaxWidth().padding(16.dp),
-          horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-          Text(
-            text = "RAMISA v5.0 (Phase 5: Hardware & Wearable Triggers)",
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-          )
-          Text(
-            text = "Women's & Children's Personal Safety System for Bangladesh",
+            text = "RAMISA ${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
           )
-          Spacer(modifier = Modifier.height(12.dp))
           TextButton(onClick = onLogout, modifier = Modifier.testTag("btn_logout")) {
             Text(
-              text = "Log Out / Switch Account",
-              color = MaterialTheme.colorScheme.error,
-              fontWeight = FontWeight.Bold
+              if (currentUser?.id?.startsWith("guest_") == true) "Switch account" else "Sign out",
+              color = MaterialTheme.colorScheme.error
             )
           }
         }
       }
-
-      Spacer(modifier = Modifier.height(24.dp))
     }
   }
 
-  // Change PIN Dialog
-  if (isChangePinDialogVisible) {
-    AlertDialog(
-      onDismissRequest = { isChangePinDialogVisible = false },
-      title = { Text("Update Emergency PIN") },
-      text = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-          Text("Enter a new 4-digit PIN for resolving emergency SOS alerts.")
-          OutlinedTextField(
-            value = newPinInput,
-            onValueChange = { if (it.length <= 4) newPinInput = it },
-            label = { Text("4-Digit PIN") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("dialog_input_new_pin")
-          )
-        }
-      },
-      confirmButton = {
-        Button(
-          onClick = {
-            if (newPinInput.length == 4) {
-              viewModel.updatePin(newPinInput)
-              newPinInput = ""
-              isChangePinDialogVisible = false
-            }
-          },
-          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-          Text("Update PIN")
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { isChangePinDialogVisible = false }) {
-          Text("Cancel")
-        }
-      }
+  if (showPinDialog) {
+    PinDialog(hasExistingPin, state, viewModel, onDismiss = { showPinDialog = false })
+  }
+}
+
+@Composable
+private fun SettingsGroup(title: String, content: @Composable () -> Unit) {
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Surface(
+      modifier = Modifier.fillMaxWidth(),
+      shape = RoundedCornerShape(16.dp),
+      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+      Column { content() }
+    }
+  }
+}
+
+@Composable
+private fun SettingsSwitch(
+  title: String,
+  description: String,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+  testTag: String,
+  enabled: Boolean = true
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp)
+  ) {
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+      Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Switch(
+      checked = checked,
+      onCheckedChange = onCheckedChange,
+      enabled = enabled,
+      modifier = Modifier.testTag(testTag).semantics { contentDescription = title }
     )
   }
 }
 
 @Composable
-private fun EmergencyHotlineRow(title: String, number: String) {
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically
-  ) {
-    Text(
-      text = title,
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurface
-    )
-    Surface(
-      shape = RoundedCornerShape(6.dp),
-      color = MaterialTheme.colorScheme.primaryContainer
-    ) {
-      Text(
-        text = number,
-        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-        color = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-      )
+private fun PinDialog(
+  hasExistingPin: Boolean,
+  state: SettingsUiState,
+  viewModel: SettingsViewModel,
+  onDismiss: () -> Unit
+) {
+  var currentPin by remember { mutableStateOf("") }
+  var newPin by remember { mutableStateOf("") }
+  AlertDialog(
+    onDismissRequest = { if (!state.isSavingPin) onDismiss() },
+    title = { Text(if (hasExistingPin) "Change safety PIN" else "Set safety PIN") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (hasExistingPin) {
+          PinField(currentPin, "Current PIN", enabled = !state.isSavingPin) {
+            currentPin = it.filter(Char::isDigit).take(4)
+            viewModel.clearPinError()
+          }
+        }
+        PinField(
+          newPin, "New four-digit PIN",
+          modifier = Modifier.testTag("dialog_input_new_pin"),
+          enabled = !state.isSavingPin
+        ) {
+          newPin = it.mapNotNull(Char::digitToIntOrNull).take(4).joinToString("")
+          viewModel.clearPinError()
+        }
+        state.pinError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+      }
+    },
+    confirmButton = {
+      Button(
+        onClick = { viewModel.updatePin(currentPin, newPin, onDismiss) },
+        enabled = !state.isSavingPin && newPin.length == 4 && (!hasExistingPin || currentPin.length == 4)
+      ) { Text(if (state.isSavingPin) "Saving…" else "Save PIN") }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss, enabled = !state.isSavingPin) { Text("Cancel") }
     }
-  }
+  )
+}
+
+@Composable
+private fun PinField(
+  value: String,
+  label: String,
+  modifier: Modifier = Modifier,
+  enabled: Boolean = true,
+  onValueChange: (String) -> Unit
+) {
+  OutlinedTextField(
+    value = value,
+    onValueChange = onValueChange,
+    modifier = modifier.fillMaxWidth(),
+    label = { Text(label) },
+    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+    visualTransformation = PasswordVisualTransformation(),
+    singleLine = true,
+    enabled = enabled
+  )
 }

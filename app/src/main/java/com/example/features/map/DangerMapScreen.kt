@@ -1,110 +1,70 @@
 package com.example.features.map
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddLocation
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Directions
-import androidx.compose.material.icons.filled.ElectricBolt
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.LocationSearching
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.NearMe
-import androidx.compose.material.icons.filled.ReportProblem
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.BorderStroke
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.core.location.EmergencyLocationManager
 import com.example.domain.model.DangerCategory
 import com.example.domain.model.DangerZone
 import com.example.domain.model.RiskLevel
-import com.example.ui.theme.PinkBorderSubtle
-import com.example.ui.theme.PinkContainer
-import com.example.ui.theme.PinkPrimary
-import com.example.ui.theme.SafeGreenDark
-import com.example.ui.theme.SafeGreenPrimary
-import com.example.ui.theme.SafetyRedDark
-import com.example.ui.theme.SafetyRedPrimary
-import com.example.ui.theme.SurfaceLight
-import com.example.ui.theme.TextPrimaryLight
-import com.example.ui.theme.TextSecondaryLight
+import kotlinx.coroutines.launch
+import org.maplibre.android.geometry.LatLng
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,880 +74,337 @@ fun DangerMapScreen(
   onTriggerSos: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
-  val uiState by viewModel.uiState.collectAsState()
+  val state by viewModel.uiState.collectAsStateWithLifecycle()
   val context = LocalContext.current
-  val scrollState = rememberScrollState()
+  val snackbar = remember { SnackbarHostState() }
+  val scope = rememberCoroutineScope()
+  val permissionRequest = rememberLauncherForActivityResult(
+    ActivityResultContracts.RequestMultiplePermissions()
+  ) { granted ->
+    if (granted.values.any { it }) viewModel.refreshLocation() else viewModel.locationDenied()
+  }
+
+  LaunchedEffect(Unit) {
+    if (EmergencyLocationManager.hasLocationPermission(context)) {
+      viewModel.refreshLocation(recenter = false)
+    }
+  }
 
   Scaffold(
+    modifier = modifier.fillMaxSize(),
+    snackbarHost = { SnackbarHost(snackbar) },
     topBar = {
       TopAppBar(
-        title = {
-          Column {
-            Text(
-              text = "Danger & Incident Heatmap",
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
-            Text(
-              text = "বিপদজনক এলাকা ও নিরাপত্তা রাডার",
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-          }
-        },
+        title = { Text("Safety map") },
         navigationIcon = {
           IconButton(onClick = onNavigateBack) {
-            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
           }
         },
         actions = {
           IconButton(
-            onClick = { viewModel.openReportDialog() },
+            onClick = {
+              val location = state.deviceLocation
+              if (location != null && viewModel.isFresh(location)) {
+                viewModel.openReportDialog(LatLng(location.latitude, location.longitude))
+              } else {
+                scope.launch { snackbar.showSnackbar("Press and hold the spot on the map to add a report.") }
+              }
+            },
             modifier = Modifier.testTag("btn_report_unsafe_spot")
           ) {
-            Icon(
-              imageVector = Icons.Default.AddLocation,
-              contentDescription = "Report Unsafe Spot",
-              tint = Color.White
-            )
+            Icon(Icons.Default.AddLocation, contentDescription = "Report an unsafe spot")
           }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = MaterialTheme.colorScheme.primary,
-          titleContentColor = Color.White,
-          navigationIconContentColor = Color.White,
-          actionIconContentColor = Color.White
-        )
+          TextButton(onClick = onTriggerSos) {
+            Text("SOS", color = MaterialTheme.colorScheme.error)
+          }
+        }
       )
-    },
-    modifier = modifier.fillMaxSize(),
-    containerColor = MaterialTheme.colorScheme.background
-  ) { paddingValues ->
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(paddingValues)
-        .verticalScroll(scrollState)
+    }
+  ) { padding ->
+    LazyColumn(
+      modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-      // PROXIMITY ALERT BANNER IF NEAR DANGER ZONE
-      if (uiState.isProximityAlertActive && uiState.nearestDangerZone != null) {
-        val zone = uiState.nearestDangerZone!!
-        Surface(
-          color = Color(0xFFFFEBEE),
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .testTag("banner_proximity_alert"),
-          shape = RoundedCornerShape(12.dp),
-          border = androidx.compose.foundation.BorderStroke(1.dp, SafetyRedPrimary.copy(alpha = 0.5f))
-        ) {
-          Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Box(
-              modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(SafetyRedPrimary),
-              contentAlignment = Alignment.Center
-            ) {
-              Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Column(modifier = Modifier.weight(1f)) {
-              Text(
-                text = "CAUTION: Near ${zone.areaName} (${uiState.distanceToNearestKm} km)",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = SafetyRedDark
-              )
-              Text(
-                text = "High sexual harassment & assault incidence recorded here. Stay vigilant.",
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = Color(0xFF5D101D)
-              )
-            }
-          }
-        }
-      }
-
-      // MAP CONTROLS & FILTER ROW
-      LazyRow(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-      ) {
-        item {
-          FilterChip(
-            selected = uiState.selectedRiskFilter == null,
-            onClick = { viewModel.setRiskFilter(null) },
-            label = { Text("All Risk Zones (${uiState.allDangerZones.size})", fontSize = 11.sp) }
-          )
-        }
-        item {
-          FilterChip(
-            selected = uiState.selectedRiskFilter == RiskLevel.CRITICAL_DANGER,
-            onClick = { viewModel.setRiskFilter(RiskLevel.CRITICAL_DANGER) },
-            label = { Text("Critical Danger", fontSize = 11.sp) }
-          )
-        }
-        item {
-          FilterChip(
-            selected = uiState.selectedRiskFilter == RiskLevel.HIGH_RISK,
-            onClick = { viewModel.setRiskFilter(RiskLevel.HIGH_RISK) },
-            label = { Text("High Risk", fontSize = 11.sp) }
-          )
-        }
-        item {
-          FilterChip(
-            selected = uiState.selectedCategoryFilter == DangerCategory.SEXUAL_HARASSMENT_HOTSPOT,
-            onClick = { viewModel.setCategoryFilter(DangerCategory.SEXUAL_HARASSMENT_HOTSPOT) },
-            label = { Text("Harassment Hotspots", fontSize = 11.sp) }
-          )
-        }
-        item {
-          FilterChip(
-            selected = uiState.selectedCategoryFilter == DangerCategory.ISOLATED_DARK_CORRIDOR,
-            onClick = { viewModel.setCategoryFilter(DangerCategory.ISOLATED_DARK_CORRIDOR) },
-            label = { Text("Dark Corridors", fontSize = 11.sp) }
-          )
-        }
-      }
-
-      // MAIN INTERACTIVE DANGER CANVAS MAP
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(340.dp)
-          .padding(horizontal = 16.dp)
-          .clip(RoundedCornerShape(20.dp))
-          .background(SurfaceLight) // Soft Rose-White Map Canvas
-          .border(1.dp, PinkBorderSubtle, RoundedCornerShape(20.dp))
-          .testTag("canvas_danger_heatmap")
-      ) {
-        val infiniteTransition = rememberInfiniteTransition(label = "pulse_radar")
-        val radarRadius by infiniteTransition.animateFloat(
-          initialValue = 10f,
-          targetValue = 65f,
-          animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-          ),
-          label = "radar_pulse"
+      item {
+        OutlinedTextField(
+          value = state.searchQuery,
+          onValueChange = viewModel::setSearchQuery,
+          label = { Text("Search risk pins") },
+          leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+          singleLine = true,
+          modifier = Modifier.fillMaxWidth()
         )
-        val pulseAlpha by infiniteTransition.animateFloat(
-          initialValue = 0.8f,
-          targetValue = 0.0f,
-          animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-          ),
-          label = "pulse_alpha"
+      }
+      item {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          item {
+            FilterChip(
+              selected = state.mapLayer == MapLayerType.HEATMAP,
+              onClick = { viewModel.setMapLayer(MapLayerType.HEATMAP) },
+              label = { Text("Heatmap") }
+            )
+          }
+          item {
+            FilterChip(
+              selected = state.mapLayer == MapLayerType.RISK_PINS,
+              onClick = { viewModel.setMapLayer(MapLayerType.RISK_PINS) },
+              label = { Text("Pins") }
+            )
+          }
+          item {
+            FilterChip(
+              selected = state.mapLayer == MapLayerType.SAFE_CORRIDORS,
+              onClick = { viewModel.setMapLayer(MapLayerType.SAFE_CORRIDORS) },
+              label = { Text("Bypass advice") }
+            )
+          }
+        }
+      }
+      item {
+        val mapPoints = remember(state.filteredDangerZones, state.selectedZone) {
+          state.filteredDangerZones.map { zone ->
+            MapPoint(zone.id, LatLng(zone.latitude, zone.longitude), zone.riskLevel.pinColor(), state.selectedZone?.id == zone.id)
+          }
+        }
+        Box(Modifier.fillMaxWidth().height(340.dp).clip(MaterialTheme.shapes.large)) {
+          LiveSafetyMap(
+            points = mapPoints,
+            deviceLocation = state.deviceLocation?.let { LatLng(it.latitude, it.longitude) },
+            showRiskAreas = state.mapLayer == MapLayerType.HEATMAP,
+            onPointClick = { id -> state.filteredDangerZones.firstOrNull { it.id == id }?.let { zone -> viewModel.selectZone(zone) } },
+            onMapLongPress = viewModel::openReportDialog,
+            modifier = Modifier.fillMaxSize().testTag("canvas_danger_heatmap"),
+            cameraAction = state.cameraAction
+          )
+          Surface(
+            modifier = Modifier.align(Alignment.TopEnd).padding(10.dp),
+            shape = MaterialTheme.shapes.medium,
+            shadowElevation = 2.dp
+          ) {
+            Column {
+              IconButton(onClick = { viewModel.zoom(1.0) }, modifier = Modifier.testTag("btn_map_zoom_in")) {
+                Icon(Icons.Default.ZoomIn, contentDescription = "Zoom in")
+              }
+              IconButton(onClick = { viewModel.zoom(-1.0) }, modifier = Modifier.testTag("btn_map_zoom_out")) {
+                Icon(Icons.Default.ZoomOut, contentDescription = "Zoom out")
+              }
+              IconButton(
+                onClick = {
+                  if (EmergencyLocationManager.hasLocationPermission(context)) viewModel.refreshLocation()
+                  else permissionRequest.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                },
+                enabled = !state.centeringLocation,
+                modifier = Modifier.testTag("btn_map_center_me")
+              ) {
+                Icon(Icons.Default.MyLocation, contentDescription = "My location")
+              }
+            }
+          }
+        }
+      }
+      item {
+        Text(
+          "The map uses real streets. Risk pins are examples or your saved reports. Press and hold a spot to add a report.",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
-        // Custom Rendered Vector Map Canvas
-        Canvas(
-          modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(uiState.filteredDangerZones) {
-              detectTapGestures { offset ->
-                // Calculate closest danger zone click
-                val width = size.width.toFloat()
-                val height = size.height.toFloat()
-                var closest: DangerZone? = null
-                var minDist = Float.MAX_VALUE
-
-                uiState.filteredDangerZones.forEach { zone ->
-                  val pos = mapGeoToCanvas(zone.latitude, zone.longitude, width, height, uiState.zoomLevel, uiState.userLatitude, uiState.userLongitude)
-                  val dist = kotlin.math.hypot(offset.x - pos.x, offset.y - pos.y)
-                  if (dist < 40f && dist < minDist) {
-                    minDist = dist
-                    closest = zone
-                  }
-                }
-                closest?.let { viewModel.selectZone(it) }
-              }
-            }
-        ) {
-          val canvasWidth = size.width
-          val canvasHeight = size.height
-
-          // Draw Simulated City Road Network Lines
-          drawCityRoadGrid(canvasWidth, canvasHeight)
-
-          // Draw Safe Corridors (Green connecting paths with police checkpoints)
-          drawSafeCorridors(canvasWidth, canvasHeight, uiState.zoomLevel)
-
-          // Draw Danger Heatmap Radiuses and Pins
-          uiState.filteredDangerZones.forEach { zone ->
-            val zonePos = mapGeoToCanvas(zone.latitude, zone.longitude, canvasWidth, canvasHeight, uiState.zoomLevel, uiState.userLatitude, uiState.userLongitude)
-            val isSelected = uiState.selectedZone?.id == zone.id
-
-            // Danger Heat Bubble Circle
-            val heatColor = when (zone.riskLevel) {
-              RiskLevel.CRITICAL_DANGER -> Color(0xFFEF4444)
-              RiskLevel.HIGH_RISK -> Color(0xFFF97316)
-              RiskLevel.MODERATE_CAUTION -> Color(0xFFEAB308)
-            }
-
-            // Outer Heat Diffusion
-            drawCircle(
-              brush = Brush.radialGradient(
-                colors = listOf(
-                  heatColor.copy(alpha = if (isSelected) 0.55f else 0.35f),
-                  heatColor.copy(alpha = 0.10f),
-                  Color.Transparent
-                ),
-                center = zonePos,
-                radius = if (isSelected) 55f * uiState.zoomLevel else 40f * uiState.zoomLevel
-              ),
-              center = zonePos,
-              radius = if (isSelected) 55f * uiState.zoomLevel else 40f * uiState.zoomLevel
-            )
-
-            // Danger Pin Core
-            drawCircle(
-              color = Color.White,
-              radius = if (isSelected) 10f else 7f,
-              center = zonePos
-            )
-            drawCircle(
-              color = heatColor,
-              radius = if (isSelected) 8f else 5f,
-              center = zonePos
-            )
-
-            // Selection Halo
-            if (isSelected) {
-              drawCircle(
-                color = Color.White,
-                radius = 18f,
-                center = zonePos,
-                style = Stroke(width = 2.5f)
-              )
-            }
-          }
-
-          // Draw User's Current GPS Location
-          val userPos = mapGeoToCanvas(uiState.userLatitude, uiState.userLongitude, canvasWidth, canvasHeight, uiState.zoomLevel, uiState.userLatitude, uiState.userLongitude)
-
-          // Pulsing safety perimeter radar
-          drawCircle(
-            color = Color(0xFF00E5FF).copy(alpha = pulseAlpha),
-            radius = radarRadius,
-            center = userPos,
-            style = Stroke(width = 2f)
-          )
-
-          // User Core Dot
-          drawCircle(
-            color = Color.White,
-            radius = 9f,
-            center = userPos
-          )
-          drawCircle(
-            color = Color(0xFF00B0FF),
-            radius = 6f,
-            center = userPos
-          )
-        }
-
-        // Overlay Map Legend & Floating Actions
-        Column(
-          modifier = Modifier
-            .align(Alignment.TopEnd)
-            .padding(12.dp),
-          verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-          // Zoom In
-          Surface(
-            shape = CircleShape,
-            color = Color.White,
-            shadowElevation = 2.dp,
-            border = BorderStroke(1.dp, PinkBorderSubtle),
-            modifier = Modifier
-              .size(36.dp)
-              .clickable { viewModel.zoomIn() }
-              .testTag("btn_map_zoom_in")
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.ZoomIn, contentDescription = "Zoom In", tint = PinkPrimary, modifier = Modifier.size(18.dp))
-            }
-          }
-
-          // Zoom Out
-          Surface(
-            shape = CircleShape,
-            color = Color.White,
-            shadowElevation = 2.dp,
-            border = BorderStroke(1.dp, PinkBorderSubtle),
-            modifier = Modifier
-              .size(36.dp)
-              .clickable { viewModel.zoomOut() }
-              .testTag("btn_map_zoom_out")
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.ZoomOut, contentDescription = "Zoom Out", tint = PinkPrimary, modifier = Modifier.size(18.dp))
-            }
-          }
-
-          // Center on User
-          Surface(
-            shape = CircleShape,
-            color = PinkPrimary,
-            shadowElevation = 2.dp,
-            modifier = Modifier
-              .size(36.dp)
-              .clickable { viewModel.refreshLocation(context) }
-              .testTag("btn_map_center_me")
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              Icon(imageVector = Icons.Default.MyLocation, contentDescription = "My Location", tint = Color.White, modifier = Modifier.size(18.dp))
-            }
-          }
-        }
-
-        // Bottom Map Legend Strip
-        Surface(
-          color = Color.White.copy(alpha = 0.95f),
-          border = BorderStroke(1.dp, PinkBorderSubtle),
-          modifier = Modifier
-            .fillMaxWidth()
-            .align(Alignment.BottomCenter)
-            .padding(8.dp),
-          shape = RoundedCornerShape(10.dp)
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-          ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFEF4444)))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("Critical Alert", color = TextSecondaryLight, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF10B981)))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("Safe Corridors", color = TextSecondaryLight, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(PinkPrimary))
-              Spacer(modifier = Modifier.width(4.dp))
-              Text("Your GPS", color = TextSecondaryLight, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            }
-          }
-        }
-      }
-
-      Spacer(modifier = Modifier.height(14.dp))
-
-      // SELECTED DANGER ZONE DETAILED CARD
-      uiState.selectedZone?.let { zone ->
-        val dist = viewModel.calculateDistanceKm(uiState.userLatitude, uiState.userLongitude, zone.latitude, zone.longitude)
-        Card(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .testTag("card_selected_danger_zone"),
-          shape = RoundedCornerShape(18.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-          elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-          Column(modifier = Modifier.padding(16.dp)) {
-            // Header & Risk Pill
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Surface(
-                shape = RoundedCornerShape(6.dp),
-                color = when (zone.riskLevel) {
-                  RiskLevel.CRITICAL_DANGER -> Color(0xFFFFCDD2)
-                  RiskLevel.HIGH_RISK -> Color(0xFFFFE0B2)
-                  RiskLevel.MODERATE_CAUTION -> Color(0xFFFFF9C4)
-                }
-              ) {
-                Text(
-                  text = when (zone.riskLevel) {
-                    RiskLevel.CRITICAL_DANGER -> "CRITICAL DANGER ZONE"
-                    RiskLevel.HIGH_RISK -> "HIGH RISK AREA"
-                    RiskLevel.MODERATE_CAUTION -> "MODERATE CAUTION"
-                  },
-                  style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = when (zone.riskLevel) {
-                      RiskLevel.CRITICAL_DANGER -> SafetyRedDark
-                      RiskLevel.HIGH_RISK -> Color(0xFFE65100)
-                      RiskLevel.MODERATE_CAUTION -> Color(0xFFF57F17)
-                    },
-                    fontSize = 10.sp
-                  ),
-                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                )
-              }
-
-              Text(
-                text = "$dist km from you",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary
-              )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+        state.locationMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        state.nearestLocalReport?.let { zone ->
+          val fix = state.deviceLocation
+          if (fix != null && viewModel.isFresh(fix)) {
             Text(
-              text = zone.name,
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-              color = MaterialTheme.colorScheme.onSurface
+              "Near your saved report at " + zone.name + " (" + viewModel.distanceLabel(fix, zone) + ")",
+              modifier = Modifier.testTag("banner_proximity_alert"),
+              color = MaterialTheme.colorScheme.error,
+              style = MaterialTheme.typography.titleSmall
             )
-            Text(
-              text = "${zone.areaName}, ${zone.district}",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Incident History & Data Summary
-            Surface(
-              shape = RoundedCornerShape(10.dp),
-              color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-              modifier = Modifier.fillMaxWidth()
-            ) {
-              Column(modifier = Modifier.padding(10.dp)) {
-                Text(
-                  text = "Documented Incidents & Media Reports:",
-                  style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                  color = SafetyRedDark
-                )
-                Text(
-                  text = zone.reportedIncidentsSummary,
-                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                  color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                  Text(
-                    text = "Reports: ${zone.incidentStats}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                  )
-                  Text(
-                    text = "Peak: ${zone.peakVulnerableHours}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color(0xFFC2410C)
-                  )
-                }
-              }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Safe Alternative Route
-            Surface(
-              shape = RoundedCornerShape(10.dp),
-              color = Color(0xFFE8F5E9),
-              modifier = Modifier.fillMaxWidth()
-            ) {
-              Row(
-                modifier = Modifier.padding(10.dp),
-                verticalAlignment = Alignment.Top
-              ) {
-                Icon(
-                  imageVector = Icons.Default.Shield,
-                  contentDescription = null,
-                  tint = SafeGreenDark,
-                  modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                  Text(
-                    text = "Recommended Safe Bypass Corridor:",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = SafeGreenDark
-                  )
-                  Text(
-                    text = zone.safeAlternativeRoute,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                    color = Color(0xFF1B5E20)
-                  )
-                }
-              }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Action Buttons: Open Google Maps & Call Area Police
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-              Button(
-                onClick = {
-                  val gmmIntentUri = Uri.parse("geo:${zone.latitude},${zone.longitude}?q=${Uri.encode(zone.name)}")
-                  val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
-                  try {
-                    context.startActivity(mapIntent)
-                  } catch (_: Exception) {}
-                },
-                modifier = Modifier
-                  .weight(1f)
-                  .height(42.dp)
-                  .testTag("btn_directions_danger_zone"),
-                shape = RoundedCornerShape(10.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-              ) {
-                Icon(imageVector = Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("BYPASS ROUTE", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-              }
-
-              OutlinedButton(
-                onClick = {
-                  val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${zone.policeContact}"))
-                  try {
-                    context.startActivity(intent)
-                  } catch (_: Exception) {}
-                },
-                modifier = Modifier
-                  .weight(1f)
-                  .height(42.dp)
-                  .testTag("btn_call_police_danger_zone"),
-                shape = RoundedCornerShape(10.dp)
-              ) {
-                Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("POLICE THANA", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-              }
-            }
           }
         }
       }
-
-      Spacer(modifier = Modifier.height(14.dp))
-
-      // LIST OF ALL CRITICAL INCIDENT LOCATIONS
-      Text(
-        text = "Documented Vulnerable Hotspots (${uiState.filteredDangerZones.size})",
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-        modifier = Modifier.padding(horizontal = 16.dp)
-      )
-      Spacer(modifier = Modifier.height(8.dp))
-
-      Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-      ) {
-        uiState.filteredDangerZones.forEach { zone ->
-          val isSelected = uiState.selectedZone?.id == zone.id
-          Surface(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clickable { viewModel.selectZone(zone) }
-              .testTag("item_danger_zone_${zone.id}"),
-            shape = RoundedCornerShape(12.dp),
-            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(
-              width = if (isSelected) 1.5.dp else 0.5.dp,
-              color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-            )
-          ) {
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-              verticalAlignment = Alignment.CenterVertically
-            ) {
-              Box(
-                modifier = Modifier
-                  .size(34.dp)
-                  .clip(CircleShape)
-                  .background(
-                    when (zone.riskLevel) {
-                      RiskLevel.CRITICAL_DANGER -> Color(0xFFFFCDD2)
-                      RiskLevel.HIGH_RISK -> Color(0xFFFFE0B2)
-                      RiskLevel.MODERATE_CAUTION -> Color(0xFFFFF9C4)
-                    }
-                  ),
-                contentAlignment = Alignment.Center
-              ) {
-                Icon(
-                  imageVector = when (zone.riskLevel) {
-                    RiskLevel.CRITICAL_DANGER -> Icons.Default.ReportProblem
-                    RiskLevel.HIGH_RISK -> Icons.Default.Warning
-                    RiskLevel.MODERATE_CAUTION -> Icons.Default.Info
-                  },
-                  contentDescription = null,
-                  tint = when (zone.riskLevel) {
-                    RiskLevel.CRITICAL_DANGER -> SafetyRedDark
-                    RiskLevel.HIGH_RISK -> Color(0xFFE65100)
-                    RiskLevel.MODERATE_CAUTION -> Color(0xFFF57F17)
-                  },
-                  modifier = Modifier.size(18.dp)
-                )
+      if (state.mapLayer == MapLayerType.SAFE_CORRIDORS) {
+        item {
+          Text(
+            "Select an example pin to view its bypass suggestion. Verify current conditions before using it.",
+            style = MaterialTheme.typography.bodySmall
+          )
+        }
+      }
+      state.selectedZone?.let { zone ->
+        item("selected_zone") {
+          ZoneDetails(
+            zone,
+            state.deviceLocation?.takeIf(viewModel::isFresh)?.let { viewModel.distanceLabel(it, zone) },
+            onDirections = {
+              if (!openMapDirections(context, zone.latitude, zone.longitude, zone.name)) {
+                scope.launch { snackbar.showSnackbar("No map or browser app is available.") }
               }
-
-              Spacer(modifier = Modifier.width(12.dp))
-
-              Column(modifier = Modifier.weight(1f)) {
-                Text(
-                  text = zone.name,
-                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                  color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                  text = "${zone.areaName} • ${zone.incidentStats}",
-                  style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            },
+            onCall = {
+              if (!openDialer(context, zone.policeContact)) {
+                scope.launch { snackbar.showSnackbar("No dialer app is available.") }
               }
-
-              Icon(
-                imageVector = Icons.Default.NearMe,
-                contentDescription = "View on Map",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp)
-              )
             }
+          )
+        }
+      }
+      item {
+        Text("Risk pins (" + state.filteredDangerZones.size + ")", style = MaterialTheme.typography.titleMedium)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+          item {
+            FilterChip(
+              selected = state.selectedRiskFilter == null && state.selectedCategoryFilter == null,
+              onClick = {
+                viewModel.setRiskFilter(null)
+                viewModel.setCategoryFilter(null)
+              },
+              label = { Text("All") }
+            )
+          }
+          items(RiskLevel.entries) { risk ->
+            FilterChip(
+              selected = state.selectedRiskFilter == risk,
+              onClick = { viewModel.setRiskFilter(risk) },
+              label = { Text(risk.label()) }
+            )
+          }
+          items(DangerCategory.entries) { category ->
+            FilterChip(
+              selected = state.selectedCategoryFilter == category,
+              onClick = { viewModel.setCategoryFilter(category) },
+              label = { Text(category.label()) }
+            )
           }
         }
       }
-
-      Spacer(modifier = Modifier.height(24.dp))
+      if (state.filteredDangerZones.isEmpty()) {
+        item { Text("No pins match those filters.", style = MaterialTheme.typography.bodyMedium) }
+      }
+      items(state.filteredDangerZones, key = { it.id }) { zone ->
+        OutlinedCard(
+          onClick = { viewModel.selectZone(zone, recenter = true) },
+          modifier = Modifier.fillMaxWidth().testTag("item_danger_zone_" + zone.id)
+        ) {
+          ListItem(
+            headlineContent = { Text(zone.name) },
+            supportingContent = {
+              Text(if (zone.isLocalReport) "Saved on this device" else "Example pin · " + zone.areaName)
+            }
+          )
+        }
+      }
     }
   }
 
-  // REPORT UNSAFE LOCATION DIALOG
-  if (uiState.showReportDialog) {
-    ReportUnsafeSpotDialog(
-      isSuccess = uiState.reportSubmissionSuccess,
-      onDismiss = { viewModel.closeReportDialog() },
-      onSubmit = { name, area, reason ->
-        viewModel.submitUnsafeSpot(name, area, reason)
+  state.reportPoint?.let { coordinates ->
+    var name by rememberSaveable(coordinates) { mutableStateOf("") }
+    var area by rememberSaveable(coordinates) { mutableStateOf("") }
+    var reason by rememberSaveable(coordinates) { mutableStateOf("") }
+    AlertDialog(
+      onDismissRequest = viewModel::closeReportDialog,
+      title = { Text(if (state.reportSubmissionSuccess) "Report saved" else "Report an unsafe spot") },
+      text = {
+        if (state.reportSubmissionSuccess) {
+          Text("Your report appears on the map on this device.")
+        } else {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("The report is stored on this device.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(name, { name = it }, label = { Text("Spot name") }, singleLine = true)
+            OutlinedTextField(area, { area = it }, label = { Text("Area or thana") }, singleLine = true)
+            OutlinedTextField(reason, { reason = it }, label = { Text("What happened?") })
+            state.reportError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+          }
+        }
+      },
+      confirmButton = {
+        if (state.reportSubmissionSuccess) {
+          Button(onClick = viewModel::closeReportDialog) { Text("Done") }
+        } else {
+          Button(
+            onClick = { viewModel.submitUnsafeSpot(name, area, reason) },
+            enabled = !state.savingReport && name.isNotBlank() && reason.isNotBlank()
+          ) { Text(if (state.savingReport) "Saving…" else "Save report") }
+        }
+      },
+      dismissButton = {
+        if (!state.reportSubmissionSuccess) {
+          TextButton(onClick = viewModel::closeReportDialog, enabled = !state.savingReport) { Text("Cancel") }
+        }
       }
     )
   }
 }
 
 @Composable
-private fun ReportUnsafeSpotDialog(
-  isSuccess: Boolean,
-  onDismiss: () -> Unit,
-  onSubmit: (String, String, String) -> Unit
-) {
-  var name by remember { mutableStateOf("") }
-  var area by remember { mutableStateOf("") }
-  var reason by remember { mutableStateOf("") }
-
-  AlertDialog(
-    onDismissRequest = onDismiss,
-    title = {
-      Text(
-        text = if (isSuccess) "Report Submitted" else "Flag Unsafe Location / Harassment Spot",
-        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-      )
-    },
-    text = {
-      if (isSuccess) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-          Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = SafeGreenPrimary, modifier = Modifier.size(48.dp))
-          Spacer(modifier = Modifier.height(10.dp))
-          Text(
-            text = "Thank you. Your report has been added to the safety community radar to warn fellow women and students in Dhaka.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center
-          )
-        }
-      } else {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Text(
-            text = "Help other women by flagging unlit alleys, eve-teasing spots, or isolated corners.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Spot Name (e.g., Road 27 Dark Underpass)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-          )
-          OutlinedTextField(
-            value = area,
-            onValueChange = { area = it },
-            label = { Text("Area / Thana (e.g., Mirpur, Dhanmondi)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-          )
-          OutlinedTextField(
-            value = reason,
-            onValueChange = { reason = it },
-            label = { Text("Describe Hazard (e.g., Unlit, groups stalking)") },
-            minLines = 2,
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
+private fun ZoneDetails(zone: DangerZone, distance: String?, onDirections: () -> Unit, onCall: () -> Unit) {
+  OutlinedCard(modifier = Modifier.fillMaxWidth().testTag("card_selected_danger_zone")) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text(if (zone.isLocalReport) "Your report" else "Example incident · " + zone.riskLevel.label(),
+        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+      Text(zone.name, style = MaterialTheme.typography.titleMedium)
+      if (zone.areaName.isNotBlank()) Text(zone.areaName)
+      distance?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+      Text(zone.reportedIncidentsSummary, style = MaterialTheme.typography.bodyMedium)
+      if (!zone.isLocalReport) {
+        Text("Example counts · " + zone.incidentStats, style = MaterialTheme.typography.bodySmall)
+        Text("Example time · " + zone.peakVulnerableHours, style = MaterialTheme.typography.bodySmall)
       }
-    },
-    confirmButton = {
-      if (isSuccess) {
-        Button(onClick = onDismiss) { Text("Done") }
-      } else {
-        Button(
-          onClick = {
-            if (name.isNotBlank() && reason.isNotBlank()) {
-              onSubmit(name, area.ifBlank { "Dhaka" }, reason)
-            }
-          },
-          enabled = name.isNotBlank() && reason.isNotBlank(),
-          colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary)
-        ) {
-          Text("Submit Hazard Report")
-        }
+      if (zone.safeAlternativeRoute.isNotBlank()) {
+        Text("Bypass suggestion", style = MaterialTheme.typography.titleSmall)
+        Text(zone.safeAlternativeRoute, style = MaterialTheme.typography.bodySmall)
       }
-    },
-    dismissButton = {
-      if (!isSuccess) {
-        OutlinedButton(onClick = onDismiss) { Text("Cancel") }
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        TextButton(onClick = onDirections, modifier = Modifier.testTag("btn_directions_danger_zone")) {
+          Icon(Icons.Default.Directions, contentDescription = null)
+          Text("Directions", modifier = Modifier.padding(start = 4.dp))
+        }
+        if (zone.policeContact.isNotBlank()) {
+          TextButton(onClick = onCall, modifier = Modifier.testTag("btn_call_police_danger_zone")) {
+            Icon(Icons.Default.Call, contentDescription = null)
+            Text("Station contact", modifier = Modifier.padding(start = 4.dp))
+          }
+        }
       }
     }
-  )
+  }
 }
 
-// Canvas Helpers for Road Network & Safe Corridors
-private fun DrawScope.drawCityRoadGrid(width: Float, height: Float) {
-  val roadColor = Color(0xFFF8BBD0) // Soft rose arterial roads
-  val minorRoadColor = Color(0xFFFDE7EF) // Light blush grid
-
-  // Minor grid lines
-  for (i in 1..8) {
-    val y = height * (i / 9f)
-    drawLine(color = minorRoadColor, start = Offset(0f, y), end = Offset(width, y), strokeWidth = 2f)
-  }
-  for (i in 1..8) {
-    val x = width * (i / 9f)
-    drawLine(color = minorRoadColor, start = Offset(x, 0f), end = Offset(x, height), strokeWidth = 2f)
-  }
-
-  // Major Dhaka Arterial Roads (Mirpur Rd, Airport Rd, Hatirjheel loop)
-  // Mirpur Road North-South Spine
-  drawLine(
-    color = roadColor,
-    start = Offset(width * 0.35f, 0f),
-    end = Offset(width * 0.40f, height),
-    strokeWidth = 5f
-  )
-  // Kazi Nazrul Islam Avenue & Shahbagh Corridor
-  drawLine(
-    color = roadColor,
-    start = Offset(width * 0.55f, 0f),
-    end = Offset(width * 0.50f, height),
-    strokeWidth = 6f
-  )
-  // East-West Connecting Highway (Bijoy Sarani / Panthapath)
-  drawLine(
-    color = roadColor,
-    start = Offset(0f, height * 0.45f),
-    end = Offset(width, height * 0.42f),
-    strokeWidth = 5f
-  )
-  // South Connecting Highway (Shahbagh - Jatrabari)
-  drawLine(
-    color = roadColor,
-    start = Offset(0f, height * 0.75f),
-    end = Offset(width, height * 0.80f),
-    strokeWidth = 5f
-  )
-
-  // Hatirjheel Circular Water Ring
-  drawCircle(
-    color = Color(0xFFFF80AB).copy(alpha = 0.35f),
-    radius = 35f,
-    center = Offset(width * 0.65f, height * 0.45f),
-    style = Stroke(width = 4f)
-  )
+private fun RiskLevel.pinColor(): String = when (this) {
+  RiskLevel.CRITICAL_DANGER -> "#B91C1C"
+  RiskLevel.HIGH_RISK -> "#D05B0C"
+  RiskLevel.MODERATE_CAUTION -> "#9C6900"
 }
 
-private fun DrawScope.drawSafeCorridors(width: Float, height: Float, zoom: Float) {
-  val safeGreen = Color(0xFF10B981)
-  val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 10f), 0f)
-
-  // Safe Police Corridor 1: Shahbagh to Dhanmondi via Science Lab
-  drawLine(
-    color = safeGreen.copy(alpha = 0.7f),
-    start = Offset(width * 0.52f, height * 0.60f),
-    end = Offset(width * 0.40f, height * 0.55f),
-    strokeWidth = 4f,
-    pathEffect = dashedEffect
-  )
-
-  // Safe Police Corridor 2: Farmgate to TSC via Bangla Motor
-  drawLine(
-    color = safeGreen.copy(alpha = 0.7f),
-    start = Offset(width * 0.48f, height * 0.38f),
-    end = Offset(width * 0.52f, height * 0.62f),
-    strokeWidth = 4f,
-    pathEffect = dashedEffect
-  )
-
-  // Safe Corridor 3: Gulshan Avenue Main Strip
-  drawLine(
-    color = safeGreen.copy(alpha = 0.7f),
-    start = Offset(width * 0.70f, height * 0.20f),
-    end = Offset(width * 0.68f, height * 0.40f),
-    strokeWidth = 4f,
-    pathEffect = dashedEffect
-  )
+private fun RiskLevel.label(): String = when (this) {
+  RiskLevel.CRITICAL_DANGER -> "Critical"
+  RiskLevel.HIGH_RISK -> "High risk"
+  RiskLevel.MODERATE_CAUTION -> "Caution"
 }
 
-// Convert Geo coordinates around active region to Canvas 2D space
-private fun mapGeoToCanvas(
-  lat: Double,
-  lng: Double,
-  width: Float,
-  height: Float,
-  zoom: Float,
-  centerLat: Double = 23.7900,
-  centerLng: Double = 90.3900
-): Offset {
-  val isDhakaRegion = centerLat in 20.0..26.0 && centerLng in 88.0..93.0
-  val minLat: Double
-  val maxLat: Double
-  val minLng: Double
-  val maxLng: Double
+private fun DangerCategory.label(): String = when (this) {
+  DangerCategory.SEXUAL_HARASSMENT_HOTSPOT -> "Harassment"
+  DangerCategory.ISOLATED_DARK_CORRIDOR -> "Dark corridors"
+  DangerCategory.HIGH_CRIME_TRANSIT_HUB -> "Transit hubs"
+  DangerCategory.UNMONITORED_PARK_ALLEY -> "Parks and alleys"
+}
 
-  if (isDhakaRegion) {
-    minLat = 23.7000
-    maxLat = 23.8800
-    minLng = 90.3300
-    maxLng = 90.4500
-  } else {
-    minLat = centerLat - 0.0800
-    maxLat = centerLat + 0.0800
-    minLng = centerLng - 0.0600
-    maxLng = centerLng + 0.0600
-  }
+internal fun openMapDirections(context: Context, latitude: Double, longitude: Double, name: String): Boolean {
+  val point = "$latitude,$longitude"
+  val map = Uri.parse("geo:$point?q=" + Uri.encode("$point ($name)"))
+  val directions = Uri.parse("https://www.google.com/maps/dir/")
+    .buildUpon().appendQueryParameter("api", "1").appendQueryParameter("destination", point).build()
+  return launchViewIntent(context, Intent(Intent.ACTION_VIEW, map)) ||
+    launchViewIntent(context, Intent(Intent.ACTION_VIEW, directions))
+}
 
-  val normX = ((lng - minLng) / (maxLng - minLng)).coerceIn(0.0, 1.0).toFloat()
-  // Latitude goes bottom-to-top, so invert Y
-  val normY = (1.0f - ((lat - minLat) / (maxLat - minLat)).coerceIn(0.0, 1.0)).toFloat()
+internal fun openDialer(context: Context, phone: String): Boolean =
+  launchViewIntent(context, Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", phone, null)))
 
-  val centerX = width / 2f
-  val centerY = height / 2f
-
-  val rawX = normX * width
-  val rawY = normY * height
-
-  val zoomedX = centerX + (rawX - centerX) * zoom
-  val zoomedY = centerY + (rawY - centerY) * zoom
-
-  return Offset(zoomedX.coerceIn(20f, width - 20f), zoomedY.coerceIn(20f, height - 20f))
+private fun launchViewIntent(context: Context, intent: Intent): Boolean = try {
+  context.startActivity(intent)
+  true
+} catch (_: ActivityNotFoundException) {
+  false
+} catch (_: SecurityException) {
+  false
 }

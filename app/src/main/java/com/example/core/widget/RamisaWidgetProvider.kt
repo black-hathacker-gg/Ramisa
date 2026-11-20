@@ -30,11 +30,11 @@ class RamisaWidgetProvider : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_ramisa_safety)
 
-        // 1. SOS Button Intent (Trigger LockScreenSosReceiver which handles offline SOS)
-        val sosIntent = Intent(context, com.example.features.lockscreen.LockScreenSosReceiver::class.java).apply {
-            action = LockScreenSosManager.ACTION_TRIGGER_LOCKSCREEN_SOS
+        val sosIntent = Intent(context, MainActivity::class.java).apply {
+            action = "com.example.ACTION_TRIGGER_QUICK_SOS"
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        val sosPendingIntent = PendingIntent.getBroadcast(
+        val sosPendingIntent = PendingIntent.getActivity(
             context,
             1,
             sosIntent,
@@ -44,8 +44,7 @@ class RamisaWidgetProvider : AppWidgetProvider() {
 
         // 2. Fake Call Intent (Launch MainActivity with flag)
         val fakeCallIntent = Intent(context, MainActivity::class.java).apply {
-            action = Intent.ACTION_MAIN
-            addCategory(Intent.CATEGORY_LAUNCHER)
+            action = "com.example.ACTION_TRIGGER_QUICK_FAKECALL"
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("EXTRA_OPEN_FAKE_CALL", true)
         }
@@ -59,8 +58,7 @@ class RamisaWidgetProvider : AppWidgetProvider() {
 
         // 3. Safe Journey Intent
         val safeJourneyIntent = Intent(context, MainActivity::class.java).apply {
-            action = Intent.ACTION_MAIN
-            addCategory(Intent.CATEGORY_LAUNCHER)
+            action = "com.example.ACTION_START_WIDGET_JOURNEY"
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("EXTRA_OPEN_SAFE_JOURNEY", true)
         }

@@ -12,8 +12,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.example.MainActivity
-import com.example.core.community.CommunityManager
-import com.example.core.location.EmergencyLocationManager
+import com.example.core.service.RamisaSafetyService
 import com.example.core.sms.EmergencySmsDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +33,9 @@ object ShakeDetectorManager : SensorEventListener {
     private const val SHAKE_SLOP_TIME_MS = 500
     private const val SHAKE_COUNT_RESET_TIME_MS = 2500
     private const val REQUIRED_SHAKE_COUNT = 3
+    private const val PREFS = "hardware_safety"
+    private const val SHAKE_ENABLED = "shake_enabled"
+    private const val SHAKE_THRESHOLD = "shake_threshold"
 
     private var sensorManager: SensorManager? = null
     private var accelerometer: Sensor? = null
@@ -42,16 +44,28 @@ object ShakeDetectorManager : SensorEventListener {
     private var shakeCount: Int = 0
     private var lastTriggerTime: Long = 0
 
-    private val _isShakeDetectionEnabled = MutableStateFlow(true)
+    private val _isShakeDetectionEnabled = MutableStateFlow(false)
     val isShakeDetectionEnabled: StateFlow<Boolean> = _isShakeDetectionEnabled.asStateFlow()
 
     fun setShakeDetectionEnabled(enabled: Boolean, context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(SHAKE_ENABLED, enabled).apply()
         _isShakeDetectionEnabled.value = enabled
         if (enabled) {
-            register(context)
+            initialize(context)
+            RamisaSafetyService.startService(context)
         } else {
             unregister()
         }
+    }
+
+    fun isEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(SHAKE_ENABLED, false)
+
+    fun sensitivity(context: Context): Float =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getFloat(SHAKE_THRESHOLD, SHAKE_THRESHOLD_GRAVITY)
+
+    fun setSensitivity(context: Context, threshold: Float) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putFloat(SHAKE_THRESHOLD, threshold).apply()
     }
 
     fun register(context: Context) {
@@ -93,7 +107,7 @@ object ShakeDetectorManager : SensorEventListener {
         // gForce will be close to 1 when there is no movement
         val gForce = sqrt((gX * gX + gY * gY + gZ * gZ).toDouble()).toFloat()
 
-        if (gForce > SHAKE_THRESHOLD_GRAVITY) {
+        if (gForce > (appContext?.let(::sensitivity) ?: SHAKE_THRESHOLD_GRAVITY)) {
             val now = System.currentTimeMillis()
 
             // Ignore shake events too close to each other
@@ -129,6 +143,7 @@ object ShakeDetectorManager : SensorEventListener {
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
+        _isShakeDetectionEnabled.value = isEnabled(context)
         register(context)
     }
 
@@ -142,17 +157,9 @@ object ShakeDetectorManager : SensorEventListener {
         // 2. Dispatch Emergency SMS with Fused GPS Location asynchronously in background
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
                 EmergencySmsDispatcher.dispatchEmergencySms(
                     context = context,
-                    customNote = "Triggered via 3x Emergency Shake",
-                    location = loc
-                )
-                // Broadcast to Community Safety Network
-                CommunityManager.broadcastSosAlert(
-                    triggerTypeLabel = "3x Phone Shake Trigger",
-                    location = loc,
-                    note = "Emergency SOS triggered automatically by 3x vigorous phone shake gesture."
+                    customNote = "Triggered via 3x Emergency Shake"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error in shake SOS dispatch: ${e.message}")

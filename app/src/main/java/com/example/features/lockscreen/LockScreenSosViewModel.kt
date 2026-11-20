@@ -16,18 +16,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class LockScreenSosUiState(
-  val isLockScreenGuardActive: Boolean = true,
-  val isPowerButton3xEnabled: Boolean = true,
-  val isVolumeKeyTriggerEnabled: Boolean = true,
-  val isOfflineSmsFallbackEnabled: Boolean = true,
-  val isOfflineMeshBeaconEnabled: Boolean = true,
+  val isLockScreenGuardActive: Boolean = false,
+  val isPowerButton3xEnabled: Boolean = false,
+  val isVolumeKeyTriggerEnabled: Boolean = false,
+  val isOfflineSmsFallbackEnabled: Boolean = false,
+  val isOfflineMeshBeaconEnabled: Boolean = false,
   val isSimulatedLockActive: Boolean = false,
-  val lastTriggerStatus: String = "Lock Screen Guard Active • Ready for Offline SOS",
-  val offlineSmsDispatchedCount: Int = 0,
-  val emergencyContacts: List<EmergencyContact> = emptyList(),
-  val userPin: String = "1234",
-  val customSosMessage: String = "[RAMISA OFFLINE SOS] I am in urgent danger! My live GPS location will be attached. Please send help immediately!",
-  val showSuccessDialog: Boolean = false
+  val emergencyContacts: List<EmergencyContact> = emptyList()
 )
 
 class LockScreenSosViewModel(
@@ -38,7 +33,11 @@ class LockScreenSosViewModel(
       AppDatabase.getDatabase(application).emergencyContactDao()
   )
 
-  private val _uiState = MutableStateFlow(LockScreenSosUiState())
+  private val _uiState = MutableStateFlow(LockScreenSosUiState(
+    isLockScreenGuardActive = LockScreenSosManager.isGuardEnabled(application),
+    isVolumeKeyTriggerEnabled = LockScreenSosManager.isVolumeShortcutEnabled(application),
+    isOfflineSmsFallbackEnabled = LockScreenSosManager.isDirectSmsEnabled(application)
+  ))
   val uiState: StateFlow<LockScreenSosUiState> = _uiState.asStateFlow()
 
   init {
@@ -59,10 +58,12 @@ class LockScreenSosViewModel(
   }
 
   fun toggleVolumeKeyTrigger(enabled: Boolean) {
+    LockScreenSosManager.setVolumeShortcutEnabled(getApplication(), enabled)
     _uiState.update { it.copy(isVolumeKeyTriggerEnabled = enabled) }
   }
 
   fun toggleOfflineSms(enabled: Boolean) {
+    LockScreenSosManager.setDirectSmsEnabled(getApplication(), enabled)
     _uiState.update { it.copy(isOfflineSmsFallbackEnabled = enabled) }
   }
 
@@ -74,19 +75,4 @@ class LockScreenSosViewModel(
     _uiState.update { it.copy(isSimulatedLockActive = active) }
   }
 
-  fun triggerOfflineSosFromLockScreen(context: Context, onSosTriggered: () -> Unit) {
-    LockScreenSosManager.triggerOfflineEmergency(context, "Lock Screen User Action")
-    _uiState.update {
-      it.copy(
-        offlineSmsDispatchedCount = it.offlineSmsDispatchedCount + it.emergencyContacts.size.coerceAtLeast(3),
-        lastTriggerStatus = "Offline SOS Dispatched via Direct SMS to ${it.emergencyContacts.size.coerceAtLeast(3)} guardians!",
-        showSuccessDialog = true
-      )
-    }
-    onSosTriggered()
-  }
-
-  fun dismissSuccessDialog() {
-    _uiState.update { it.copy(showSuccessDialog = false) }
-  }
 }

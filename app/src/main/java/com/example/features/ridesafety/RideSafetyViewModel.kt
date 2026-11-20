@@ -1,5 +1,7 @@
 package com.example.features.ridesafety
 
+import android.os.SystemClock
+import com.example.core.location.EmergencyLocationManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -19,7 +21,6 @@ data class RideSafetyUiState(
   val rideDurationMinutes: Int = 0,
   val maxExpectedMinutes: Int = 20,
   val isDeviationAlertActive: Boolean = false,
-  val shareableRideLink: String? = null,
   val feedbackMessage: String? = null
 )
 
@@ -58,18 +59,15 @@ class RideSafetyViewModel : ViewModel() {
   }
 
   fun startRideMonitoring() {
-    val plate = _uiState.value.vehiclePlateNumber.ifBlank { "Unspecified Vehicle" }
-    val dest = _uiState.value.destination.ifBlank { "Destination" }
-    val type = _uiState.value.transportType.label
-    val link = "https://ramisa-safety.live/ride/${System.currentTimeMillis()}?dest=${dest.replace(" ", "+")}"
+    if (_uiState.value.isRideMonitoringActive) return
+    val startedAt = SystemClock.elapsedRealtime()
 
     _uiState.update {
       it.copy(
         isRideMonitoringActive = true,
         rideDurationMinutes = 0,
         isDeviationAlertActive = false,
-        shareableRideLink = link,
-        feedbackMessage = "Ride Guard active for $type. Guardian link generated & shared!"
+        feedbackMessage = "Ride timer started. Use Share ride to send your details."
       )
     }
 
@@ -78,8 +76,8 @@ class RideSafetyViewModel : ViewModel() {
       while (true) {
         delay(60000) // 1 minute ticker
         _uiState.update { s ->
-          val newDur = s.rideDurationMinutes + 1
-          val deviation = newDur > s.maxExpectedMinutes
+          val newDur = ((SystemClock.elapsedRealtime() - startedAt) / 60_000L).toInt()
+          val deviation = newDur >= s.maxExpectedMinutes
           s.copy(
             rideDurationMinutes = newDur,
             isDeviationAlertActive = deviation,
@@ -96,7 +94,7 @@ class RideSafetyViewModel : ViewModel() {
       it.copy(
         isRideMonitoringActive = false,
         isDeviationAlertActive = false,
-        feedbackMessage = "Ride completed safely! Guardians notified."
+        feedbackMessage = "Ride marked complete."
       )
     }
   }
@@ -105,7 +103,7 @@ class RideSafetyViewModel : ViewModel() {
     _uiState.update {
       it.copy(
         isDeviationAlertActive = true,
-        feedbackMessage = "Route Deviation Detected! Vehicle moved off standard path."
+        feedbackMessage = "Test alert: simulated route deviation."
       )
     }
   }
@@ -113,4 +111,16 @@ class RideSafetyViewModel : ViewModel() {
   fun clearFeedback() {
     _uiState.update { it.copy(feedbackMessage = null) }
   }
+
+  fun rideShareText(): String = buildString {
+    val ride = _uiState.value
+    appendLine("RAMISA ride check-in · ${ride.transportType.label}")
+    if (ride.vehiclePlateNumber.isNotBlank()) appendLine("Vehicle: ${ride.vehiclePlateNumber.trim()}")
+    if (ride.driverNameOrDescription.isNotBlank()) appendLine("Driver: ${ride.driverNameOrDescription.trim()}")
+    if (ride.destination.isNotBlank()) appendLine("Destination: ${ride.destination.trim()}")
+    appendLine("Expected ride duration: ${ride.maxExpectedMinutes} minutes")
+    EmergencyLocationManager.latestLocation.value?.takeIf { it.isAvailable }?.let { point ->
+      appendLine("Last recorded location: https://www.google.com/maps?q=${point.latitude},${point.longitude}")
+    }
+  }.trimEnd()
 }

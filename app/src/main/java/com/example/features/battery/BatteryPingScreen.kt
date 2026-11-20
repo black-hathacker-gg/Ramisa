@@ -155,7 +155,7 @@ fun BatteryPingScreen(
                 ) {
                     Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Test Auto-Ping Now")
+                    Text("Preview Auto-Ping")
                 }
 
                 // Recent Events Log

@@ -14,14 +14,13 @@ class SosQuickTileService : TileService() {
         super.onStartListening()
         val tile = qsTile ?: return
         tile.state = Tile.STATE_ACTIVE
-        tile.label = "RAMISA 1-Tap SOS"
-        tile.contentDescription = "Trigger Emergency 1-Tap SOS immediately"
+        tile.label = "RAMISA SOS"
+        tile.contentDescription = "Review an emergency SMS"
         tile.updateTile()
     }
 
     override fun onClick() {
         super.onClick()
-        // Open MainActivity and immediately trigger SOS
         val intent = Intent(this, MainActivity::class.java).apply {
             action = "com.example.ACTION_TRIGGER_QUICK_SOS"
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

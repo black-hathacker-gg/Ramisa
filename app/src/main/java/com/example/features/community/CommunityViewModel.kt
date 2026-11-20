@@ -50,6 +50,7 @@ data class CommunityUiState(
   val areaReports: List<AreaSafetyReport> = emptyList(),
   val selectedSafeZoneFilter: String = "ALL",
   val isReportingDialogVisible: Boolean = false,
+  val isPublishingHelp: Boolean = false,
 
   val testSosSuccessMessage: String? = null
 )
@@ -70,6 +71,7 @@ class CommunityViewModel(application: Application) : AndroidViewModel(applicatio
 
   init {
     loadDefaultAreaReports()
+    viewModelScope.launch { CommunityManager.refreshPosts() }
   }
 
   fun setSelectedTab(index: Int) {
@@ -126,23 +128,19 @@ class CommunityViewModel(application: Application) : AndroidViewModel(applicatio
     val content = _uiState.value.newPostContent.trim()
     if (title.isBlank() || content.isBlank()) return
 
-    CommunityManager.createPost(
-      category = _uiState.value.newPostCategory,
-      title = title,
-      content = content,
-      locationTag = _uiState.value.newPostLocation,
-      isAnonymous = _uiState.value.isNewPostAnonymous,
-      isOffline = _uiState.value.isOfflineMode
-    )
-
-    _uiState.update {
-      it.copy(
-        isCreatePostDialogVisible = false,
-        testSosSuccessMessage = if (it.isOfflineMode)
-          "Post saved to Offline Cache & will sync automatically!"
-        else
-          "Discussion posted to RAMISA Central Community!"
+    val draft = _uiState.value
+    _uiState.update { it.copy(isCreatePostDialogVisible = false) }
+    viewModelScope.launch {
+      val published = CommunityManager.createPost(
+        category = draft.newPostCategory,
+        title = title,
+        content = content,
+        locationTag = draft.newPostLocation,
+        isAnonymous = draft.isNewPostAnonymous,
+        isOffline = draft.isOfflineMode
       )
+      _uiState.update { it.copy(testSosSuccessMessage = if (published) "Post published to the community."
+        else "Post is visible in this session only. Sign in and connect to publish.") }
     }
   }
 
@@ -193,20 +191,19 @@ class CommunityViewModel(application: Application) : AndroidViewModel(applicatio
   }
 
   // --- SOS Management ---
-  fun broadcastManualSosToCommunity(triggerType: String = "Manual Central SOS Trigger") {
-    viewModelScope.launch(Dispatchers.IO) {
-      val context = getApplication<Application>()
-      val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
-      val alert = CommunityManager.broadcastSosAlert(
-        triggerTypeLabel = triggerType,
-        location = loc,
-        note = "URGENT: I need emergency help and escort assistance!"
-      )
-      _uiState.update {
-        it.copy(
-          testSosSuccessMessage = "Emergency SOS Broadcast sent to RAMISA Central Community! Alert ID: ${alert.id}"
-        )
-      }
+  fun previewCommunitySos() {
+    CommunityManager.previewSos()
+    _uiState.update { it.copy(testSosSuccessMessage = "Community SOS preview. No alert was sent.") }
+  }
+
+  fun postCommunityHelpRequest() {
+    if (_uiState.value.isPublishingHelp) return
+    _uiState.update { it.copy(isPublishingHelp = true) }
+    viewModelScope.launch {
+      val posted = CommunityManager.publishHelpRequest()
+      _uiState.update { it.copy(isPublishingHelp = false, testSosSuccessMessage = if (posted)
+        "Help request posted. Use SOS or 999 for immediate help."
+        else "Could not post the help request. Check sign-in and your connection.") }
     }
   }
 

@@ -6,6 +6,7 @@ import com.example.domain.model.AgeCategory
 import com.example.domain.model.UserProfile
 import com.example.domain.model.UserType
 import com.example.domain.repository.ProfileRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +28,8 @@ class ProfileRepositoryImpl(private val userDao: UserDao) : ProfileRepository {
     guardianName: String?,
     guardianPhone: String?
   ): Result<UserProfile> {
-    val updated = _profile.value.copy(
+    val current = AppSessionManager.currentUser.value ?: return Result.failure(noProfile())
+    val updated = current.copy(
       name = name.trim(),
       phone = phone.trim(),
       ageCategory = ageCategory,
@@ -38,41 +40,49 @@ class ProfileRepositoryImpl(private val userDao: UserDao) : ProfileRepository {
       guardianPhone = guardianPhone?.trim(),
       updatedAt = System.currentTimeMillis()
     )
-    _profile.value = updated
-    userDao.saveProfile(updated.toEntity())
-    AppSessionManager.setUser(updated)
-    return Result.success(updated)
+    return saveChanges(updated)
   }
 
   override suspend fun updateEmergencyPin(oldPin: String, newPin: String): Result<Boolean> {
-    if (oldPin != _profile.value.emergencyPin) {
+    val current = AppSessionManager.currentUser.value ?: return Result.failure(noProfile())
+    if (oldPin != current.emergencyPin) {
       return Result.failure(IllegalArgumentException("Current PIN is incorrect"))
     }
-    if (newPin.length != 4 || !newPin.all { it.isDigit() }) {
+    if (newPin.length != 4 || newPin.any { it !in '0'..'9' }) {
       return Result.failure(IllegalArgumentException("New PIN must be exactly 4 digits"))
     }
 
-    val updated = _profile.value.copy(
+    val updated = current.copy(
       emergencyPin = newPin,
       updatedAt = System.currentTimeMillis()
     )
-    _profile.value = updated
-    userDao.saveProfile(updated.toEntity())
-    AppSessionManager.setUser(updated)
-    return Result.success(true)
+    return saveChanges(updated).map { true }
   }
 
   override suspend fun toggleChildMode(enabled: Boolean, guardianPin: String): Result<Boolean> {
-    if (guardianPin != _profile.value.emergencyPin) {
+    val current = AppSessionManager.currentUser.value ?: return Result.failure(noProfile())
+    if (current.emergencyPin.isBlank() || guardianPin != current.emergencyPin) {
       return Result.failure(IllegalArgumentException("Invalid Guardian PIN"))
     }
-    val updated = _profile.value.copy(
+    val updated = current.copy(
       isChildModeActive = enabled,
       updatedAt = System.currentTimeMillis()
     )
-    _profile.value = updated
-    userDao.saveProfile(updated.toEntity())
-    AppSessionManager.setUser(updated)
-    return Result.success(enabled)
+    return saveChanges(updated).map { enabled }
   }
+
+  private suspend fun saveChanges(profile: UserProfile): Result<UserProfile> {
+    return try {
+      if (!userDao.updateActiveProfile(profile.toEntity())) return Result.failure(noProfile())
+      _profile.value = profile
+      AppSessionManager.setUser(profile)
+      Result.success(profile)
+    } catch (e: CancellationException) {
+      throw e
+    } catch (_: Exception) {
+      Result.failure(IllegalStateException("The profile could not be saved on this device."))
+    }
+  }
+
+  private fun noProfile() = IllegalStateException("Open RAMISA as a guest or sign in to edit your profile.")
 }

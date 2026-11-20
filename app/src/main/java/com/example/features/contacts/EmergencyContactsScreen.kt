@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +19,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -56,6 +60,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,7 +76,7 @@ import com.example.ui.theme.SafeGreenContainer
 import com.example.ui.theme.SafeGreenDark
 import com.example.ui.theme.SafeGreenPrimary
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun EmergencyContactsScreen(
   viewModel: ContactsViewModel,
@@ -80,9 +85,10 @@ fun EmergencyContactsScreen(
 ) {
   val uiState by viewModel.uiState.collectAsState()
 
-  var newName by remember { mutableStateOf("") }
-  var newPhone by remember { mutableStateOf("") }
-  var newRelationship by remember { mutableStateOf("Mother") }
+  var newName by rememberSaveable { mutableStateOf("") }
+  var newPhone by rememberSaveable { mutableStateOf("") }
+  var newRelationship by rememberSaveable { mutableStateOf("Mother") }
+  var contactToRemove by rememberSaveable { mutableStateOf<String?>(null) }
 
   Scaffold(
     topBar = {
@@ -109,7 +115,11 @@ fun EmergencyContactsScreen(
     floatingActionButton = {
       if (uiState.contacts.size < uiState.maxContactsLimit) {
         FloatingActionButton(
-          onClick = { viewModel.showAddDialog(true) },
+          onClick = {
+            newName = ""
+            newPhone = ""
+            viewModel.showAddDialog(true)
+          },
           containerColor = MaterialTheme.colorScheme.primary,
           contentColor = Color.White,
           modifier = Modifier.testTag("fab_add_contact")
@@ -148,13 +158,13 @@ fun EmergencyContactsScreen(
           ) {
             Column {
               Text(
-                text = "TRUSTED CIRCLE (${uiState.contacts.size}/${uiState.maxContactsLimit})",
+                text = "${uiState.contacts.count { it.smsEnabled }} contacts enabled for SOS SMS",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.primary
               )
               Text(
-                text = "These contacts receive instant SMS & live alerts when SOS triggers",
-                style = MaterialTheme.typography.bodySmall,
+                text = "Saved on this phone. Turn on SMS for contacts you want to alert.",
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
               )
             }
@@ -165,7 +175,7 @@ fun EmergencyContactsScreen(
       items(uiState.contacts, key = { it.id }) { contact ->
         EmergencyContactItem(
           contact = contact,
-          onDelete = { viewModel.deleteContact(contact.id) },
+          onDelete = { contactToRemove = contact.id },
           onToggleSms = { viewModel.toggleSms(contact.id) },
           onToggleCall = { viewModel.toggleCall(contact.id) }
         )
@@ -209,7 +219,18 @@ fun EmergencyContactsScreen(
     }
   }
 
-  // Add Contact Dialog
+  uiState.contacts.firstOrNull { it.id == contactToRemove }?.let { contact ->
+    AlertDialog(
+      onDismissRequest = { contactToRemove = null },
+      title = { Text("Remove ${contact.name}?") },
+      text = { Text("RAMISA will stop including this contact in future SOS alerts.") },
+      confirmButton = {
+        TextButton(onClick = { contactToRemove = null; viewModel.deleteContact(contact.id) }) { Text("Remove") }
+      },
+      dismissButton = { TextButton(onClick = { contactToRemove = null }) { Text("Cancel") } }
+    )
+  }
+
   if (uiState.isAddDialogVisible) {
     AlertDialog(
       onDismissRequest = { viewModel.showAddDialog(false) },
@@ -220,7 +241,10 @@ fun EmergencyContactsScreen(
         )
       },
       text = {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+          modifier = Modifier.verticalScroll(rememberScrollState()),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
           OutlinedTextField(
             value = newName,
             onValueChange = { newName = it },
@@ -247,33 +271,29 @@ fun EmergencyContactsScreen(
           )
 
           val relationships = listOf("Mother", "Father", "Sister", "Brother", "Friend", "Guardian", "Other")
-          Row(
+          FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
           ) {
-            relationships.take(3).forEach { rel ->
+            relationships.forEach { rel ->
               FilterChip(
                 selected = newRelationship == rel,
                 onClick = { newRelationship = rel },
-                label = { Text(rel, fontSize = 12.sp) }
+                label = { Text(rel) }
               )
             }
           }
+          uiState.feedbackMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
       },
       confirmButton = {
         Button(
-          onClick = {
-            if (newName.isNotBlank() && newPhone.isNotBlank()) {
-              viewModel.addContact(newName, newPhone, newRelationship)
-              newName = ""
-              newPhone = ""
-            }
-          },
+          onClick = { viewModel.addContact(newName, newPhone, newRelationship) },
+          enabled = newName.isNotBlank() && newPhone.isNotBlank() && !uiState.isSavingContact,
           colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
           modifier = Modifier.testTag("dialog_btn_save")
         ) {
-          Text("Save Contact")
+          Text(if (uiState.isSavingContact) "Saving…" else "Save contact")
         }
       },
       dismissButton = {
@@ -310,7 +330,7 @@ private fun EmergencyContactItem(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
       ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
           // Priority Badge
           Surface(
             shape = CircleShape,
@@ -335,15 +355,6 @@ private fun EmergencyContactItem(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
               )
-              if (contact.isVerified) {
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                  imageVector = Icons.Default.CheckCircle,
-                  contentDescription = "Verified",
-                  tint = SafeGreenPrimary,
-                  modifier = Modifier.size(14.dp)
-                )
-              }
             }
             Text(
               text = "${contact.phone} • ${contact.relationship}",
@@ -373,7 +384,7 @@ private fun EmergencyContactItem(
         FilterChip(
           selected = contact.smsEnabled,
           onClick = onToggleSms,
-          label = { Text("SMS Alert", fontSize = 11.sp) },
+          label = { Text("SOS SMS") },
           leadingIcon = {
             Icon(imageVector = Icons.Outlined.Sms, contentDescription = null, modifier = Modifier.size(12.dp))
           }
@@ -382,7 +393,7 @@ private fun EmergencyContactItem(
         FilterChip(
           selected = contact.callEnabled,
           onClick = onToggleCall,
-          label = { Text("Call Enabled", fontSize = 11.sp) },
+          label = { Text("Call shortcut") },
           leadingIcon = {
             Icon(imageVector = Icons.Outlined.Call, contentDescription = null, modifier = Modifier.size(12.dp))
           }

@@ -1,8 +1,13 @@
 package com.example.features.lockscreen
 
-import android.content.Context
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -90,6 +95,12 @@ fun LockScreenSosScreen(
   val context = LocalContext.current
   val uiState by viewModel.uiState.collectAsState()
   val scrollState = rememberScrollState()
+  val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+    viewModel.toggleLockScreenGuard(context, it)
+  }
+  val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+    viewModel.toggleOfflineSms(it)
+  }
 
   Scaffold(
     topBar = {
@@ -170,7 +181,12 @@ fun LockScreenSosScreen(
           }
           Switch(
             checked = uiState.isLockScreenGuardActive,
-            onCheckedChange = { viewModel.toggleLockScreenGuard(context, it) },
+            onCheckedChange = { enabled ->
+              if (enabled && Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+              } else viewModel.toggleLockScreenGuard(context, enabled)
+            },
             modifier = Modifier.testTag("switch_lockscreen_guard"),
             colors = SwitchDefaults.colors(
               checkedThumbColor = SafetyRedPrimary,
@@ -284,11 +300,11 @@ fun LockScreenSosScreen(
 
                   Spacer(modifier = Modifier.height(6.dp))
                   Text(
-                    text = "Phone Locked • 1-Tap Offline SOS Ready",
+                    text = "Lock screen preview",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextPrimaryLight, fontWeight = FontWeight.SemiBold)
                   )
                   Text(
-                    text = "Direct GSM SMS to ${uiState.emergencyContacts.size.coerceAtLeast(3)} guardians with GPS link (No internet needed).",
+                    text = "${uiState.emergencyContacts.count { it.smsEnabled }} contacts enabled for SOS SMS.",
                     style = MaterialTheme.typography.labelSmall.copy(color = TextSecondaryLight, fontSize = 11.sp)
                   )
 
@@ -301,9 +317,7 @@ fun LockScreenSosScreen(
                   ) {
                     // TRIGGER OFFLINE SOS
                     Button(
-                      onClick = {
-                        viewModel.triggerOfflineSosFromLockScreen(context, onTriggerSos)
-                      },
+                      onClick = onTriggerSos,
                       modifier = Modifier
                         .weight(1.3f)
                         .height(42.dp)
@@ -314,7 +328,7 @@ fun LockScreenSosScreen(
                       Icon(imageVector = Icons.Default.ElectricBolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                       Spacer(modifier = Modifier.width(4.dp))
                       Text(
-                        text = "TRIGGER SOS",
+                        text = "REVIEW SOS",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, color = Color.White)
                       )
                     }
@@ -345,7 +359,7 @@ fun LockScreenSosScreen(
 
               Spacer(modifier = Modifier.height(14.dp))
               Text(
-                text = "Tap 'TRIGGER SOS' above to test the lockscreen dispatch",
+                text = "The preview opens the SOS review screen.",
                 style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF64748B), fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
               )
             }
@@ -369,16 +383,20 @@ fun LockScreenSosScreen(
           SettingToggleRow(
             icon = Icons.Default.Sms,
             title = "Direct Native SMS Dispatch",
-            subtitle = "Sends emergency SMS directly via cellular tower without internet or mobile data.",
+            subtitle = "Allows the lock screen notification to send directly to your enabled SMS contacts.",
             checked = uiState.isOfflineSmsFallbackEnabled,
-            onCheckedChange = { viewModel.toggleOfflineSms(it) }
+            onCheckedChange = { enabled ->
+              if (enabled && ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+                smsPermission.launch(Manifest.permission.SEND_SMS)
+              } else viewModel.toggleOfflineSms(enabled)
+            }
           )
 
           // Offline BLE Mesh Beacon
           SettingToggleRow(
             icon = Icons.Default.Hub,
-            title = "Offline BLE Mesh Distress Beacon",
-            subtitle = "Transmits local Bluetooth beacon so nearby RAMISA safety nodes receive distress alert.",
+            title = "BLE mesh preview",
+            subtitle = "Simulates a distress beacon on this device.",
             checked = uiState.isOfflineMeshBeaconEnabled,
             onCheckedChange = { viewModel.toggleOfflineMesh(it) }
           )
@@ -387,7 +405,7 @@ fun LockScreenSosScreen(
 
       // HARDWARE SHORTCUTS FOR LOCKED PHONE
       Text(
-        text = "Hardware Key Triggers When Locked",
+        text = "Hardware shortcuts",
         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
       )
 
@@ -400,8 +418,8 @@ fun LockScreenSosScreen(
           // Power Button 3x Press
           SettingToggleRow(
             icon = Icons.Default.PowerSettingsNew,
-            title = "Triple-Press Power Button SOS",
-            subtitle = "Press physical power button 3 times consecutively while phone is locked in pocket.",
+            title = "Power-button shortcut preview",
+            subtitle = "Android handles the power button. Open Hardware Triggers to try the simulation.",
             checked = uiState.isPowerButton3xEnabled,
             onCheckedChange = { viewModel.togglePowerButton3x(it) }
           )
@@ -409,8 +427,8 @@ fun LockScreenSosScreen(
           // Volume Key Trigger
           SettingToggleRow(
             icon = Icons.Default.Vibration,
-            title = "Volume Key Emergency Squeeze",
-            subtitle = "Press & hold Volume Up + Down together for 3 seconds to silently trigger SOS.",
+            title = "Volume-key SOS shortcut",
+            subtitle = "Press a volume key three times while RAMISA is open to review an SOS.",
             checked = uiState.isVolumeKeyTriggerEnabled,
             onCheckedChange = { viewModel.toggleVolumeKeyTrigger(it) }
           )
@@ -434,12 +452,12 @@ fun LockScreenSosScreen(
           }
           Spacer(modifier = Modifier.height(8.dp))
           Text(
-            text = "When triggered from the lock screen, RAMISA automatically broadcasts:",
+            text = "Direct SMS sends a distress message and includes a location link when available.",
             style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
           )
           Spacer(modifier = Modifier.height(6.dp))
           Text(
-            text = "• Live GPS coordinates & Google Maps distress URL\n• Medical alert: Asthmatic, Blood Group B+\n• Offline Direct SMS to: Mother (+8801819112233), Father (+8801711223344), Sister (+8801912334455)\n• Local High-Decibel Siren & Strobe if enabled",
+            text = "Recipients are the contacts you enabled for SOS SMS. Sending requires cellular service.",
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp, lineHeight = 18.sp)
           )
         }
@@ -449,33 +467,6 @@ fun LockScreenSosScreen(
     }
   }
 
-  // Success Confirmation Dialog
-  if (uiState.showSuccessDialog) {
-    AlertDialog(
-      onDismissRequest = { viewModel.dismissSuccessDialog() },
-      title = {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32))
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("Offline SOS Dispatched!", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-        }
-      },
-      text = {
-        Text(
-          "The Lock Screen SOS trigger successfully dispatched emergency alerts to ${uiState.emergencyContacts.size.coerceAtLeast(3)} guardian contacts with live GPS coordinates.",
-          style = MaterialTheme.typography.bodyMedium
-        )
-      },
-      confirmButton = {
-        Button(
-          onClick = { viewModel.dismissSuccessDialog() },
-          colors = ButtonDefaults.buttonColors(containerColor = SafetyRedPrimary)
-        ) {
-          Text("OK")
-        }
-      }
-    )
-  }
 }
 
 @Composable

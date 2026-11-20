@@ -33,8 +33,7 @@ class SafetyGuideUnitTest {
 
   @Test
   fun testSafetyGuide_LoadAndCategoryFilter() = runTest(testDispatcher) {
-    val repository = SafetyGuideRepository()
-    val viewModel = SafetyGuideViewModel(repository)
+    val viewModel = SafetyGuideViewModel()
     testDispatcher.scheduler.advanceUntilIdle()
 
     assertTrue(viewModel.uiState.value.tips.isNotEmpty())

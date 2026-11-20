@@ -1,23 +1,11 @@
 package com.example.features.battery
 
-import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import android.os.BatteryManager
-import android.os.Build
-import android.telephony.SmsManager
 import android.util.Log
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
-import com.example.R
 import com.example.core.service.RamisaSafetyService
 import com.example.core.sms.EmergencySmsDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -34,31 +22,44 @@ object BatteryMonitorManager {
     private val _batteryThreshold = MutableStateFlow(15) // default 15% as per request
     val batteryThreshold: StateFlow<Int> = _batteryThreshold.asStateFlow()
 
-    private val _lastPingSentTime = MutableStateFlow(0L)
-    
+    private const val PREFS = "battery_safety"
+    private const val ENABLED = "enabled"
+    private const val THRESHOLD = "threshold"
+    private const val PING_ATTEMPTED = "ping_attempted"
+    private var initialized = false
     private var batteryReceiver: BroadcastReceiver? = null
 
-    fun setLowBatteryPingEnabled(context: Context, enabled: Boolean) {
-        _isLowBatteryPingEnabled.value = enabled
-        if (enabled) {
-            RamisaSafetyService.startService(context)
-        } else {
-            RamisaSafetyService.stopService(context)
-        }
+    fun initialize(context: Context) {
+        if (initialized) return
+        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        _isLowBatteryPingEnabled.value = preferences.getBoolean(ENABLED, false)
+        _batteryThreshold.value = preferences.getInt(THRESHOLD, 15)
+        initialized = true
     }
 
-    fun setBatteryThreshold(threshold: Int) {
-        _batteryThreshold.value = threshold
+    fun setLowBatteryPingEnabled(context: Context, enabled: Boolean) {
+        initialize(context)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(ENABLED, enabled).apply()
+        _isLowBatteryPingEnabled.value = enabled
+        if (enabled) RamisaSafetyService.startService(context)
+    }
+
+    fun setBatteryThreshold(context: Context, threshold: Int) {
+        initialize(context)
+        val level = threshold.coerceIn(5, 20)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(THRESHOLD, level).apply()
+        _batteryThreshold.value = level
     }
 
     fun registerReceiver(context: Context) {
+        initialize(context)
         if (batteryReceiver == null) {
             batteryReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
                     if (intent.action == Intent.ACTION_BATTERY_CHANGED) {
                         val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
                         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-                        if (level != -1 && scale != -1) {
+                        if (level >= 0 && scale > 0) {
                             val batteryPct = (level * 100) / scale.toFloat()
                             checkBatteryLevel(context, batteryPct.toInt())
                         }
@@ -87,20 +88,18 @@ object BatteryMonitorManager {
 
     private fun checkBatteryLevel(context: Context, currentLevel: Int) {
         val threshold = _batteryThreshold.value
-        Log.d("BatteryMonitorManager", "Current battery: $currentLevel%, Threshold: $threshold%")
-        
-        if (currentLevel <= threshold) {
-            val currentTime = System.currentTimeMillis()
-            // Send immediately (no 30-minute waiting throttle) if not sent in the last 60 seconds
-            if (currentTime - _lastPingSentTime.value > 60000L) {
-                sendLowBatteryPing(context, currentLevel)
-                _lastPingSentTime.value = currentTime
+        val preferences = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (currentLevel > threshold + 5) {
+            if (preferences.getBoolean(PING_ATTEMPTED, false)) {
+                preferences.edit().remove(PING_ATTEMPTED).apply()
             }
-        } else {
-            if (currentLevel > threshold + 5) {
-                _lastPingSentTime.value = 0L
-            }
+            return
         }
+        if (!_isLowBatteryPingEnabled.value || currentLevel > threshold ||
+            preferences.getBoolean(PING_ATTEMPTED, false)) return
+        Log.d("BatteryMonitorManager", "Current battery: $currentLevel%, Threshold: $threshold%")
+        preferences.edit().putBoolean(PING_ATTEMPTED, true).apply()
+        sendLowBatteryPing(context, currentLevel)
     }
     
     private fun sendLowBatteryPing(context: Context, batteryLevel: Int) {
@@ -111,41 +110,11 @@ object BatteryMonitorManager {
                     context = context,
                     customNote = "CRITICAL BATTERY ALERT: $batteryLevel%"
                 )
-                showSafetySharedNotification(context, batteryLevel)
+                // Receipt-backed global status reports the result; submission alone is not delivery.
             } catch (e: Exception) {
                 Log.e("BatteryMonitorManager", "Error dispatching low battery emergency SMS: ${e.message}")
             }
         }
     }
     
-    private fun showSafetySharedNotification(context: Context, batteryLevel: Int) {
-        val channelId = "ramisa_safety_ping"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Safety Ping Alerts",
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Alerts you when your location has been automatically shared."
-            }
-            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            nm.createNotificationChannel(channel)
-        }
-        
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.mipmap.ic_launcher) // standard fallback
-            .setContentTitle("Safety Status Shared")
-            .setContentText("Battery is critically low ($batteryLevel%). Your last known location was sent to trusted contacts.")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-            
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-            NotificationManagerCompat.from(context).notify(System.currentTimeMillis().toInt(), notification)
-        }
-    }
-
-    fun simulateLowBatteryEvent(context: Context) {
-        sendLowBatteryPing(context, _batteryThreshold.value)
-    }
 }

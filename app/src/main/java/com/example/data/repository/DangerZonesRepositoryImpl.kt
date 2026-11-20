@@ -1,9 +1,12 @@
 package com.example.data.repository
 
+import android.content.Context
+import android.util.AtomicFile
 import com.example.domain.model.DangerCategory
 import com.example.domain.model.DangerZone
 import com.example.domain.model.RiskLevel
 import com.example.domain.repository.DangerZonesRepository
+import org.json.JSONArray
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +15,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class DangerZonesRepositoryImpl : DangerZonesRepository {
+class DangerZonesRepositoryImpl(context: Context) : DangerZonesRepository {
 
   private val initialZones = listOf(
     DangerZone(
@@ -211,43 +214,103 @@ class DangerZonesRepositoryImpl : DangerZonesRepository {
     }
   }
 
+  private val reportFile = AtomicFile(java.io.File(context.noBackupFilesDir, "danger-reports.json"))
+
+  fun loadLocalReports() = synchronized(reportsLock) {
+    readLocalReports()?.let { reports -> _dangerZones.value = reports + initialZones }
+  }
+
+  private fun readLocalReports(): List<DangerZone>? = try {
+    val json = JSONArray(reportFile.readFully().toString(Charsets.UTF_8))
+    (0 until json.length()).map { index ->
+      val report = json.getJSONObject(index)
+      localReport(
+        report.getString("id"), report.getString("name"), report.getString("area"),
+        report.getString("reason"), report.getDouble("latitude"), report.getDouble("longitude")
+      )
+    }
+  } catch (_: java.io.FileNotFoundException) {
+    emptyList()
+  } catch (_: java.io.IOException) {
+    null
+  } catch (_: org.json.JSONException) {
+    null
+  }
+
   override suspend fun reportNewUnsafeLocation(
     name: String,
     area: String,
     reason: String,
     lat: Double,
     lng: Double
-  ): Boolean {
-    val newZone = DangerZone(
-      id = "DZ-${System.currentTimeMillis() % 1000}",
-      name = name,
-      areaName = area,
-      riskLevel = RiskLevel.HIGH_RISK,
-      category = DangerCategory.SEXUAL_HARASSMENT_HOTSPOT,
-      latitude = lat,
-      longitude = lng,
-      radiusMeters = 500,
-      reportedIncidentsSummary = reason,
-      incidentStats = "1 Community Report • Under Investigation",
-      peakVulnerableHours = "Evening / Night",
-      nearestPoliceStation = "DMP Quick Response Unit",
-      policeContact = "999",
-      safetyAdvisory = "Community reported high risk area. Proceed with vigilance.",
-      safeAlternativeRoute = "Seek main illuminated avenue.",
-      userReportsCount = 1
-    )
-    _dangerZones.value = listOf(newZone) + _dangerZones.value
-    return true
+  ): Boolean = synchronized(reportsLock) {
+    if (name.isBlank() || reason.isBlank() || lat !in -90.0..90.0 || lng !in -180.0..180.0) {
+      return@synchronized false
+    }
+    val newZone = localReport(java.util.UUID.randomUUID().toString(), name, area, reason, lat, lng)
+    // Reread under the same lock so two map destinations cannot overwrite one another’s reports.
+    val reports = listOf(newZone) + (readLocalReports() ?: return@synchronized false)
+    val json = JSONArray()
+    reports.forEach { zone ->
+      json.put(org.json.JSONObject().apply {
+        put("id", zone.id)
+        put("name", zone.name)
+        put("area", zone.areaName)
+        put("reason", zone.reportedIncidentsSummary)
+        put("latitude", zone.latitude)
+        put("longitude", zone.longitude)
+      })
+    }
+    val file = try {
+      reportFile.startWrite()
+    } catch (_: java.io.IOException) {
+      return@synchronized false
+    }
+    try {
+      file.write(json.toString().toByteArray(Charsets.UTF_8))
+      reportFile.finishWrite(file)
+    } catch (_: java.io.IOException) {
+      reportFile.failWrite(file)
+      return@synchronized false
+    }
+    _dangerZones.value = reports + initialZones
+    true
   }
+
+  private fun localReport(
+    id: String, name: String, area: String, reason: String, lat: Double, lng: Double
+  ) = DangerZone(
+    id = id,
+    name = name,
+    areaName = area,
+    district = "",
+    riskLevel = RiskLevel.HIGH_RISK,
+    category = DangerCategory.SEXUAL_HARASSMENT_HOTSPOT,
+    latitude = lat,
+    longitude = lng,
+    radiusMeters = 500,
+    reportedIncidentsSummary = reason,
+    incidentStats = "Personal report",
+    peakVulnerableHours = "",
+    nearestPoliceStation = "",
+    policeContact = "",
+    safetyAdvisory = "",
+    safeAlternativeRoute = "",
+    userReportsCount = 1,
+    isLocalReport = true
+  )
 
   private fun calculateDistanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val r = 6371.0
     val dLat = Math.toRadians(lat2 - lat1)
     val dLon = Math.toRadians(lon2 - lon1)
-    val a = sin(dLat / 2) * sin(dLat / 2) +
+    val a = (sin(dLat / 2) * sin(dLat / 2) +
         cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-        sin(dLon / 2) * sin(dLon / 2)
-    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    return r * c
+        sin(dLon / 2) * sin(dLon / 2)).coerceIn(0.0, 1.0)
+    return r * 2 * atan2(sqrt(a), sqrt(1 - a))
+  }
+
+  private companion object {
+    val reportsLock = Any()
   }
 }

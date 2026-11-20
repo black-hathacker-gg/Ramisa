@@ -14,18 +14,18 @@ enum class AgeCategory(val label: String) {
 }
 
 data class UserProfile(
-  val id: String = "usr_ramisa_8801",
+  val id: String = "local_profile",
   val name: String = "RAMISA User",
-  val phone: String = "+880 1712-345678",
+  val phone: String = "",
   val ageCategory: AgeCategory = AgeCategory.ADULT_18_PLUS,
   val userType: UserType = UserType.ADULT,
-  val emergencyPin: String = "1234",
-  val bloodGroup: String = "B+",
-  val emergencyNote: String = "Asthmatic; carries emergency inhaler. In case of emergency, contact Amma or Sister immediately.",
+  val emergencyPin: String = "",
+  val bloodGroup: String = "Unknown",
+  val emergencyNote: String = "",
   val isChildModeActive: Boolean = false,
-  val guardianName: String? = "Rahman Ali (Father)",
-  val guardianPhone: String? = "+880 1711-223344",
-  val createdAt: Long = System.currentTimeMillis() - 86400000L * 30, // 30 days ago
+  val guardianName: String? = null,
+  val guardianPhone: String? = null,
+  val createdAt: Long = System.currentTimeMillis(),
   val updatedAt: Long = System.currentTimeMillis()
 )
 

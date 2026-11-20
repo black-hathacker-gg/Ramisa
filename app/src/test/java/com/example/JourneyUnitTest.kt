@@ -1,82 +1,40 @@
 package com.example
 
 import com.example.data.repository.JourneyRepositoryImpl
+import com.example.domain.model.GeoLocation
+import com.example.domain.model.JourneyStatus
 import com.example.domain.model.TravelMode
-import com.example.features.journey.JourneyViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Before
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class JourneyUnitTest {
+  @Test
+  fun journeyTracksLocationUntilItIsCompleted() = runTest {
+    val repository = JourneyRepositoryImpl()
+    val first = repository.startJourney("Dhanmondi 27", "TSC", 30, TravelMode.RICKSHAW).getOrThrow()
+    val location = GeoLocation(23.735, 90.395)
+    assertTrue(repository.updateLocation(location).getOrThrow())
+    assertEquals(location, repository.activeJourney.value?.lastLocation)
 
-  private val testDispatcher = StandardTestDispatcher()
-
-  @Before
-  fun setUp() {
-    Dispatchers.setMain(testDispatcher)
-  }
-
-  @After
-  fun tearDown() {
-    Dispatchers.resetMain()
+    assertFalse(repository.completeJourney("wrong-id").getOrThrow())
+    assertEquals(first.id, repository.activeJourney.value?.id)
+    assertTrue(repository.completeJourney(first.id).getOrThrow())
+    assertNull(repository.activeJourney.value)
+    assertEquals(JourneyStatus.SAFE_ARRIVED, repository.journeyHistory.value.first().status)
   }
 
   @Test
-  fun testJourneyViewModel_StartAndComplete() = runTest(testDispatcher) {
+  fun requestingHelpLeavesJourneyAvailableDuringSosReview() = runTest {
     val repository = JourneyRepositoryImpl()
-    val viewModel = JourneyViewModel(repository)
-    testDispatcher.scheduler.advanceUntilIdle()
-
-    assertFalse(viewModel.uiState.value.isJourneyActive)
-
-    viewModel.onStartLocationChanged("Dhanmondi 27")
-    viewModel.onDestinationChanged("TSC, University of Dhaka")
-    viewModel.onTravelModeSelected(TravelMode.RICKSHAW)
-    viewModel.onDurationChanged(30)
-
-    viewModel.startJourney()
-    testDispatcher.scheduler.advanceUntilIdle()
-
-    assertTrue(viewModel.uiState.value.isJourneyActive)
-    assertNotNull(viewModel.uiState.value.activeJourney)
-    assertEquals("Dhanmondi 27", viewModel.uiState.value.activeJourney?.startLocation)
-
-    // Complete journey
-    viewModel.completeJourney()
-    testDispatcher.scheduler.advanceUntilIdle()
-
-    assertFalse(viewModel.uiState.value.isJourneyActive)
-  }
-
-  @Test
-  fun testJourneyViewModel_SafetyCheckPrompt() = runTest(testDispatcher) {
-    val repository = JourneyRepositoryImpl()
-    val viewModel = JourneyViewModel(repository)
-    testDispatcher.scheduler.advanceUntilIdle()
-
-    viewModel.startJourney()
-    testDispatcher.scheduler.advanceUntilIdle()
-
-    viewModel.triggerSafetyCheckPrompt(true)
-    assertTrue(viewModel.uiState.value.isSafetyPromptVisible)
-
-    var sosTriggered = false
-    viewModel.confirmSafetyCheck(safe = false, onTriggerSos = { sosTriggered = true })
-    testDispatcher.scheduler.advanceUntilIdle()
-
-    assertTrue(sosTriggered)
-    assertFalse(viewModel.uiState.value.isSafetyPromptVisible)
-    assertTrue(viewModel.uiState.value.isDeviationAlertTriggered)
+    val journey = repository.startJourney("Dhanmondi 27", "TSC", 30, TravelMode.RICKSHAW).getOrThrow()
+    repository.respondToSafetyCheck(safe = false)
+    assertTrue(repository.isDeviationDetected.value)
+    assertEquals(journey.id, repository.activeJourney.value?.id)
+    assertTrue(repository.cancelJourney(journey.id).getOrThrow())
+    assertEquals(JourneyStatus.CANCELLED, repository.journeyHistory.value.first().status)
   }
 }

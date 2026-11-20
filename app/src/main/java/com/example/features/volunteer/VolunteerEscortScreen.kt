@@ -1,7 +1,8 @@
 package com.example.features.volunteer
 
 import android.content.Intent
-import android.net.Uri
+import android.widget.Toast
+import com.example.features.map.openDialer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -79,11 +80,11 @@ fun VolunteerEscortScreen(
         title = {
           Column {
             Text(
-              text = "Peer Escort & Volunteer Network",
+              text = "Peer escort",
               style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
             Text(
-              text = "Verified student volunteers & safe night escorts (ভলান্টিয়ার এসকোর্ট)",
+              text = "Practice mode · ভলান্টিয়ার এসকোর্ট",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -143,6 +144,21 @@ fun VolunteerEscortScreen(
         }
       }
 
+      item {
+        Text(
+          "Try the escort workflow with example profiles. RAMISA does not dispatch volunteers.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        TextButton(onClick = {
+          if (!openDialer(context, "109")) {
+            Toast.makeText(context, "Dial 109 from a phone.", Toast.LENGTH_SHORT).show()
+          }
+        }) {
+          Text("Women and children’s support (109)")
+        }
+      }
+
       // ACTIVE MATCHED ESCORT CARD OR REQUEST FORM
       if (uiState.isEscortRequested && uiState.matchedVolunteer != null) {
         val vol = uiState.matchedVolunteer!!
@@ -179,7 +195,7 @@ fun VolunteerEscortScreen(
                   Spacer(modifier = Modifier.width(12.dp))
                   Column {
                     Text(
-                      text = "ESCORT EN ROUTE",
+                      text = "PRACTICE MATCH",
                       style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                       color = PinkPrimaryDark
                     )
@@ -196,7 +212,7 @@ fun VolunteerEscortScreen(
                   color = PinkPrimary
                 ) {
                   Text(
-                    text = "${vol.distanceMeters}m away",
+                    text = "${vol.distanceMeters} m · example",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color.White,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -205,13 +221,13 @@ fun VolunteerEscortScreen(
               }
 
               Text(
-                text = "Affiliation: ${vol.universityOrOrg}",
+                text = "Example role: ${vol.universityOrOrg}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface
               )
 
               Text(
-                text = "Meeting at: ${uiState.pickupLocation} to ${uiState.destination}",
+                text = "Practice route: ${uiState.pickupLocation} to ${uiState.destination}",
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                 color = PinkPrimaryDark
               )
@@ -224,8 +240,8 @@ fun VolunteerEscortScreen(
               ) {
                 Button(
                   onClick = {
-                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${vol.phone}"))
-                    context.startActivity(intent)
+                    runCatching { context.startActivity(Intent(Intent.ACTION_DIAL)) }
+                      .onFailure { Toast.makeText(context, "No dialer app is available.", Toast.LENGTH_SHORT).show() }
                   },
                   colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
                   shape = RoundedCornerShape(10.dp),
@@ -233,7 +249,7 @@ fun VolunteerEscortScreen(
                 ) {
                   Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
                   Spacer(modifier = Modifier.width(4.dp))
-                  Text("Call Escort")
+                  Text("Open phone")
                 }
 
                 OutlinedButton(
@@ -241,7 +257,7 @@ fun VolunteerEscortScreen(
                   shape = RoundedCornerShape(10.dp),
                   modifier = Modifier.weight(1f).testTag("btn_finish_escort")
                 ) {
-                  Text("Arrived Safely")
+                  Text("End practice")
                 }
               }
             }
@@ -265,7 +281,7 @@ fun VolunteerEscortScreen(
               verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
               Text(
-                text = "REQUEST PEER SAFETY ESCORT",
+                text = "Practice an escort request",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                 color = PinkPrimary
               )
@@ -286,6 +302,7 @@ fun VolunteerEscortScreen(
 
               Button(
                 onClick = { viewModel.requestEscort() },
+                enabled = uiState.pickupLocation.isNotBlank() && uiState.destination.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
@@ -295,7 +312,7 @@ fun VolunteerEscortScreen(
               ) {
                 Icon(imageVector = Icons.Default.DirectionsWalk, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("DISPATCH ESCORT REQUEST", fontWeight = FontWeight.Bold)
+                Text("Preview request", fontWeight = FontWeight.Bold)
               }
             }
           }
@@ -305,7 +322,7 @@ fun VolunteerEscortScreen(
       // NEARBY VOLUNTEERS
       item {
         Text(
-          text = "VERIFIED NEARBY VOLUNTEERS (যাচাইকৃত ভলান্টিয়ার)",
+          text = "Example volunteers",
           style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
           color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -351,11 +368,11 @@ fun VolunteerEscortScreen(
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                   )
-                  if (vol.studentIdVerified) {
+                  if (vol.showsIdBadge) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                       imageVector = Icons.Default.CheckCircle,
-                      contentDescription = "Verified ID",
+                      contentDescription = "Example ID badge",
                       tint = PinkPrimary,
                       modifier = Modifier.size(14.dp)
                     )
@@ -367,7 +384,7 @@ fun VolunteerEscortScreen(
                   color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                  text = "${vol.distanceMeters}m away • ${vol.ratingsCount} completed escorts",
+                  text = "${vol.distanceMeters} m · ${vol.ratingsCount} example escorts",
                   style = MaterialTheme.typography.labelSmall,
                   color = PinkPrimary
                 )
@@ -379,7 +396,7 @@ fun VolunteerEscortScreen(
               color = if (vol.isAvailableNow) PinkContainer else MaterialTheme.colorScheme.surfaceVariant
             ) {
               Text(
-                text = if (vol.isAvailableNow) "AVAILABLE" else "BUSY",
+                text = if (vol.isAvailableNow) "Example available" else "Example busy",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = if (vol.isAvailableNow) PinkPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)

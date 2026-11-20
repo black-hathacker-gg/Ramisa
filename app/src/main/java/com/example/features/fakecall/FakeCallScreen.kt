@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 
@@ -38,13 +39,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhoneCallback
 import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -97,6 +95,9 @@ fun FakeCallScreen(
   modifier: Modifier = Modifier
 ) {
   val uiState by viewModel.uiState.collectAsState()
+  BackHandler(enabled = uiState.state == FakeCallState.RINGING || uiState.state == FakeCallState.CONNECTED) {
+    viewModel.declineOrEndCall()
+  }
 
   when (uiState.state) {
     FakeCallState.RINGING -> {
@@ -124,7 +125,7 @@ fun FakeCallScreen(
           TopAppBar(
             title = {
               Text(
-                text = "Fake Escape Call (ছদ্মবেশী কল)",
+                text = "Fake call",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
               )
             },
@@ -156,7 +157,7 @@ fun FakeCallScreen(
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
           )
           Text(
-            text = "Simulate an urgent incoming call to give yourself a natural, polite reason to exit an uncomfortable or unsafe situation.",
+            text = "Pick a caller and a delay. RAMISA plays the device ringtone and displays a pretend call.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
@@ -547,17 +548,17 @@ private fun ConnectedCallUi(
             verticalArrangement = Arrangement.spacedBy(8.dp)
           ) {
             Text(
-              text = "CALL SCRIPT (বলার জন্য নমুনা উত্তর)",
+              text = "Suggested script",
               style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
               color = PinkPrimary
             )
             Text(
-              text = "• \"হ্যাঁ বাবা, আমি এইমাত্র গাড়িতে উঠছি। ২ মিনিটে চলে আসছি।\"",
+              text = profile.defaultScriptBn,
               style = MaterialTheme.typography.bodyMedium,
               color = TextPrimaryLight
             )
             Text(
-              text = "• \"Yes, I'm right outside. I see you waiting, coming now.\"",
+              text = profile.defaultScriptEn,
               style = MaterialTheme.typography.bodySmall,
               color = TextSecondaryLight
             )
@@ -570,20 +571,6 @@ private fun ConnectedCallUi(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.padding(bottom = 32.dp)
       ) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-          IconButton(onClick = {}) {
-            Icon(imageVector = Icons.Default.Mic, contentDescription = "Mute", tint = PinkPrimary)
-          }
-          IconButton(onClick = {}) {
-            Icon(imageVector = Icons.Default.VolumeUp, contentDescription = "Speaker", tint = PinkPrimary)
-          }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         // End Call
         Surface(
           modifier = Modifier

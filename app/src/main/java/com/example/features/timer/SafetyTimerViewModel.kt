@@ -1,5 +1,6 @@
 package com.example.features.timer
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
@@ -27,6 +28,7 @@ class SafetyTimerViewModel : ViewModel() {
   val uiState: StateFlow<SafetyTimerUiState> = _uiState.asStateFlow()
 
   private var timerJob: Job? = null
+  private var deadlineMs = 0L
 
   fun setActivityReason(reason: String) {
     _uiState.update { it.copy(activityReason = reason) }
@@ -38,6 +40,8 @@ class SafetyTimerViewModel : ViewModel() {
   }
 
   fun startSafetyTimer(onTimeoutSosTrigger: () -> Unit) {
+    if (_uiState.value.isTimerActive) return
+    deadlineMs = SystemClock.elapsedRealtime() + _uiState.value.totalDurationSeconds * 1000L
     _uiState.update {
       it.copy(
         isTimerActive = true,
@@ -50,11 +54,9 @@ class SafetyTimerViewModel : ViewModel() {
     timerJob?.cancel()
     timerJob = viewModelScope.launch {
       while (isActive && _uiState.value.remainingSeconds > 0) {
-        delay(1000)
-        _uiState.update { state ->
-          val next = state.remainingSeconds - 1
-          state.copy(remainingSeconds = next)
-        }
+        val remaining = (deadlineMs - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        _uiState.update { it.copy(remainingSeconds = ((remaining + 999) / 1000).toInt()) }
+        if (remaining > 0) delay(minOf(remaining, 1000L))
       }
 
       if (_uiState.value.isTimerActive && _uiState.value.remainingSeconds <= 0) {
@@ -62,7 +64,7 @@ class SafetyTimerViewModel : ViewModel() {
           it.copy(
             isTimerActive = false,
             isTriggeredDueToTimeout = true,
-            feedbackMessage = "Safety Timer expired without check-in! Emergency SOS triggered."
+            feedbackMessage = "Check-in expired. Check the Emergency screen for SMS status."
           )
         }
         onTimeoutSosTrigger()
@@ -71,7 +73,9 @@ class SafetyTimerViewModel : ViewModel() {
   }
 
   fun extendTimer(extraMinutes: Int = 10) {
+    if (!_uiState.value.isTimerActive) return
     val extraSeconds = extraMinutes * 60
+    deadlineMs += extraSeconds * 1000L
     _uiState.update {
       it.copy(
         remainingSeconds = it.remainingSeconds + extraSeconds,

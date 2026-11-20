@@ -1,216 +1,157 @@
 package com.example.features.map
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.NumberFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OfflineMapsScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: OfflineMapsViewModel = viewModel()
+  onNavigateBack: () -> Unit,
+  viewModel: OfflineMapsViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    var showDeleteConfirmDialog by remember { mutableStateOf<String?>(null) }
+  val state by viewModel.uiState.collectAsStateWithLifecycle()
+  var deleteId by rememberSaveable { mutableStateOf<String?>(null) }
+  var previewId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Offline Maps (Zero-Internet)") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Header Info Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Map,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Safety Routing Without Internet",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Download local areas to ensure Safe Journey routing, Safe Places radar, and Danger Map access even when cellular networks fail.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Total Downloaded: ${String.format("%.1f", uiState.totalDownloadedMB)} MB",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Text(
-                text = "Available Regions",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(uiState.regions) { region ->
-                    MapRegionCard(
-                        region = region,
-                        onDownload = { viewModel.startDownload(region.id) },
-                        onDelete = { showDeleteConfirmDialog = region.id }
-                    )
-                }
-                item {
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-            }
-        }
-    }
-
-    // Delete Confirmation Dialog
-    showDeleteConfirmDialog?.let { regionId ->
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirmDialog = null },
-            title = { Text("Delete Offline Map?") },
-            text = { Text("Are you sure you want to delete this map region? You will not be able to use safety navigation in this area without an internet connection.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteRegion(regionId)
-                        showDeleteConfirmDialog = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete", fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmDialog = null }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun MapRegionCard(
-    region: MapRegion,
-    onDownload: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+  Scaffold(topBar = {
+    TopAppBar(title = { Text("Offline maps") }, navigationIcon = {
+      IconButton(onClick = onNavigateBack) {
+        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+      }
+    })
+  }) { padding ->
+    LazyColumn(
+      modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = region.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-                Text(
-                    text = region.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${region.sizeMB} MB",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
+      item {
+        Text(
+          "Download a city area to view its streets without internet. Routing requires a navigation app.",
+          style = MaterialTheme.typography.bodyMedium
+        )
+      }
+      if (state.loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
+      state.error?.let { message ->
+        item {
+          Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+          TextButton(onClick = viewModel::refresh) { Text("Refresh") }
+        }
+      }
+      items(state.regions, key = { it.id }) { region ->
+        OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+          Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(region.name, style = MaterialTheme.typography.titleMedium)
+            Text(region.description, style = MaterialTheme.typography.bodySmall)
+            if (region.downloadedBytes > 0) {
+              val size = NumberFormat.getNumberInstance().apply { maximumFractionDigits = 1 }
+                .format(region.downloadedBytes / 1_000_000.0)
+              Text("$size MB of map data", style = MaterialTheme.typography.bodySmall)
             }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            when (region.state) {
-                DownloadState.NOT_DOWNLOADED -> {
-                    IconButton(
-                        onClick = onDownload,
-                        colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = "Download")
-                    }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              when (region.state) {
+                DownloadState.NOT_DOWNLOADED, DownloadState.PAUSED -> {
+                  TextButton(
+                    onClick = { viewModel.startDownload(region.id) },
+                    enabled = !state.loading && state.activeRegionId == null
+                  ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(if (region.state == DownloadState.PAUSED) "Resume" else "Download")
+                  }
                 }
                 DownloadState.DOWNLOADING -> {
-                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(48.dp)) {
-                        CircularProgressIndicator(
-                            progress = { region.progress },
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                        )
-                    }
+                  IconButton(onClick = { viewModel.pauseDownload(region.id) }) {
+                    Icon(Icons.Default.Pause, contentDescription = "Pause download for " + region.name)
+                  }
+                  val progress = region.progress
+                  val progressModifier = Modifier.weight(1f)
+                  if (progress == null) LinearProgressIndicator(progressModifier)
+                  else LinearProgressIndicator(progress = { progress }, modifier = progressModifier)
                 }
-                DownloadState.DOWNLOADED -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.CloudDone,
-                            contentDescription = "Downloaded",
-                            tint = androidx.compose.ui.graphics.Color(0xFF4CAF50), // Green success color
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        IconButton(onClick = onDelete) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                DownloadState.DOWNLOADED -> TextButton(onClick = { previewId = region.id }) {
+                  Icon(Icons.Default.Map, contentDescription = null, modifier = Modifier.size(18.dp))
+                  Text("View offline area")
                 }
+                DownloadState.DELETING -> LinearProgressIndicator(Modifier.fillMaxWidth())
+              }
+              if (region.state == DownloadState.DOWNLOADED || region.state == DownloadState.PAUSED) {
+                IconButton(onClick = { deleteId = region.id }) {
+                  Icon(Icons.Default.Delete, contentDescription = "Remove download for " + region.name)
+                }
+              }
             }
+          }
         }
+      }
     }
+  }
+
+  state.regions.firstOrNull { it.id == deleteId }?.let { region ->
+    AlertDialog(
+      onDismissRequest = { deleteId = null },
+      title = { Text("Remove downloaded map?") },
+      text = { Text("Remove " + region.name + " from your offline maps.") },
+      confirmButton = {
+        TextButton(onClick = {
+          viewModel.deleteRegion(region.id)
+          deleteId = null
+        }) { Text("Remove") }
+      },
+      dismissButton = { TextButton(onClick = { deleteId = null }) { Text("Cancel") } }
+    )
+  }
+
+  state.regions.firstOrNull { it.id == previewId }?.let { region ->
+    AlertDialog(
+      onDismissRequest = { previewId = null },
+      title = { Text(region.name) },
+      text = {
+        LiveSafetyMap(
+          points = emptyList(),
+          deviceLocation = null,
+          showRiskAreas = false,
+          onPointClick = {},
+          onMapLongPress = {},
+          modifier = Modifier.fillMaxWidth().height(320.dp),
+          cameraAction = 0L to MapCameraAction.Center(region.bounds.center, 12.5)
+        )
+      },
+      confirmButton = { TextButton(onClick = { previewId = null }) { Text("Close") } }
+    )
+  }
 }

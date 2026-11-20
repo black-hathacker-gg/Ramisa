@@ -1,320 +1,289 @@
 package com.example.core.sms
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
+import android.app.Activity
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.BatteryManager
 import android.os.Build
 import android.telephony.SmsManager
-import android.util.Log
-import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.example.core.location.EmergencyLocationManager
-import com.example.core.service.FusedLocationBackgroundService
 import com.example.data.local.AppDatabase
 import com.example.data.local.toDomain
 import com.example.data.repository.AppSessionManager
-import com.example.domain.model.EmergencyContact
 import com.example.domain.model.GeoLocation
-import com.example.domain.model.UserProfile
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.UUID
+
+data class SmsRecipientReport(
+    val contactId: String, val contactName: String, val totalParts: Int,
+    val sentParts: Int, val deliveredParts: Int, val failedParts: Int,
+    val outcomeUnknown: Boolean, val errors: List<String>
+)
 
 data class SmsDispatchReport(
     val totalAttempted: Int,
+    /** Contacts for which ALL parts have successful network sent callbacks. */
     val successCount: Int,
-    val successfulContactNames: List<String>,
-    val failedContactNames: List<String>,
-    val messageSent: String,
-    val isPermissionGranted: Boolean,
-    val primaryContactPhone: String? = null,
-    val locationUsed: GeoLocation? = null,
-    val timestamp: Long = System.currentTimeMillis()
+    val successfulContactNames: List<String>, val failedContactNames: List<String>,
+    val messageSent: String, val isPermissionGranted: Boolean,
+    val primaryContactPhone: String? = null, val locationUsed: GeoLocation? = null,
+    val timestamp: Long = System.currentTimeMillis(), val eventId: String = "",
+    val pendingCount: Int = 0, val deliveredCount: Int = 0, val unknownCount: Int = 0,
+    val statusSummary: String = "No SMS send confirmation", val isTerminal: Boolean = false,
+    val recipientReports: List<SmsRecipientReport> = emptyList()
 )
 
 object EmergencySmsDispatcher {
-
-    private const val TAG = "EmergencySmsDispatcher"
-
+    internal const val ACTION_SENT = "com.example.core.sms.SENT"
+    internal const val ACTION_DELIVERED = "com.example.core.sms.DELIVERED"
+    private val dispatchMutex = Mutex()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile private var ledger: SmsLedgerStore? = null
     private val _lastDispatchEvent = MutableStateFlow<SmsDispatchReport?>(null)
     val lastDispatchEvent: StateFlow<SmsDispatchReport?> = _lastDispatchEvent.asStateFlow()
+    private val _reports = MutableStateFlow<Map<String, SmsDispatchReport>>(emptyMap())
+    val reports: StateFlow<Map<String, SmsDispatchReport>> = _reports.asStateFlow()
 
-    fun clearLastDispatchEvent() {
-        _lastDispatchEvent.value = null
+    fun initialize(context: Context) {
+        scope.launch {
+            runCatching {
+                store(context).latest()?.let { last ->
+                    publish(last, showBanner = last.recipients.any { it.pending })
+                }
+            }
+        }
     }
+    internal fun restoreReport(context: Context, eventId: String): SmsDispatchReport? =
+        store(context).get(eventId)?.let { publish(it, showBanner = false) }
+    private fun store(context: Context): SmsLedgerStore = ledger ?: synchronized(this) {
+        ledger ?: SmsLedgerStore(context.applicationContext).also { ledger = it }
+    }
+    fun clearLastDispatchEvent() { _lastDispatchEvent.value = null }
 
+    /** Submits at most once per stable eventId. Return is not a send or delivery confirmation. */
     suspend fun dispatchEmergencySms(
-        context: Context,
-        customNote: String? = null,
-        location: GeoLocation? = null
+        context: Context, customNote: String? = null, location: GeoLocation? = null,
+        eventId: String = UUID.randomUUID().toString()
+    ): SmsDispatchReport = dispatch(context, customNote, location, eventId, null)
+
+    private suspend fun dispatch(
+        context: Context, customNote: String?, location: GeoLocation?, eventId: String,
+        safeArrivalDestination: String?
     ): SmsDispatchReport = withContext(Dispatchers.IO) {
-        // Automatically ensure FusedLocation background service is active
-        try {
-            FusedLocationBackgroundService.startLocationService(context)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting FusedLocationBackgroundService: ${e.message}")
-        }
-
-        val db = AppDatabase.getDatabase(context)
-        
-        // 1. Fetch saved contacts from Room Database
-        var contacts: List<EmergencyContact> = try {
-            val enabled = db.emergencyContactDao().getSmsEnabledContactsSync()
-            if (enabled.isNotEmpty()) enabled else db.emergencyContactDao().getAllContactsSync()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error querying contacts from DB: ${e.message}")
-            emptyList()
-        }
-
-        val primaryPhone = contacts.firstOrNull()?.phone
-
-        // 2. Fetch User Profile from Database or Session
-        val userProfile: UserProfile? = try {
-            db.userDao().getProfileSync()?.toDomain() ?: AppSessionManager.currentUser.value
-        } catch (e: Exception) {
-            AppSessionManager.currentUser.value
-        }
-
-        val userName = userProfile?.name ?: "RAMISA User"
-        val bloodGroup = if (!userProfile?.bloodGroup.isNullOrBlank() && userProfile?.bloodGroup != "Unknown") {
-            " (Blood: ${userProfile.bloodGroup})"
-        } else ""
-
-        // 3. Obtain Accurate Location Coordinates using FusedLocationProviderClient
-        val targetLocation: GeoLocation = if (location != null && location.latitude != 0.0 && location.longitude != 0.0) {
-            location
-        } else {
-            EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
-        }
-
-        val lat = targetLocation.latitude
-        val lng = targetLocation.longitude
-        val mapLink = "https://maps.google.com/?q=$lat,$lng"
-        val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
-        val customNoteText = if (!customNote.isNullOrBlank()) " Note: $customNote." else ""
-
-        // Fetch battery level
-        val batteryLevel = try {
-            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
-            val pct = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 80
-            " [Battery: $pct%]"
-        } catch (e: Exception) {
-            ""
-        }
-
-        // 4. Construct SMS Message Body
-        val messageBody = "SOS! $userName$bloodGroup needs help!$customNoteText$batteryLevel GPS: $mapLink (at $timeStr). Please rescue!"
-
-        // 5. Check SEND_SMS Permission
-        val hasSmsPermission = ActivityCompat.checkSelfPermission(
-            context,
-            Manifest.permission.SEND_SMS
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasSmsPermission) {
-            Log.w(TAG, "SEND_SMS permission not granted. Cannot send physical SIM SMS.")
-            return@withContext SmsDispatchReport(
-                totalAttempted = contacts.size,
-                successCount = 0,
-                successfulContactNames = emptyList(),
-                failedContactNames = contacts.map { "${it.name} (SMS Permission Required)" },
-                messageSent = messageBody,
-                isPermissionGranted = false,
-                primaryContactPhone = primaryPhone,
-                locationUsed = targetLocation
+        dispatchMutex.withLock {
+            val appContext = context.applicationContext
+            val journal = try { store(appContext) } catch (_: Exception) {
+                return@withLock failureReport(eventId, "Saved SMS state is unavailable; sending stopped")
+            }
+            journal.get(eventId)?.let { return@withLock publish(it) }
+            val contacts = try {
+                // Never fall back to contacts who disabled SMS.
+                AppDatabase.getDatabase(appContext).emergencyContactDao().getSmsEnabledContactsSync()
+                    .distinctBy { normalizePhone(it.phone) }
+            } catch (_: Exception) {
+                return@withLock failureReport(eventId, "Cannot read saved emergency contacts; no SMS submitted")
+            }
+            val hasPermission = ContextCompat.checkSelfPermission(appContext, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
+            val smsFeature = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                PackageManager.FEATURE_TELEPHONY_MESSAGING else PackageManager.FEATURE_TELEPHONY
+            var blocked = SmsPreflight.blockedReason(contacts.size, hasPermission,
+                appContext.packageManager.hasSystemFeature(smsFeature))
+            val manager = if (blocked == null) try { smsManager(appContext) } catch (_: Exception) { null } else null
+            if (blocked == null && manager == null) blocked = "No default SMS SIM is available; select an active SIM before sending"
+            val targetLocation = if (safeArrivalDestination != null || blocked != null ||
+                !EmergencyLocationManager.hasLocationPermission(appContext)) null else
+                location?.takeIf { it.isAvailable } ?: withTimeoutOrNull(7_000L) {
+                    EmergencyLocationManager.getAccurateEmergencyCoordinates(appContext)
+                }?.takeIf { it.isAvailable }
+            val profile = try {
+                AppDatabase.getDatabase(appContext).userDao().getProfileSync()?.toDomain() ?: AppSessionManager.currentUser.value
+            } catch (_: Exception) { AppSessionManager.currentUser.value }
+            val userName = profile?.name?.takeIf { it.isNotBlank() } ?: "RAMISA user"
+            val message = if (safeArrivalDestination != null) {
+                "[RAMISA] $userName reports arriving safely at $safeArrivalDestination."
+            } else buildString {
+                append("SOS! $userName needs help.")
+                customNote?.takeIf { it.isNotBlank() }?.let { append(" Note: ${it.take(300)}.") }
+                val battery = (appContext.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager)
+                    ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                if (battery != null && battery in 0..100) append(" Battery: $battery%.")
+                if (targetLocation != null) {
+                    append(" Location: https://maps.google.com/?q=${targetLocation.latitude},${targetLocation.longitude}.")
+                    append(" ${targetLocation.description()}.")
+                } else append(" Location unavailable; contact me or my trusted contacts.")
+            }
+            val divided = try { manager?.divideMessage(message)?.takeIf { it.isNotEmpty() } ?: arrayListOf(message) }
+                catch (_: Exception) { return@withLock failureReport(eventId, "Cannot prepare SMS for the selected SIM; no SMS submitted") }
+            val event = SmsLedgerEvent(
+                id = eventId, message = message, permissionGranted = hasPermission, blockedReason = blocked, location = targetLocation,
+                recipients = contacts.map { contact ->
+                    val phone = normalizePhone(contact.phone)
+                    val error = blocked ?: if (!isUsablePhone(phone)) "Invalid contact phone number" else null
+                    SmsRecipientLedger(contact.id, contact.name, phone, divided.indices.map { part ->
+                        SmsPartReceipt(part, if (error == null) SmsSendState.PREPARED else SmsSendState.FAILED, error = error)
+                    })
+                }
             )
-        }
-
-        // 6. Send Multipart SMS via SIM Card to ALL contacts with robust fallback
-        val successNames = mutableListOf<String>()
-        val failedNames = mutableListOf<String>()
-
-        try {
-            val smsManager: SmsManager = try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    context.getSystemService(SmsManager::class.java) ?: SmsManager.getDefault()
-                } else {
-                    @Suppress("DEPRECATION")
-                    SmsManager.getDefault()
-                }
-            } catch (e: Exception) {
-                @Suppress("DEPRECATION")
-                SmsManager.getDefault()
+            try { journal.insert(event) } catch (_: Exception) {
+                return@withLock failureReport(eventId, "Could not save SMS submission state; no SMS submitted")
             }
-
-            for (contact in contacts) {
-                val cleanPhone = contact.phone.replace(Regex("[^0-9+]"), "")
-                if (cleanPhone.isNotBlank()) {
-                    var sentSuccessfully = false
-                    try {
-                        val dividedParts = smsManager.divideMessage(messageBody)
-                        if (dividedParts.size > 1) {
-                            smsManager.sendMultipartTextMessage(
-                                cleanPhone,
-                                null,
-                                dividedParts,
-                                null,
-                                null
-                            )
-                        } else {
-                            smsManager.sendTextMessage(
-                                cleanPhone,
-                                null,
-                                messageBody,
-                                null,
-                                null
-                            )
-                        }
-                        sentSuccessfully = true
-                        successNames.add(contact.name)
-                        Log.d(TAG, "SMS successfully dispatched to ${contact.name} ($cleanPhone)")
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Primary SMS sending failed for ${contact.name}, trying default SmsManager: ${e.message}")
-                        try {
-                            @Suppress("DEPRECATION")
-                            val fallbackSms = SmsManager.getDefault()
-                            fallbackSms.sendTextMessage(cleanPhone, null, messageBody.take(160), null, null)
-                            sentSuccessfully = true
-                            successNames.add(contact.name)
-                        } catch (e2: Exception) {
-                            Log.e(TAG, "Failed to send SMS to ${contact.name} ($cleanPhone): ${e2.message}")
-                            failedNames.add("${contact.name}: ${e2.message ?: "Failed"}")
-                        }
-                    }
+            publish(event)
+            if (blocked != null || manager == null) return@withLock publish(event)
+            for (recipient in event.recipients) {
+                if (recipient.failed) continue
+                // Persist before the modem boundary. Crash/timeout is UNKNOWN, never an automatic retry.
+                journal.update(eventId) { SmsReceiptReducer.submitted(it, recipient.id) }?.let { publish(it) }
+                try {
+                    val sent = ArrayList(divided.indices.map { receiptIntent(appContext, eventId, recipient.id, it, ACTION_SENT) })
+                    val delivered = ArrayList(divided.indices.map { receiptIntent(appContext, eventId, recipient.id, it, ACTION_DELIVERED) })
+                    manager.sendMultipartTextMessage(recipient.phone, null, ArrayList(divided), sent, delivered)
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (error: Exception) {
+                    val definite = error is SecurityException || error is IllegalArgumentException || error is UnsupportedOperationException
+                    journal.update(eventId) {
+                        SmsReceiptReducer.submissionFailed(it, recipient.id,
+                            if (definite) "SMS submission rejected (${error.javaClass.simpleName})" else "SMS submission outcome unknown; not automatically retried",
+                            uncertain = !definite)
+                    }?.let { publish(it) }
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "SmsManager error: ${e.message}")
-            failedNames.add("SmsManager Error: ${e.message}")
-        }
-
-        // Show System Status Bar Notification on successful dispatch
-        if (successNames.isNotEmpty()) {
-            try {
-                val notifManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                val channelId = "ramisa_sms_dispatch_channel"
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && notifManager != null) {
-                    val channel = NotificationChannel(
-                        channelId,
-                        "Emergency SMS Dispatch Confirmations",
-                        NotificationManager.IMPORTANCE_HIGH
-                    ).apply {
-                        description = "Shows confirmation when Emergency SMS is dispatched via SIM"
-                        enableVibration(true)
-                    }
-                    notifManager.createNotificationChannel(channel)
-                }
-
-                val notif = NotificationCompat.Builder(context, channelId)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setContentTitle("RAMISA: Emergency SMS Dispatched")
-                    .setContentText("Offline SMS successfully sent to ${successNames.size} guardians: ${successNames.joinToString(", ")}")
-                    .setStyle(NotificationCompat.BigTextStyle().bigText("Emergency SMS with live Fused GPS location has been dispatched via SIM card to:\n${successNames.joinToString("\n• ")}"))
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setAutoCancel(true)
-                    .build()
-
-                notifManager?.notify(1099, notif)
-            } catch (e: Exception) {
-                Log.e(TAG, "Error posting SMS confirmation notification: ${e.message}")
+            scope.launch {
+                delay(60_000L)
+                journal.update(eventId) { current -> current.copy(recipients = current.recipients.map { recipient ->
+                    recipient.copy(parts = recipient.parts.map { part ->
+                        if (part.sendState == SmsSendState.SUBMITTED || part.sendState == SmsSendState.PREPARED)
+                            part.copy(sendState = SmsSendState.UNKNOWN, error = "Send confirmation not received; not automatically retried")
+                        else part
+                    })
+                }) }?.let { publish(it) }
             }
+            publish(journal.get(eventId) ?: event)
         }
-
-        val finalReport = SmsDispatchReport(
-            totalAttempted = contacts.size,
-            successCount = successNames.size,
-            successfulContactNames = successNames,
-            failedContactNames = failedNames,
-            messageSent = messageBody,
-            isPermissionGranted = true,
-            primaryContactPhone = primaryPhone,
-            locationUsed = targetLocation
-        )
-        _lastDispatchEvent.value = finalReport
-        finalReport
     }
 
-    /**
-     * Initiates an immediate phone call to primary emergency contact or Bangladesh National 999.
-     */
+    @Suppress("DEPRECATION")
+    private fun smsManager(context: Context): SmsManager? {
+        val subscription = SmsManager.getDefaultSmsSubscriptionId()
+        if (subscription < 0 || subscription == Int.MAX_VALUE) return null
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            context.getSystemService(SmsManager::class.java)?.createForSubscriptionId(subscription)
+        else SmsManager.getSmsManagerForSubscriptionId(subscription)
+    }
+
+    private fun receiptIntent(context: Context, event: String, recipient: String, part: Int, action: String): PendingIntent {
+        val intent = Intent(context, SmsStatusReceiver::class.java).apply {
+            this.action = action
+            data = Uri.Builder().scheme("ramisa-sms").authority("receipt").appendPath(event)
+                .appendPath(recipient).appendPath(part.toString()).appendPath(if (action == ACTION_SENT) "sent" else "delivery").build()
+        }
+        // Mutable only for system-added PDU/error extras; the receiver destination is always explicit.
+        val mutable = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or mutable)
+    }
+
+    internal fun recordReceipt(context: Context, intent: Intent, resultCode: Int) {
+        val uri = intent.data ?: return
+        val path = uri.pathSegments
+        if (uri.scheme != "ramisa-sms" || uri.authority != "receipt" || path.size != 4) return
+        val part = path[2].toIntOrNull() ?: return
+        val journal = store(context)
+        val updated = when (intent.action) {
+            ACTION_SENT -> if (path[3] != "sent") null else journal.update(path[0]) {
+                SmsReceiptReducer.sent(it, path[1], part, resultCode == Activity.RESULT_OK,
+                    if (resultCode == Activity.RESULT_OK) null else "Network rejected SMS (code $resultCode)")
+            }
+            ACTION_DELIVERED -> {
+                if (path[3] != "delivery") return
+                val pdu = intent.getByteArrayExtra("pdu")
+                val format = intent.getStringExtra("format") ?: "3gpp"
+                val status = pdu?.let { android.telephony.SmsMessage.createFromPdu(it, format)?.status }
+                val confirmed = resultCode == Activity.RESULT_OK &&
+                    ((format == "3gpp" && status == 0) || (format == "3gpp2" && status == (2 shl 16)))
+                val failed = resultCode != Activity.RESULT_OK ||
+                    (format == "3gpp" && status != null && status in 0x40..0x7f) ||
+                    (format == "3gpp2" && status != null && ((status ushr 24) and 3) == 3)
+                journal.update(path[0]) {
+                    SmsReceiptReducer.delivery(it, path[1], part, confirmed, failed,
+                        if (confirmed) null else "Delivery not confirmed${status?.let { code -> " (report $code)" } ?: "; report unavailable"}")
+                }
+            }
+            else -> null
+        }
+        updated?.let { publish(it) }
+    }
+
+    @Synchronized
+    private fun publish(snapshot: SmsLedgerEvent, showBanner: Boolean = true): SmsDispatchReport {
+        // A late publisher must not overwrite a newer receipt processed by another thread.
+        val event = ledger?.get(snapshot.id) ?: snapshot
+        val success = event.recipients.filter { it.sentConfirmed }
+        val failures = event.recipients.filter { it.failed }
+        val pending = event.recipients.count { it.pending }
+        val unknown = event.recipients.count { it.unknown }
+        val delivered = event.recipients.count { it.deliveredConfirmed }
+        val summary = event.blockedReason ?: buildString {
+            append("Send confirmed: ${success.size}/${event.recipients.size} contacts. Delivery confirmed: $delivered.")
+            if (pending > 0) append(" Awaiting network send confirmation: $pending.")
+            if (failures.isNotEmpty()) append(" Failed or partially failed: ${failures.size}.")
+            if (unknown > 0) append(" Outcome unknown: $unknown; not automatically retried.")
+        }
+        val report = SmsDispatchReport(event.recipients.size, success.size, success.map { it.name },
+            failures.map { it.name }, event.message, event.permissionGranted, event.recipients.firstOrNull()?.phone,
+            event.location, event.createdAt, event.id, pending, delivered, unknown, summary, pending == 0,
+            event.recipients.map { recipient ->
+                SmsRecipientReport(recipient.id, recipient.name, recipient.parts.size,
+                    recipient.parts.count { it.sendState == SmsSendState.SENT || it.deliveryState == SmsDeliveryState.DELIVERED },
+                    recipient.parts.count { it.deliveryState == SmsDeliveryState.DELIVERED },
+                    recipient.parts.count { it.sendState == SmsSendState.FAILED || it.deliveryState == SmsDeliveryState.FAILED },
+                    recipient.unknown, recipient.parts.mapNotNull { it.error }.distinct())
+            })
+        _reports.update { it + (report.eventId to report) }
+        if (showBanner && (_lastDispatchEvent.value?.timestamp ?: Long.MIN_VALUE) <= report.timestamp) {
+            _lastDispatchEvent.value = report
+        }
+        return report
+    }
+
+    private fun failureReport(eventId: String, reason: String): SmsDispatchReport =
+        SmsDispatchReport(0, 0, emptyList(), emptyList(), "", false, eventId = eventId,
+            statusSummary = reason, isTerminal = true).also { report ->
+            _reports.update { it + (eventId to report) }; _lastDispatchEvent.value = report
+        }
+    internal fun normalizePhone(value: String): String = value.filter { it.isDigit() || it == '+' }
+    internal fun isUsablePhone(value: String): Boolean = Regex("\\+?[0-9]{7,15}").matches(value)
+
+    /** Explicit user taps only: opens the dialer and NEVER places a call or chooses a fallback number. */
     fun initiateEmergencyPhoneCall(context: Context, phoneNumber: String? = null) {
-        try {
-            val targetNumber = phoneNumber?.takeIf { it.isNotBlank() } ?: "999"
-            val hasCallPermission = ActivityCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CALL_PHONE
-            ) == PackageManager.PERMISSION_GRANTED
-
-            val intent = if (hasCallPermission) {
-                Intent(Intent.ACTION_CALL).apply {
-                    data = Uri.parse("tel:$targetNumber")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-            } else {
-                Intent(Intent.ACTION_DIAL).apply {
-                    data = Uri.parse("tel:$targetNumber")
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-            }
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initiating emergency phone call: ${e.message}")
-        }
+        val number = phoneNumber?.let(::normalizePhone)?.takeIf { it.isNotBlank() } ?: return
+        runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", number, null))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }
-
-    /**
-     * Sends automatic "Reached Safely" (আলহামদুলিল্লাহ নিরাপদে পৌঁছেছি) notification SMS to primary guardians.
-     */
-    suspend fun dispatchSafeArrivalSms(
-        context: Context,
-        destination: String
-    ): Boolean = withContext(Dispatchers.IO) {
-        val hasSmsPermission = ActivityCompat.checkSelfPermission(
-            context,
-            Manifest.permission.SEND_SMS
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!hasSmsPermission) return@withContext false
-
-        try {
-            val db = AppDatabase.getDatabase(context)
-            val contacts = db.emergencyContactDao().getSmsEnabledContactsSync()
-                .ifEmpty { db.emergencyContactDao().getAllContactsSync() }
-            
-            if (contacts.isEmpty()) return@withContext false
-
-            val userProfile = db.userDao().getProfileSync()?.toDomain() ?: AppSessionManager.currentUser.value
-            val userName = userProfile?.name ?: "RAMISA User"
-            val timeStr = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
-
-            val message = "[RAMISA] $userName has safely arrived at $destination (at $timeStr)."
-
-            val smsManager: SmsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(SmsManager::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                SmsManager.getDefault()
-            }
-
-            for (c in contacts.take(2)) {
-                val cleanPhone = c.phone.replace(Regex("[^0-9+]"), "")
-                if (cleanPhone.isNotBlank()) {
-                    smsManager.sendTextMessage(cleanPhone, null, message, null, null)
-                }
-            }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to send safe arrival SMS: ${e.message}")
-            false
+    suspend fun dispatchSafeArrivalSms(context: Context, destination: String): Boolean {
+        val id = "arrival-${UUID.randomUUID()}"
+        val initial = dispatch(context, null, null, id, destination)
+        val completed = if (initial.isTerminal) initial else withTimeoutOrNull(60_000L) {
+            reports.map { it[id] }.first { it?.isTerminal == true }
         }
+        return completed != null && completed.totalAttempted > 0 && completed.successCount == completed.totalAttempted
     }
 }

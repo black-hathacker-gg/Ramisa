@@ -25,5 +25,6 @@ data class Journey(
   val travelMode: TravelMode,
   val notes: String = "",
   val status: JourneyStatus = JourneyStatus.NOT_STARTED,
-  val startTimeMillis: Long = System.currentTimeMillis()
+  val startTimeMillis: Long = System.currentTimeMillis(),
+  val lastLocation: GeoLocation? = null
 )

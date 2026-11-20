@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.WindowManager
 import android.widget.Toast
@@ -66,22 +67,8 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
     
-    // Request vital permissions on startup
-    val permissionsToRequest = arrayOf(
-      Manifest.permission.SEND_SMS,
-      Manifest.permission.CALL_PHONE,
-      Manifest.permission.ACCESS_FINE_LOCATION,
-      Manifest.permission.ACCESS_COARSE_LOCATION,
-      Manifest.permission.RECORD_AUDIO,
-      Manifest.permission.CAMERA,
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else ""
-    ).filter {
-      it.isNotEmpty() && ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-    }.toTypedArray()
-
-    if (permissionsToRequest.isNotEmpty()) {
-      requestPermissionLauncher.launch(permissionsToRequest)
-    }
+    // Ask for SMS, location and microphone access only from the feature the user starts.
+    com.example.core.sms.EmergencySmsDispatcher.initialize(applicationContext)
 
     val action = intent?.action
     val isMainLauncher = intent?.hasCategory(Intent.CATEGORY_LAUNCHER) == true || action == Intent.ACTION_MAIN
@@ -114,7 +101,9 @@ class MainActivity : ComponentActivity() {
       }
     }
 
+    val showDemoClassifier = BuildConfig.DEBUG && intent?.getBooleanExtra("preview_acoustic_classifier", false) == true
     val initialStartDestination = when {
+      showDemoClassifier -> Screen.ThreatGuard.route
       openEmergency -> Screen.Emergency.route
       openFakeCall -> Screen.FakeCall.route
       openSafeJourney -> Screen.SafeJourney.route
@@ -155,8 +144,9 @@ class MainActivity : ComponentActivity() {
   }
 
   override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-    if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-      val now = System.currentTimeMillis()
+    if (event?.repeatCount == 0 && LockScreenSosManager.isVolumeShortcutEnabled(this) &&
+        (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)) {
+      val now = SystemClock.elapsedRealtime()
       if (now - lastVolumeClickTime < 1800) {
         volumeClickCount++
         if (volumeClickCount >= 3) {
@@ -181,9 +171,8 @@ class MainActivity : ComponentActivity() {
         @Suppress("DEPRECATION")
         vibrator?.vibrate(longArrayOf(0, 300, 200, 300, 200, 500), -1)
       }
-      Toast.makeText(this, "Volume Trigger SOS Activated!", Toast.LENGTH_SHORT).show()
+      Toast.makeText(this, "Review your emergency alert", Toast.LENGTH_SHORT).show()
       
-      // Dispatch emergency SMS immediately
       FusedLocationBackgroundService.startLocationService(this)
       pendingRoute.value = Screen.Emergency.route
     } catch (e: Exception) {

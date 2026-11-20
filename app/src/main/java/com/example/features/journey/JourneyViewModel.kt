@@ -1,6 +1,7 @@
 package com.example.features.journey
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.sms.EmergencySmsDispatcher
@@ -18,8 +19,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class JourneyUiState(
-  val startLocation: String = "Mirpur 10, Dhaka",
-  val destination: String = "Dhaka University Campus",
+  val startLocation: String = "",
+  val destination: String = "",
   val expectedDurationMinutes: Int = 45,
   val travelMode: TravelMode = TravelMode.RICKSHAW,
   val notes: String = "",
@@ -44,6 +45,7 @@ class JourneyViewModel(
 
   private var timerJob: Job? = null
   private var promptCountdownJob: Job? = null
+  private var arrivalCheckShown = false
 
   init {
     viewModelScope.launch {
@@ -59,8 +61,9 @@ class JourneyViewModel(
 
     viewModelScope.launch {
       com.example.core.location.EmergencyLocationManager.latestLocation.collect { loc ->
-        if (loc != null && !_uiState.value.isJourneyActive && _uiState.value.startLocation == "Mirpur 10, Dhaka") {
-          _uiState.update { it.copy(startLocation = loc.addressName) }
+        if (loc?.isAvailable == true) {
+          if (_uiState.value.isJourneyActive) journeyRepository.updateLocation(loc)
+          else _uiState.update { state -> if (state.startLocation.isBlank()) state.copy(startLocation = loc.description()) else state }
         }
       }
     }
@@ -69,7 +72,10 @@ class JourneyViewModel(
   fun useCurrentGpsLocation() {
     viewModelScope.launch {
       val loc = com.example.core.location.EmergencyLocationManager.getAccurateEmergencyCoordinates(getApplication())
-      _uiState.update { it.copy(startLocation = loc.addressName) }
+      _uiState.update {
+        if (loc.isAvailable) it.copy(startLocation = loc.description(), statusMessage = null)
+        else it.copy(statusMessage = "Location unavailable. Enter your starting point or enable device location.")
+      }
     }
   }
 
@@ -80,6 +86,11 @@ class JourneyViewModel(
   fun onNotesChanged(notes: String) = _uiState.update { it.copy(notes = notes) }
 
   fun startJourney() {
+    if (_uiState.value.isJourneyActive) return
+    if (_uiState.value.startLocation.isBlank() || _uiState.value.destination.isBlank()) {
+      _uiState.update { it.copy(statusMessage = "Enter a starting point and destination.") }
+      return
+    }
     viewModelScope.launch {
       val res = journeyRepository.startJourney(
         startLocation = _uiState.value.startLocation,
@@ -95,7 +106,7 @@ class JourneyViewModel(
             elapsedSeconds = 0,
             isSafetyPromptVisible = false,
             isDeviationAlertTriggered = false,
-            statusMessage = "Safe Journey started. Route tracking & proactive safety checks armed."
+            statusMessage = "Journey started on this device. You’ll get a safety check at the expected arrival time."
           )
         }
         startTrackingTimer()
@@ -105,13 +116,18 @@ class JourneyViewModel(
 
   private fun startTrackingTimer() {
     timerJob?.cancel()
+    val startedAt = SystemClock.elapsedRealtime()
+    arrivalCheckShown = false
     timerJob = viewModelScope.launch {
       while (true) {
         delay(1000)
+        val elapsedSeconds = ((SystemClock.elapsedRealtime() - startedAt) / 1000L).toInt()
         _uiState.update { current ->
-          val newSeconds = current.elapsedSeconds + 1
-          val newMinutes = newSeconds / 60
-          current.copy(elapsedSeconds = newSeconds, elapsedMinutes = newMinutes)
+          current.copy(elapsedSeconds = elapsedSeconds, elapsedMinutes = elapsedSeconds / 60)
+        }
+        if (!arrivalCheckShown && _uiState.value.elapsedMinutes >= _uiState.value.expectedDurationMinutes) {
+          arrivalCheckShown = true
+          triggerSafetyCheckPrompt(true)
         }
       }
     }
@@ -121,7 +137,7 @@ class JourneyViewModel(
     val journeyId = _uiState.value.activeJourney?.id ?: return
     val destination = _uiState.value.destination
     viewModelScope.launch {
-      journeyRepository.completeJourney(journeyId)
+      if (journeyRepository.completeJourney(journeyId).getOrNull() != true) return@launch
       timerJob?.cancel()
       promptCountdownJob?.cancel()
       
@@ -132,7 +148,7 @@ class JourneyViewModel(
       )
 
       val confirmationMsg = if (smsSent) {
-        "আলহামদুলিল্লাহ! আপনি নিরাপদে পৌঁছেছেন। অভিভাবকদের SMS এর মাধ্যমে নিশ্চিত করা হয়েছে।"
+        "Arrival SMS was accepted for sending. Check RAMISA for delivery status."
       } else {
         "You have marked yourself safe. Journey completed."
       }
@@ -177,7 +193,7 @@ class JourneyViewModel(
           it.copy(
             isDeviationAlertTriggered = true,
             isSafetyPromptVisible = false,
-            statusMessage = "Safety check timed out! SOS alert escalation prepared."
+            statusMessage = "Safety check timed out. Open SOS if you need to alert your contacts."
           )
         }
       }

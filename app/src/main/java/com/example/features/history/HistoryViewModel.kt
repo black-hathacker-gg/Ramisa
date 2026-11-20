@@ -20,7 +20,7 @@ data class HistoryUiState(
 
 class HistoryViewModel : ViewModel() {
 
-  private val emergencyRepository: EmergencyRepository = EmergencyRepositoryImpl()
+  private val emergencyRepository: EmergencyRepository = EmergencyRepositoryImpl.shared
   private val _uiState = MutableStateFlow(HistoryUiState())
   val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 

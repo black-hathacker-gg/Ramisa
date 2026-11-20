@@ -1,185 +1,185 @@
 package com.example.features.map
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.os.SystemClock
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.core.location.EmergencyLocationManager
 import com.example.data.repository.DangerZonesRepositoryImpl
 import com.example.domain.model.DangerCategory
 import com.example.domain.model.DangerZone
+import com.example.domain.model.GeoLocation
 import com.example.domain.model.RiskLevel
-import com.example.domain.repository.DangerZonesRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.maplibre.android.geometry.LatLng
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 data class DangerMapUiState(
-  val userLatitude: Double = 23.7465, // Dhaka center (Dhanmondi / DU axis)
-  val userLongitude: Double = 90.3750,
-  val zoomLevel: Float = 1.0f,
+  val deviceLocation: GeoLocation? = null,
+  val locationMessage: String? = null,
+  val centeringLocation: Boolean = false,
   val selectedZone: DangerZone? = null,
   val searchQuery: String = "",
   val selectedRiskFilter: RiskLevel? = null,
   val selectedCategoryFilter: DangerCategory? = null,
   val allDangerZones: List<DangerZone> = emptyList(),
   val filteredDangerZones: List<DangerZone> = emptyList(),
-  val isProximityAlertActive: Boolean = false,
-  val nearestDangerZone: DangerZone? = null,
-  val distanceToNearestKm: Double = 0.0,
-  val showReportDialog: Boolean = false,
+  val nearestLocalReport: DangerZone? = null,
+  val reportPoint: LatLng? = null,
   val reportSubmissionSuccess: Boolean = false,
+  val reportError: String? = null,
+  val savingReport: Boolean = false,
   val mapLayer: MapLayerType = MapLayerType.HEATMAP,
-  val isGpsActive: Boolean = false
+  val cameraAction: Pair<Long, MapCameraAction>? = null
 )
 
-enum class MapLayerType {
-  HEATMAP,
-  RISK_PINS,
-  SAFE_CORRIDORS
-}
+enum class MapLayerType { HEATMAP, RISK_PINS, SAFE_CORRIDORS }
 
-class DangerMapViewModel : ViewModel() {
-
-  private val repository: DangerZonesRepository = DangerZonesRepositoryImpl()
+class DangerMapViewModel(application: Application) : AndroidViewModel(application) {
+  private val repository = DangerZonesRepositoryImpl(application)
   private val _uiState = MutableStateFlow(DangerMapUiState())
   val uiState: StateFlow<DangerMapUiState> = _uiState.asStateFlow()
 
   init {
-    loadDangerZones()
+    viewModelScope.launch(Dispatchers.IO) { repository.loadLocalReports() }
     viewModelScope.launch {
-      EmergencyLocationManager.latestLocation.collect { loc ->
-        if (loc != null) {
-          _uiState.update { 
-            it.copy(
-              userLatitude = loc.latitude, 
-              userLongitude = loc.longitude,
-              isGpsActive = true
-            ) 
-          }
-          loadDangerZones()
+      repository.dangerZones.collect { zones ->
+        update { it.copy(allDangerZones = zones) }
+      }
+    }
+    viewModelScope.launch {
+      EmergencyLocationManager.latestLocation.collect { location ->
+        if (EmergencyLocationManager.hasLocationPermission(application)) {
+          update { it.copy(deviceLocation = location?.takeIf(GeoLocation::isAvailable)) }
         }
       }
     }
   }
 
-  private fun loadDangerZones() {
+  fun refreshLocation(recenter: Boolean = true) {
+    if (_uiState.value.centeringLocation) return
+    update { it.copy(centeringLocation = true, locationMessage = null) }
     viewModelScope.launch {
-      val zones = repository.getNearbyDangerZones(_uiState.value.userLatitude, _uiState.value.userLongitude)
-      _uiState.update { state ->
-        val nearest = zones.minByOrNull { z ->
-          calculateDistanceKm(state.userLatitude, state.userLongitude, z.latitude, z.longitude)
+      val location = EmergencyLocationManager.getAccurateEmergencyCoordinates(getApplication())
+      update { state ->
+        if (location.isAvailable) {
+          state.copy(
+            deviceLocation = location,
+            centeringLocation = false,
+            locationMessage = if (isFresh(location)) null else "Showing your last known location.",
+            cameraAction = if (recenter) cameraAction(MapCameraAction.Center(LatLng(location.latitude, location.longitude), 13.0))
+              else state.cameraAction
+          )
+        } else {
+          state.copy(deviceLocation = null, centeringLocation = false, locationMessage = location.addressName)
         }
-        val dist = nearest?.let { calculateDistanceKm(state.userLatitude, state.userLongitude, it.latitude, it.longitude) } ?: 0.0
-        state.copy(
-          allDangerZones = zones,
-          filteredDangerZones = zones,
-          nearestDangerZone = nearest,
-          distanceToNearestKm = dist,
-          isProximityAlertActive = dist <= 1.5, // Alert if within 1.5 km of a danger zone
-          selectedZone = state.selectedZone ?: nearest
+      }
+    }
+  }
+
+  fun locationDenied() {
+    update { it.copy(deviceLocation = null, locationMessage = "Enable location permission to see where you are.") }
+  }
+
+  fun selectZone(zone: DangerZone, recenter: Boolean = false) {
+    update {
+      it.copy(
+        selectedZone = zone,
+        cameraAction = if (recenter) cameraAction(MapCameraAction.Center(LatLng(zone.latitude, zone.longitude), 13.0))
+          else it.cameraAction
+      )
+    }
+  }
+
+  fun setSearchQuery(query: String) = update { it.copy(searchQuery = query) }
+
+  fun setRiskFilter(risk: RiskLevel?) =
+    update { it.copy(selectedRiskFilter = risk.takeUnless { value -> value == it.selectedRiskFilter }) }
+
+  fun setCategoryFilter(category: DangerCategory?) =
+    update { it.copy(selectedCategoryFilter = category.takeUnless { value -> value == it.selectedCategoryFilter }) }
+
+  fun setMapLayer(layer: MapLayerType) = update { it.copy(mapLayer = layer) }
+
+  fun zoom(steps: Double) = update { it.copy(cameraAction = cameraAction(MapCameraAction.Zoom(steps))) }
+
+  fun openReportDialog(point: LatLng) =
+    update { it.copy(reportPoint = point, reportSubmissionSuccess = false, reportError = null) }
+
+  fun closeReportDialog() {
+    if (!_uiState.value.savingReport) update { it.copy(reportPoint = null) }
+  }
+
+  fun submitUnsafeSpot(name: String, area: String, reason: String) {
+    val state = _uiState.value
+    val point = state.reportPoint ?: return
+    if (state.savingReport || name.isBlank() || reason.isBlank()) return
+    update { it.copy(savingReport = true, reportError = null) }
+    viewModelScope.launch(Dispatchers.IO) {
+      val success = repository.reportNewUnsafeLocation(
+        name.trim(), area.trim(), reason.trim(), point.latitude, point.longitude
+      )
+      update {
+        it.copy(
+          savingReport = false,
+          reportSubmissionSuccess = success,
+          reportError = if (success) null else "Couldn’t save this report on your device. Try again."
         )
       }
     }
   }
 
-  fun refreshLocation(context: Context) {
-    viewModelScope.launch {
-      val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
-      _uiState.update { 
-        it.copy(
-          userLatitude = loc.latitude, 
-          userLongitude = loc.longitude,
-          isGpsActive = true
-        ) 
+  private fun update(change: (DangerMapUiState) -> DangerMapUiState) {
+    _uiState.update { current ->
+      val next = change(current)
+      val query = next.searchQuery.trim()
+      val location = next.deviceLocation?.takeIf(::isFresh)
+      val sorted = next.allDangerZones.sortedBy { zone ->
+        location?.let { distanceKm(it, zone) } ?: 0.0
       }
-      loadDangerZones()
-    }
-  }
-
-  fun selectZone(zone: DangerZone?) {
-    _uiState.update { it.copy(selectedZone = zone) }
-  }
-
-  fun setSearchQuery(query: String) {
-    _uiState.update { it.copy(searchQuery = query) }
-    applyFilters()
-  }
-
-  fun setRiskFilter(risk: RiskLevel?) {
-    _uiState.update { it.copy(selectedRiskFilter = if (it.selectedRiskFilter == risk) null else risk) }
-    applyFilters()
-  }
-
-  fun setCategoryFilter(category: DangerCategory?) {
-    _uiState.update { it.copy(selectedCategoryFilter = if (it.selectedCategoryFilter == category) null else category) }
-    applyFilters()
-  }
-
-  fun setMapLayer(layer: MapLayerType) {
-    _uiState.update { it.copy(mapLayer = layer) }
-  }
-
-  fun zoomIn() {
-    _uiState.update { it.copy(zoomLevel = (it.zoomLevel + 0.25f).coerceAtMost(2.5f)) }
-  }
-
-  fun zoomOut() {
-    _uiState.update { it.copy(zoomLevel = (it.zoomLevel - 0.25f).coerceAtLeast(0.6f)) }
-  }
-
-  fun centerOnUser() {
-    _uiState.update { it.copy(zoomLevel = 1.0f, selectedZone = it.nearestDangerZone) }
-  }
-
-  fun openReportDialog() {
-    _uiState.update { it.copy(showReportDialog = true, reportSubmissionSuccess = false) }
-  }
-
-  fun closeReportDialog() {
-    _uiState.update { it.copy(showReportDialog = false) }
-  }
-
-  fun submitUnsafeSpot(name: String, area: String, reason: String) {
-    viewModelScope.launch {
-      val success = repository.reportNewUnsafeLocation(
-        name = name,
-        area = area,
-        reason = reason,
-        lat = _uiState.value.userLatitude + 0.005,
-        lng = _uiState.value.userLongitude + 0.005
-      )
-      if (success) {
-        _uiState.update { it.copy(reportSubmissionSuccess = true) }
-        loadDangerZones()
+      val filtered = sorted.filter { zone ->
+        (next.selectedRiskFilter == null || zone.riskLevel == next.selectedRiskFilter) &&
+          (next.selectedCategoryFilter == null || zone.category == next.selectedCategoryFilter) &&
+          (query.isEmpty() || zone.name.contains(query, true) || zone.areaName.contains(query, true) ||
+            zone.reportedIncidentsSummary.contains(query, true))
       }
-    }
-  }
-
-  private fun applyFilters() {
-    viewModelScope.launch {
-      val results = repository.searchDangerZones(
-        query = _uiState.value.searchQuery,
-        riskFilter = _uiState.value.selectedRiskFilter,
-        categoryFilter = _uiState.value.selectedCategoryFilter
+      val nearby = location?.let { fix ->
+        sorted.firstOrNull { it.isLocalReport && distanceKm(fix, it) <= 1.5 }
+      }
+      next.copy(
+        filteredDangerZones = filtered,
+        selectedZone = next.selectedZone?.takeIf { selected -> filtered.any { it.id == selected.id } },
+        nearestLocalReport = nearby
       )
-      _uiState.update { it.copy(filteredDangerZones = results) }
     }
   }
 
-  fun calculateDistanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-    val r = 6371.0
-    val dLat = Math.toRadians(lat2 - lat1)
-    val dLon = Math.toRadians(lon2 - lon1)
-    val a = sin(dLat / 2) * sin(dLat / 2) +
-        cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-        sin(dLon / 2) * sin(dLon / 2)
-    val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-    return Math.round(r * c * 10.0) / 10.0
+  private fun cameraAction(action: MapCameraAction): Pair<Long, MapCameraAction> =
+    SystemClock.elapsedRealtimeNanos() to action
+
+  internal fun isFresh(location: GeoLocation): Boolean =
+    (location.locationAgeMillis ?: Long.MAX_VALUE) < 120_000L
+
+  internal fun distanceLabel(location: GeoLocation, zone: DangerZone): String {
+    val distance = (distanceKm(location, zone) * 10.0).roundToInt() / 10.0
+    return "$distance km away"
+  }
+
+  private fun distanceKm(location: GeoLocation, zone: DangerZone): Double {
+    val dLat = Math.toRadians(zone.latitude - location.latitude)
+    val dLon = Math.toRadians(zone.longitude - location.longitude)
+    val a = (sin(dLat / 2) * sin(dLat / 2) +
+      cos(Math.toRadians(location.latitude)) * cos(Math.toRadians(zone.latitude)) *
+      sin(dLon / 2) * sin(dLon / 2)).coerceIn(0.0, 1.0)
+    return 6371.0 * 2 * atan2(sqrt(a), sqrt(1 - a))
   }
 }

@@ -1,273 +1,115 @@
 package com.example.features.auth
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
-import com.example.ui.theme.SafeGreenContainer
-import com.example.ui.theme.SafeGreenDark
-import com.example.ui.theme.SafeGreenPrimary
-import com.example.ui.theme.SafetyRedLight
-import com.example.ui.theme.SafetyRedPrimary
+import com.example.data.repository.AppSessionManager
 
 @Composable
 fun WelcomeScreen(
   onNavigateToLogin: () -> Unit,
   onNavigateToRegister: () -> Unit,
   onContinueAsGuest: () -> Unit = {},
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  isLoading: Boolean = false,
+  errorMessage: String? = null
 ) {
-  val scrollState = rememberScrollState()
+  val isBangla by AppSessionManager.isBanglaLanguage.collectAsStateWithLifecycle()
 
-  Surface(
-    modifier = modifier.fillMaxSize(),
-    color = MaterialTheme.colorScheme.background
-  ) {
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .statusBarsPadding()
-        .navigationBarsPadding()
-        .verticalScroll(scrollState)
-        .padding(horizontal = 24.dp, vertical = 32.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.Top
-    ) {
-      Spacer(modifier = Modifier.height(20.dp))
-
-      // App Logo Badge
-      Box(
-        modifier = Modifier
-          .size(108.dp)
-          .clip(CircleShape)
-          .background(Color.White)
-          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), CircleShape),
-        contentAlignment = Alignment.Center
+  Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Box(contentAlignment = Alignment.Center) {
+      Column(
+        modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()
+          .verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
       ) {
-        Image(
-          painter = painterResource(id = R.drawable.img_app_logo),
-          contentDescription = "RAMISA Safety Logo",
-          modifier = Modifier
-            .size(96.dp)
-            .clip(CircleShape)
-        )
-      }
-
-      Spacer(modifier = Modifier.height(20.dp))
-
-      Text(
-        text = "RAMISA",
-        style = MaterialTheme.typography.headlineLarge.copy(
-          fontWeight = FontWeight.Black,
-          letterSpacing = 2.sp
-        ),
-        color = MaterialTheme.colorScheme.onBackground
-      )
-
-      Text(
-        text = "Personal Safety & Rapid Response for Women & Children",
-        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = 16.dp)
-      )
-
-      Spacer(modifier = Modifier.height(24.dp))
-
-      // Inspirational Quote Highlight
-      Surface(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 8.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-      ) {
-        Column(
-          modifier = Modifier.padding(16.dp),
-          horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+          Image(
+            painter = painterResource(R.drawable.img_app_logo),
+            contentDescription = null,
+            modifier = Modifier.size(72.dp).clip(CircleShape)
+          )
+          Text("RAMISA", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
           Text(
-            text = "\"Please don't stop flying, fly freely to your desired sky\"",
-            style = MaterialTheme.typography.titleMedium.copy(
-              fontWeight = FontWeight.Bold,
-              fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-              letterSpacing = 0.5.sp
-            ),
-            color = MaterialTheme.colorScheme.primary,
-            textAlign = TextAlign.Center
+            text = if (isBangla) "বাংলাদেশের নারী ও শিশুদের ব্যক্তিগত নিরাপত্তা"
+              else "Personal safety for women and children in Bangladesh",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
           )
         }
+
+        Column(
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Button(
+            onClick = onNavigateToRegister,
+            enabled = !isLoading,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("btn_welcome_register"),
+            shape = RoundedCornerShape(14.dp)
+          ) {
+            Text(if (isBangla) "অ্যাকাউন্ট তৈরি করুন" else "Create account")
+          }
+          OutlinedButton(
+            onClick = onNavigateToLogin,
+            enabled = !isLoading,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("btn_welcome_login"),
+            shape = RoundedCornerShape(14.dp)
+          ) {
+            Text(if (isBangla) "সাইন ইন" else "Sign in")
+          }
+          TextButton(
+            onClick = onContinueAsGuest,
+            enabled = !isLoading,
+            modifier = Modifier.fillMaxWidth().testTag("btn_welcome_guest")
+          ) {
+            Text(if (isBangla) "অতিথি হিসেবে ব্যবহার করুন" else "Continue as guest")
+          }
+          if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+          errorMessage?.let { error ->
+            Text(
+              text = error,
+              color = MaterialTheme.colorScheme.error,
+              style = MaterialTheme.typography.bodySmall,
+              textAlign = TextAlign.Center,
+              modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+            )
+          }
+        }
       }
-
-      Spacer(modifier = Modifier.height(28.dp))
-
-
-
-      // Action Buttons
-      Button(
-        onClick = onNavigateToRegister,
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(52.dp)
-          .testTag("btn_welcome_register"),
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-      ) {
-        Text(
-          text = "CREATE SAFETY ACCOUNT",
-          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        )
-      }
-
-      Spacer(modifier = Modifier.height(12.dp))
-
-      OutlinedButton(
-        onClick = onNavigateToLogin,
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(52.dp)
-          .testTag("btn_welcome_login"),
-        shape = RoundedCornerShape(14.dp)
-      ) {
-        Text(
-          text = "LOG IN (সাইন ইন)",
-          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-        )
-      }
-
-      Spacer(modifier = Modifier.height(16.dp))
-
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
-        Text(
-          text = "  OR  ",
-          style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-          color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
-      }
-
-      Spacer(modifier = Modifier.height(16.dp))
-
-      // Guest Login Button
-      Button(
-        onClick = onContinueAsGuest,
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(50.dp)
-          .testTag("btn_welcome_guest"),
-        shape = RoundedCornerShape(14.dp),
-        colors = ButtonDefaults.buttonColors(
-          containerColor = MaterialTheme.colorScheme.secondaryContainer,
-          contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        )
-      ) {
-        Icon(
-          imageVector = Icons.Default.Person,
-          contentDescription = null,
-          modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-          text = "CONTINUE AS GUEST (অতিথি প্রবেশ)",
-          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-        )
-      }
-
-      Spacer(modifier = Modifier.height(24.dp))
-    }
-  }
-}
-
-@Composable
-private fun FeatureHighlightRow(
-  icon: androidx.compose.ui.graphics.vector.ImageVector,
-  title: String,
-  subtitle: String
-) {
-  Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically
-  ) {
-    Surface(
-      shape = CircleShape,
-      color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-      modifier = Modifier.size(36.dp)
-    ) {
-      Box(contentAlignment = Alignment.Center) {
-        Icon(
-          imageVector = icon,
-          contentDescription = null,
-          tint = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.size(18.dp)
-        )
-      }
-    }
-    Spacer(modifier = Modifier.width(12.dp))
-    Column {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-        color = MaterialTheme.colorScheme.onSurface
-      )
-      Text(
-        text = subtitle,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-      )
     }
   }
 }

@@ -62,7 +62,6 @@ class EmergencyViewModel(
     loadContacts()
     startLocationServiceAndListener()
     startEmergencyTimer()
-    dispatchSimSmsAndCall(initiateCall = true)
   }
 
   private fun loadContacts() {
@@ -104,10 +103,23 @@ class EmergencyViewModel(
           _uiState.update {
             it.copy(
               location = updatedLoc,
-              locationLabel = "${updatedLoc.addressName} (±${String.format("%.1f", updatedLoc.accuracyMeters)}m)"
+              locationLabel = "${updatedLoc.addressName} (±${String.format(java.util.Locale.US, "%.1f", updatedLoc.accuracyMeters)}m)"
             )
           }
         }
+      }
+    }
+  }
+
+  fun refreshLocation() {
+    val context = getApplication<Application>()
+    viewModelScope.launch {
+      val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
+      _uiState.update {
+        it.copy(
+          location = loc,
+          locationLabel = "${loc.addressName} (±${String.format(java.util.Locale.US, "%.1f", loc.accuracyMeters)}m)"
+        )
       }
     }
   }
@@ -123,49 +135,35 @@ class EmergencyViewModel(
   }
 
   fun dispatchSimSmsAndCall(customNote: String = "", initiateCall: Boolean = true) {
+    val context = getApplication<Application>()
+    
     viewModelScope.launch {
-      val context = getApplication<Application>()
-      
-      // Fetch latest FusedLocation coordinates
-      val accurateLoc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
-      
-      val report: SmsDispatchReport = EmergencySmsDispatcher.dispatchEmergencySms(
-        context = context,
-        customNote = customNote,
-        location = accurateLoc
-      )
+        // Schedule robust background SMS dispatch via WorkManager
+        val accurateLoc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
+        val data = androidx.work.workDataOf(
+            "custom_note" to customNote,
+            "lat" to accurateLoc.latitude,
+            "lng" to accurateLoc.longitude
+        )
+        val smsWorkRequest = androidx.work.OneTimeWorkRequestBuilder<com.example.core.sms.worker.EmergencySmsWorker>()
+            .setInputData(data)
+            .build()
+        androidx.work.WorkManager.getInstance(context).enqueue(smsWorkRequest)
 
-      _uiState.update { current ->
-        if (report.isPermissionGranted) {
-          val successNames = report.successfulContactNames
-          val summary = if (successNames.isNotEmpty()) {
-            "Automated SIM SMS dispatched to ${successNames.size} contacts: ${successNames.joinToString(", ")}"
-          } else {
-            "SIM SMS sent to emergency queue (${report.totalAttempted} contacts)"
-          }
-          current.copy(
-            location = report.locationUsed ?: current.location,
-            locationLabel = "${report.locationUsed?.addressName ?: current.location.addressName} (Fused GPS Active)",
-            isSmsSent = true,
-            isSmsPermissionGranted = true,
-            contactsNotifiedCount = report.totalAttempted,
-            contactedNames = successNames,
-            smsStatusSummary = summary
-          )
-        } else {
-          current.copy(
-            isSmsSent = false,
-            isSmsPermissionGranted = false,
-            smsStatusSummary = "SMS Permission Required to send offline SMS via SIM card."
-          )
+        // Update UI to reflect SMS is queued for background sending
+        _uiState.update { current ->
+            current.copy(
+                isSmsSent = true,
+                smsStatusSummary = "Emergency SMS queued for reliable background delivery..."
+            )
         }
-      }
 
-      // Automatically initiate call to Primary Contact or 999
-      if (initiateCall) {
-        val targetPhone = report.primaryContactPhone ?: _uiState.value.primaryContact?.phone ?: "999"
-        EmergencySmsDispatcher.initiateEmergencyPhoneCall(context, targetPhone)
-      }
+        // Automatically initiate calls sequentially
+        if (initiateCall) {
+            EmergencySmsDispatcher.initiateEmergencyPhoneCall(context, "999")
+            delay(3000) // Small delay before next
+            EmergencySmsDispatcher.initiateEmergencyPhoneCall(context, "10921")
+        }
     }
   }
 

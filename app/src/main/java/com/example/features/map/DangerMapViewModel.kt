@@ -1,7 +1,9 @@
 package com.example.features.map
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.core.location.EmergencyLocationManager
 import com.example.data.repository.DangerZonesRepositoryImpl
 import com.example.domain.model.DangerCategory
 import com.example.domain.model.DangerZone
@@ -32,7 +34,8 @@ data class DangerMapUiState(
   val distanceToNearestKm: Double = 0.0,
   val showReportDialog: Boolean = false,
   val reportSubmissionSuccess: Boolean = false,
-  val mapLayer: MapLayerType = MapLayerType.HEATMAP
+  val mapLayer: MapLayerType = MapLayerType.HEATMAP,
+  val isGpsActive: Boolean = false
 )
 
 enum class MapLayerType {
@@ -49,6 +52,20 @@ class DangerMapViewModel : ViewModel() {
 
   init {
     loadDangerZones()
+    viewModelScope.launch {
+      EmergencyLocationManager.latestLocation.collect { loc ->
+        if (loc != null) {
+          _uiState.update { 
+            it.copy(
+              userLatitude = loc.latitude, 
+              userLongitude = loc.longitude,
+              isGpsActive = true
+            ) 
+          }
+          loadDangerZones()
+        }
+      }
+    }
   }
 
   private fun loadDangerZones() {
@@ -65,9 +82,23 @@ class DangerMapViewModel : ViewModel() {
           nearestDangerZone = nearest,
           distanceToNearestKm = dist,
           isProximityAlertActive = dist <= 1.5, // Alert if within 1.5 km of a danger zone
-          selectedZone = nearest
+          selectedZone = state.selectedZone ?: nearest
         )
       }
+    }
+  }
+
+  fun refreshLocation(context: Context) {
+    viewModelScope.launch {
+      val loc = EmergencyLocationManager.getAccurateEmergencyCoordinates(context)
+      _uiState.update { 
+        it.copy(
+          userLatitude = loc.latitude, 
+          userLongitude = loc.longitude,
+          isGpsActive = true
+        ) 
+      }
+      loadDangerZones()
     }
   }
 

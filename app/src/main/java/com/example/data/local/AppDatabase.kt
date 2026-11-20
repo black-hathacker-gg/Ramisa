@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.domain.model.EmergencyContact
+import net.sqlcipher.database.SQLiteDatabase
+import net.sqlcipher.database.SupportFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -15,9 +17,10 @@ import kotlinx.coroutines.launch
         EmergencyContact::class,
         UserProfileEntity::class,
         SafetyBroadcastEntity::class,
-        CommunityPostEntity::class
+        CommunityPostEntity::class,
+        LocationEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -25,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun safetyBroadcastDao(): SafetyBroadcastDao
     abstract fun communityDao(): CommunityDao
+    abstract fun locationDao(): LocationDao
 
     companion object {
         @Volatile
@@ -32,11 +36,36 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
+                // Initialize SQLCipher
+                SQLiteDatabase.loadLibs(context)
+                val secret = "dummy_password_replace_with_secure_secret"
+                val passphraseChars = secret.toCharArray()
+                val passphraseBytes = secret.toByteArray()
+                val factory = SupportFactory(passphraseBytes)
+
+                val databaseFile = context.getDatabasePath("ramisa_safety_db")
+                if (databaseFile.exists()) {
+                    try {
+                        val db = SQLiteDatabase.openDatabase(
+                            databaseFile.absolutePath,
+                            passphraseChars,
+                            null,
+                            SQLiteDatabase.OPEN_READONLY
+                        )
+                        db.close()
+                    } catch (e: Exception) {
+                        // If it fails to open with the passphrase, it might be unencrypted,
+                        // so we delete it to start fresh with encryption.
+                        databaseFile.delete()
+                    }
+                }
+
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "ramisa_safety_db"
                 )
+                .openHelperFactory(factory)
                 .fallbackToDestructiveMigration()
                 .allowMainThreadQueries()
                 .addCallback(DatabaseCallback(context.applicationContext))

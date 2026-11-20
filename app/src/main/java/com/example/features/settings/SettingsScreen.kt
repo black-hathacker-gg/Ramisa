@@ -2,28 +2,69 @@ package com.example.features.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ChildCare
+import androidx.compose.material.icons.filled.FolderSpecial
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Sms
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.*
+import com.example.ui.theme.SafeGreenDark
+import com.example.ui.theme.SafeGreenPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,183 +75,428 @@ fun SettingsScreen(
   onNavigateToProfile: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
+  val uiState by viewModel.uiState.collectAsState()
   val scrollState = rememberScrollState()
+  val context = androidx.compose.ui.platform.LocalContext.current
+
+  androidx.compose.runtime.LaunchedEffect(Unit) {
+    viewModel.setGhostModeState(com.example.core.utils.GhostModeManager.isGhostModeEnabled(context))
+  }
+
+  var isChangePinDialogVisible by remember { mutableStateOf(false) }
+  var newPinInput by remember { mutableStateOf("") }
 
   Scaffold(
     topBar = {
       TopAppBar(
         title = {
           Text(
-            text = "YOU",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+            text = "Settings & Security",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
           )
         },
+        navigationIcon = {
+          IconButton(onClick = onNavigateBack) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+          }
+        },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = PinkPrimary,
-          titleContentColor = Color.White
+          containerColor = MaterialTheme.colorScheme.primary,
+          titleContentColor = Color.White,
+          navigationIconContentColor = Color.White,
+          actionIconContentColor = Color.White
         )
       )
     },
     modifier = modifier.fillMaxSize(),
-    containerColor = SurfaceLight
+    containerColor = MaterialTheme.colorScheme.background
   ) { paddingValues ->
     Column(
       modifier = Modifier
-        .fillMaxSize()
+        .fillMaxWidth()
         .padding(paddingValues)
         .verticalScroll(scrollState)
+        .padding(horizontal = 20.dp, vertical = 12.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-      // Profile Header Section
-      Box(
+      // User Profile Header Card
+      Card(
         modifier = Modifier
           .fillMaxWidth()
-          .background(PinkPrimary)
-          .padding(bottom = 32.dp, top = 16.dp),
-        contentAlignment = Alignment.Center
+          .clickable { onNavigateToProfile() }
+          .testTag("settings_profile_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
       ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-          Box(
-            modifier = Modifier
-              .size(96.dp)
-              .clip(CircleShape)
-              .background(PinkContainer)
-              .border(4.dp, Color.White, CircleShape),
-            contentAlignment = Alignment.Center
-          ) {
-            Text(
-              text = "R",
-              style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
-              color = PinkPrimaryDark
-            )
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            val currentUser by com.example.data.repository.AppSessionManager.currentUser.collectAsState()
+            val userName = currentUser?.name ?: "RAMISA User"
+            val initials = userName.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString("").ifEmpty { "RU" }
+
+            Surface(
+              shape = CircleShape,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(44.dp)
+            ) {
+              Box(contentAlignment = Alignment.Center) {
+                Text(
+                  text = initials,
+                  style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                  color = Color.White
+                )
+              }
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+              Text(
+                text = userName,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+              )
+              Text(
+                text = "View & Edit Safety Profile, Blood Group, Guardian",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+              )
+            }
           }
-          Spacer(modifier = Modifier.height(16.dp))
+
           Text(
-            text = "Ramisa",
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = Color.White
-          )
-          Text(
-            text = "Safety ID: 8943-221",
-            style = MaterialTheme.typography.labelMedium,
-            color = PinkContainer
+            text = "VIEW",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
           )
         }
       }
 
-      Spacer(modifier = Modifier.height(24.dp))
 
-      // Section: Personal
-      SettingsSectionTitle(title = "PERSONAL")
-      SettingsCard {
-        SettingsItem(icon = Icons.Default.Person, title = "Account details", subtitle = "Name, Blood Group, Age", onClick = onNavigateToProfile)
-        HorizontalDivider(color = PinkBorderSubtle, modifier = Modifier.padding(horizontal = 16.dp))
-        SettingsItem(icon = Icons.Default.Contacts, title = "Safety Circle", subtitle = "Manage your trusted emergency contacts", onClick = { /* Navigate */ })
-      }
-
-      Spacer(modifier = Modifier.height(24.dp))
-
-      // Section: Security
-      SettingsSectionTitle(title = "SECURITY & EMERGENCY")
-      SettingsCard {
-        SettingsItem(icon = Icons.Default.Lock, title = "Secret PIN", subtitle = "Update your emergency resolution PIN", onClick = { /* Show Dialog */ })
-        HorizontalDivider(color = PinkBorderSubtle, modifier = Modifier.padding(horizontal = 16.dp))
-        SettingsItem(icon = Icons.Default.SettingsCell, title = "Hardware Trigger", subtitle = "Power button & volume key gestures", onClick = { /* Navigate */ })
-      }
-
-      Spacer(modifier = Modifier.height(24.dp))
-
-      // Section: Preferences
-      SettingsSectionTitle(title = "PREFERENCES")
-      SettingsCard {
-        SettingsItem(icon = Icons.Default.Language, title = "Language", subtitle = "English (US)", onClick = { /* Language Switch */ })
-        HorizontalDivider(color = PinkBorderSubtle, modifier = Modifier.padding(horizontal = 16.dp))
-        SettingsItem(icon = Icons.Default.Notifications, title = "Notifications", subtitle = "Push & SMS alerts", onClick = { /* Notifications */ })
-      }
-
-      Spacer(modifier = Modifier.height(32.dp))
-
-      // Logout Button
-      Button(
-        onClick = onLogout,
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 24.dp)
-          .height(56.dp),
+      // Language Card
+      Card(
+        modifier = Modifier.fillMaxWidth().testTag("settings_lang_card"),
         shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = PinkContainer, contentColor = PinkPrimaryDark)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
       ) {
-        Text("Log Out", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+              imageVector = Icons.Default.Language,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+              text = "Language (ভাষা)",
+              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+          }
+
+          Spacer(modifier = Modifier.height(12.dp))
+
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            FilterChip(
+              selected = uiState.language == AppLanguage.ENGLISH,
+              onClick = { viewModel.setLanguage(AppLanguage.ENGLISH) },
+              label = { Text("English") },
+              modifier = Modifier.testTag("chip_lang_en")
+            )
+            FilterChip(
+              selected = uiState.language == AppLanguage.BANGLA,
+              onClick = { viewModel.setLanguage(AppLanguage.BANGLA) },
+              label = { Text("বাংলা (Bangla)") },
+              modifier = Modifier.testTag("chip_lang_bn")
+            )
+          }
+        }
       }
 
-      Spacer(modifier = Modifier.height(64.dp)) // padding for bottom nav
+      // Offline & Safety Toggles
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+      ) {
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+          Text(
+            text = "SAFETY AUTOMATIONS",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+
+          // Lock Screen SOS Guard
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "Lock Screen SOS Guard",
+                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                  text = "1-Tap emergency button on locked screen • Send native SMS without unlocking",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+            Switch(
+              checked = true,
+              onCheckedChange = { },
+              modifier = Modifier.testTag("switch_lockscreen_guard_settings")
+            )
+          }
+
+          HorizontalDivider()
+
+          // Ghost Mode / Stealth Camouflage
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "Ghost Mode (Camouflage)",
+                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                  text = "Changes App Icon & Name to 'Calculator' to hide from attackers",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+            Switch(
+              checked = uiState.isGhostModeEnabled,
+              onCheckedChange = { 
+                viewModel.setGhostModeState(it)
+                com.example.core.utils.GhostModeManager.setGhostMode(context, it)
+              },
+              modifier = Modifier.testTag("switch_ghost_mode_settings")
+            )
+          }
+
+          HorizontalDivider()
+
+          // SMS Fallback Toggle
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Sms, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "Cellular Direct SMS & Offline Mesh",
+                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                  text = "Automatically dispatch direct SMS & Bluetooth mesh when zero internet",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+            Switch(
+              checked = uiState.isSmsFallbackEnabled,
+              onCheckedChange = { viewModel.toggleSmsFallback() },
+              modifier = Modifier.testTag("switch_sms_fallback")
+            )
+          }
+
+
+        }
+      }
+
+      // Bangladesh Emergency Hotlines Directory
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+      ) {
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(imageVector = Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+              text = "Bangladesh Emergency Directory",
+              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
+          }
+
+          EmergencyHotlineRow("National Emergency (পুলিশ/অ্যাম্বুলেন্স)", "999")
+          EmergencyHotlineRow("Women & Child Abuse Prevention (নারী ও শিশু নির্যাতন)", "109")
+          EmergencyHotlineRow("Child Helpline (শিশু সুরক্ষা সহায়তা)", "1098")
+          EmergencyHotlineRow("National Legal Aid (আইনি সহায়তা)", "16430")
+        }
+      }
+
+      // Security PIN Management
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+      ) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .clickable { isChangePinDialogVisible = true }
+            .padding(16.dp)
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+          ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+              Icon(imageVector = Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+              Spacer(modifier = Modifier.width(12.dp))
+              Column {
+                Text(
+                  text = "Emergency & Duress PIN",
+                  style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                  text = "PIN is currently active • Tap to update",
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
+
+            Text(
+              text = "EDIT",
+              style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+              color = MaterialTheme.colorScheme.primary
+            )
+          }
+
+        }
+      }
+
+      // About & Version
+      Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+      ) {
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(16.dp),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Text(
+            text = "RAMISA v5.0 (Phase 5: Hardware & Wearable Triggers)",
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+          )
+          Text(
+            text = "Women's & Children's Personal Safety System for Bangladesh",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+          Spacer(modifier = Modifier.height(12.dp))
+          TextButton(onClick = onLogout, modifier = Modifier.testTag("btn_logout")) {
+            Text(
+              text = "Log Out / Switch Account",
+              color = MaterialTheme.colorScheme.error,
+              fontWeight = FontWeight.Bold
+            )
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(24.dp))
     }
   }
-}
 
-@Composable
-fun SettingsSectionTitle(title: String) {
-  Text(
-    text = title,
-    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp),
-    color = TextSecondaryLight,
-    modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)
-  )
-}
-
-@Composable
-fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
-  Surface(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 24.dp),
-    shape = RoundedCornerShape(20.dp),
-    color = SurfaceCardLight,
-    border = BorderStroke(1.dp, PinkBorderSubtle),
-    shadowElevation = 2.dp
-  ) {
-    Column(content = content)
+  // Change PIN Dialog
+  if (isChangePinDialogVisible) {
+    AlertDialog(
+      onDismissRequest = { isChangePinDialogVisible = false },
+      title = { Text("Update Emergency PIN") },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text("Enter a new 4-digit PIN for resolving emergency SOS alerts.")
+          OutlinedTextField(
+            value = newPinInput,
+            onValueChange = { if (it.length <= 4) newPinInput = it },
+            label = { Text("4-Digit PIN") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().testTag("dialog_input_new_pin")
+          )
+        }
+      },
+      confirmButton = {
+        Button(
+          onClick = {
+            if (newPinInput.length == 4) {
+              viewModel.updatePin(newPinInput)
+              newPinInput = ""
+              isChangePinDialogVisible = false
+            }
+          },
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+          Text("Update PIN")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { isChangePinDialogVisible = false }) {
+          Text("Cancel")
+        }
+      }
+    )
   }
 }
 
 @Composable
-fun SettingsItem(icon: ImageVector, title: String, subtitle: String? = null, onClick: () -> Unit) {
+private fun EmergencyHotlineRow(title: String, number: String) {
   Row(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clickable { onClick() }
-      .padding(horizontal = 20.dp, vertical = 16.dp),
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically
   ) {
-    Box(
-      modifier = Modifier
-        .size(44.dp)
-        .clip(CircleShape)
-        .background(PinkContainer.copy(alpha = 0.5f)),
-      contentAlignment = Alignment.Center
-    ) {
-      Icon(imageVector = icon, contentDescription = null, tint = PinkPrimary)
-    }
-    Spacer(modifier = Modifier.width(16.dp))
-    Column(modifier = Modifier.weight(1f)) {
-      Text(
-        text = title,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-        color = PinkPrimaryDark
-      )
-      if (subtitle != null) {
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-          text = subtitle,
-          style = MaterialTheme.typography.bodySmall,
-          color = TextSecondaryLight
-        )
-      }
-    }
-    Icon(
-      imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-      contentDescription = null,
-      tint = TextSecondaryLight,
-      modifier = Modifier.size(16.dp)
+    Text(
+      text = title,
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurface
     )
+    Surface(
+      shape = RoundedCornerShape(6.dp),
+      color = MaterialTheme.colorScheme.primaryContainer
+    ) {
+      Text(
+        text = number,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+        color = MaterialTheme.colorScheme.onPrimaryContainer,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+      )
+    }
   }
 }

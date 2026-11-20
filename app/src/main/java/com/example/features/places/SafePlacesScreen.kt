@@ -2,18 +2,53 @@ package com.example.features.places
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.SupportAgent
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,7 +61,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.PlaceType
 import com.example.domain.model.SafePlace
-import com.example.ui.theme.*
+import com.example.ui.theme.SafeGreenContainer
+import com.example.ui.theme.SafeGreenDark
+import com.example.ui.theme.SafeGreenPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,17 +90,17 @@ fun SafePlacesScreen(
       TopAppBar(
         title = {
           Text(
-            text = "SAFE PLACES",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
+            text = "Safe Places Radar (নিরাপদ স্থান)",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
           )
         },
         navigationIcon = {
           IconButton(onClick = onNavigateBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
           }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-          containerColor = PinkPrimary,
+          containerColor = MaterialTheme.colorScheme.primary,
           titleContentColor = Color.White,
           navigationIconContentColor = Color.White,
           actionIconContentColor = Color.White
@@ -71,108 +108,83 @@ fun SafePlacesScreen(
       )
     },
     modifier = modifier.fillMaxSize(),
-    containerColor = SurfaceLight
+    containerColor = MaterialTheme.colorScheme.background
   ) { paddingValues ->
     Column(
       modifier = Modifier
         .fillMaxSize()
         .padding(paddingValues)
+        .padding(horizontal = 18.dp)
     ) {
-      Surface(
+      Spacer(modifier = Modifier.height(6.dp))
+
+      // Search Field
+      OutlinedTextField(
+        value = uiState.searchQuery,
+        onValueChange = viewModel::onSearchQueryChanged,
+        placeholder = { Text("Search Thana, Hospital, Area (ধানমন্ডি, মিরপুর...)") },
+        leadingIcon = {
+          Icon(imageVector = Icons.Default.Search, contentDescription = null)
+        },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag("input_search_places")
+      )
+
+      Spacer(modifier = Modifier.height(10.dp))
+
+      // Filter Chips Row
+      Row(
         modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
-        shadowElevation = 2.dp
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
       ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-          // Search Field
-          OutlinedTextField(
-            value = uiState.searchQuery,
-            onValueChange = viewModel::onSearchQueryChanged,
-            placeholder = { Text("Search nearby...", color = TextSecondaryLight) },
-            leadingIcon = {
-              Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = PinkPrimary)
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(16.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-              focusedBorderColor = PinkPrimary,
-              unfocusedBorderColor = PinkBorderSubtle,
-              cursorColor = PinkPrimary
-            ),
-            modifier = Modifier
-              .fillMaxWidth()
-              .testTag("input_search_places")
-          )
-
-          Spacer(modifier = Modifier.height(16.dp))
-
-          // Categories Grid / Filter Chips Row
-          androidx.compose.foundation.lazy.LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-          ) {
-            item {
-              SafePlaceFilterChip(
-                selected = uiState.selectedFilter == null,
-                onClick = { viewModel.onFilterSelected(null) },
-                label = "All"
-              )
-            }
-            item {
-              SafePlaceFilterChip(
-                selected = uiState.selectedFilter == PlaceType.POLICE_STATION,
-                onClick = { viewModel.onFilterSelected(PlaceType.POLICE_STATION) },
-                label = "Police Station"
-              )
-            }
-            item {
-              SafePlaceFilterChip(
-                selected = uiState.selectedFilter == PlaceType.HOSPITAL,
-                onClick = { viewModel.onFilterSelected(PlaceType.HOSPITAL) },
-                label = "Hospital"
-              )
-            }
-            item {
-              SafePlaceFilterChip(
-                selected = uiState.selectedFilter == PlaceType.WOMEN_SUPPORT_CENTER,
-                onClick = { viewModel.onFilterSelected(PlaceType.WOMEN_SUPPORT_CENTER) },
-                label = "University Security"
-              )
-            }
-            item {
-              SafePlaceFilterChip(
-                selected = uiState.selectedFilter == PlaceType.SAFE_ZONE,
-                onClick = { viewModel.onFilterSelected(PlaceType.SAFE_ZONE) },
-                label = "Ramisa Verified"
-              )
-            }
-          }
-        }
+        FilterChip(
+          selected = uiState.selectedFilter == null,
+          onClick = { viewModel.onFilterSelected(null) },
+          label = { Text("All", fontSize = 11.sp) }
+        )
+        FilterChip(
+          selected = uiState.selectedFilter == PlaceType.POLICE_STATION,
+          onClick = { viewModel.onFilterSelected(PlaceType.POLICE_STATION) },
+          label = { Text("Police / থানা", fontSize = 11.sp) }
+        )
+        FilterChip(
+          selected = uiState.selectedFilter == PlaceType.HOSPITAL,
+          onClick = { viewModel.onFilterSelected(PlaceType.HOSPITAL) },
+          label = { Text("Hospitals", fontSize = 11.sp) }
+        )
+        FilterChip(
+          selected = uiState.selectedFilter == PlaceType.WOMEN_SUPPORT_CENTER,
+          onClick = { viewModel.onFilterSelected(PlaceType.WOMEN_SUPPORT_CENTER) },
+          label = { Text("Women Crisis (OCC)", fontSize = 11.sp) }
+        )
       }
 
-      // List of Places
+      Spacer(modifier = Modifier.height(12.dp))
+
+      // Safe places list
       LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
       ) {
         items(uiState.places, key = { it.id }) { place ->
           SafePlaceCard(
             place = place,
-            onCallClick = { viewModel.onCallPlace(place.phoneNumber) }
+            onCall = { viewModel.onCallPlace(place.phoneNumber) },
+            onNavigate = {
+              val gmmIntentUri = Uri.parse("geo:${place.latitude},${place.longitude}?q=${Uri.encode(place.name)}")
+              val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+              try {
+                context.startActivity(mapIntent)
+              } catch (_: Exception) {}
+            }
           )
         }
-        
-        if (uiState.places.isEmpty()) {
-          item {
-            Column(
-              modifier = Modifier.fillMaxWidth().padding(48.dp),
-              horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-              Icon(Icons.Default.NotListedLocation, contentDescription = null, tint = PinkPrimary.copy(alpha = 0.5f), modifier = Modifier.size(64.dp))
-              Spacer(modifier = Modifier.height(16.dp))
-              Text("No safe places found", style = MaterialTheme.typography.titleMedium, color = PinkPrimaryDark)
-            }
-          }
+
+        item {
+          Spacer(modifier = Modifier.height(24.dp))
         }
       }
     }
@@ -180,120 +192,140 @@ fun SafePlacesScreen(
 }
 
 @Composable
-fun SafePlaceFilterChip(selected: Boolean, onClick: () -> Unit, label: String) {
-  FilterChip(
-    selected = selected,
-    onClick = onClick,
-    label = { Text(label, fontWeight = FontWeight.SemiBold, color = if (selected) Color.White else PinkPrimaryDark) },
-    colors = FilterChipDefaults.filterChipColors(
-      containerColor = PinkContainer.copy(alpha = 0.5f),
-      selectedContainerColor = PinkPrimary
-    ),
-    border = FilterChipDefaults.filterChipBorder(
-      enabled = true,
-      selected = selected,
-      borderColor = PinkBorderSubtle,
-      selectedBorderColor = PinkPrimary
-    ),
-    shape = RoundedCornerShape(16.dp)
-  )
-}
-
-@Composable
-fun SafePlaceCard(
+private fun SafePlaceCard(
   place: SafePlace,
-  onCallClick: () -> Unit
+  onCall: () -> Unit,
+  onNavigate: () -> Unit
 ) {
-  val icon = when (place.type) {
-    PlaceType.POLICE_STATION -> Icons.Default.LocalPolice
+  val icon: ImageVector = when (place.type) {
+    PlaceType.POLICE_STATION -> Icons.Default.Security
     PlaceType.HOSPITAL -> Icons.Default.LocalHospital
     PlaceType.WOMEN_SUPPORT_CENTER -> Icons.Default.SupportAgent
-    PlaceType.SAFE_ZONE -> Icons.Default.VerifiedUser
+    PlaceType.SAFE_ZONE -> Icons.Default.Shield
   }
 
-  Surface(
-    shape = RoundedCornerShape(20.dp),
-    color = SurfaceCardLight,
-    border = BorderStroke(1.dp, PinkBorderSubtle),
-    shadowElevation = 2.dp,
-    modifier = Modifier.fillMaxWidth()
+  val typeTag = when (place.type) {
+    PlaceType.POLICE_STATION -> "POLICE THANA"
+    PlaceType.HOSPITAL -> "24/7 HOSPITAL"
+    PlaceType.WOMEN_SUPPORT_CENTER -> "CRISIS HELPDESK"
+    PlaceType.SAFE_ZONE -> "SAFE HAVEN"
+  }
+
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .testTag("safe_place_card_${place.id}"),
+    shape = RoundedCornerShape(16.dp),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
   ) {
     Column(
-      modifier = Modifier.padding(16.dp)
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(16.dp)
     ) {
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-          modifier = Modifier
-            .size(48.dp)
-            .clip(CircleShape)
-            .background(PinkContainer.copy(alpha = 0.5f)),
-          contentAlignment = Alignment.Center
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Surface(
+          shape = RoundedCornerShape(6.dp),
+          color = MaterialTheme.colorScheme.primaryContainer
         ) {
-          Icon(imageVector = icon, contentDescription = null, tint = PinkPrimary)
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
           Text(
-            text = place.name,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = PinkPrimaryDark
-          )
-          Spacer(modifier = Modifier.height(4.dp))
-          Text(
-            text = "${place.distanceKm} km • ${place.area}",
-            style = MaterialTheme.typography.labelMedium,
-            color = TextSecondaryLight
+            text = typeTag,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp),
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
           )
         }
-        if (place.isOpen24x7) {
-          Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = PinkContainer
+
+        Surface(
+          shape = RoundedCornerShape(8.dp),
+          color = SafeGreenContainer
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
           ) {
+            Icon(
+              imageVector = Icons.Default.LocationOn,
+              contentDescription = null,
+              tint = SafeGreenDark,
+              modifier = Modifier.size(12.dp)
+            )
+            Spacer(modifier = Modifier.width(2.dp))
             Text(
-              text = "24/7",
-              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-              color = PinkPrimary,
-              modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+              text = "${place.distanceKm} km away",
+              style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 11.sp),
+              color = SafeGreenDark
             )
           }
         }
       }
 
-      Spacer(modifier = Modifier.height(16.dp))
-      
-      Text(
-        text = place.address,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-      )
+      Spacer(modifier = Modifier.height(10.dp))
 
-      Spacer(modifier = Modifier.height(16.dp))
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-      ) {
-        OutlinedButton(
-          onClick = { /* Open maps intent */ },
-          modifier = Modifier.weight(1f).height(44.dp),
-          shape = RoundedCornerShape(12.dp),
-          border = BorderStroke(1.dp, PinkPrimary),
-          colors = ButtonDefaults.outlinedButtonColors(contentColor = PinkPrimary)
+      Row(verticalAlignment = Alignment.Top) {
+        Box(
+          modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+          contentAlignment = Alignment.Center
         ) {
-          Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(18.dp))
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("NAVIGATE", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+          Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
         }
 
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+          Text(
+            text = place.name,
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.onSurface
+          )
+          Spacer(modifier = Modifier.height(2.dp))
+          Text(
+            text = place.address,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(14.dp))
+
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+      ) {
         Button(
-          onClick = onCallClick,
-          modifier = Modifier.weight(1f).height(44.dp),
-          shape = RoundedCornerShape(12.dp),
-          colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary, contentColor = Color.White)
+          onClick = onCall,
+          shape = RoundedCornerShape(10.dp),
+          colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+          modifier = Modifier
+            .weight(1f)
+            .height(40.dp)
+            .testTag("btn_call_place_${place.id}")
         ) {
-          Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(18.dp))
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("CALL NOW", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+          Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text("CALL DESK", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+
+        OutlinedButton(
+          onClick = onNavigate,
+          shape = RoundedCornerShape(10.dp),
+          modifier = Modifier
+            .weight(1f)
+            .height(40.dp)
+            .testTag("btn_nav_place_${place.id}")
+        ) {
+          Icon(imageVector = Icons.Default.Navigation, contentDescription = null, modifier = Modifier.size(16.dp))
+          Spacer(modifier = Modifier.width(6.dp))
+          Text("DIRECTIONS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
       }
     }

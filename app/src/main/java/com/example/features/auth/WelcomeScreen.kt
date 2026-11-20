@@ -1,17 +1,44 @@
 package com.example.features.auth
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,13 +46,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.theme.*
+import com.example.ui.theme.SafeGreenContainer
+import com.example.ui.theme.SafeGreenDark
+import com.example.ui.theme.SafeGreenPrimary
+import com.example.ui.theme.SafetyRedLight
+import com.example.ui.theme.SafetyRedPrimary
 
 @Composable
 fun WelcomeScreen(
@@ -38,7 +68,7 @@ fun WelcomeScreen(
 
   Surface(
     modifier = modifier.fillMaxSize(),
-    color = SurfaceLight
+    color = MaterialTheme.colorScheme.background
   ) {
     Column(
       modifier = Modifier
@@ -46,58 +76,19 @@ fun WelcomeScreen(
         .statusBarsPadding()
         .navigationBarsPadding()
         .verticalScroll(scrollState)
-        .padding(horizontal = 24.dp, vertical = 24.dp),
+        .padding(horizontal = 24.dp, vertical = 32.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Top
     ) {
-      Spacer(modifier = Modifier.height(16.dp))
-
-      // Hero Quote (Very Highlighted as per user request)
-      Surface(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = 8.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = PinkPrimary,
-        shadowElevation = 8.dp
-      ) {
-        Column(
-          modifier = Modifier.padding(24.dp),
-          horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-          Text(
-            text = "“",
-            style = MaterialTheme.typography.displayLarge.copy(
-              fontWeight = FontWeight.Black,
-              color = PinkContainer.copy(alpha = 0.5f)
-            ),
-            modifier = Modifier.offset(y = 12.dp)
-          )
-          Text(
-            text = "Please don’t stop flying,\nfly freely to your desired sky",
-            style = MaterialTheme.typography.titleLarge.copy(
-              fontWeight = FontWeight.ExtraBold,
-              fontStyle = FontStyle.Italic,
-              letterSpacing = 0.5.sp,
-              lineHeight = 28.sp
-            ),
-            color = Color.White,
-            textAlign = TextAlign.Center
-          )
-          Spacer(modifier = Modifier.height(8.dp))
-          Box(modifier = Modifier.width(40.dp).height(4.dp).clip(CircleShape).background(Color.White))
-        }
-      }
-
-      Spacer(modifier = Modifier.height(48.dp))
+      Spacer(modifier = Modifier.height(20.dp))
 
       // App Logo Badge
       Box(
         modifier = Modifier
-          .size(120.dp)
+          .size(108.dp)
           .clip(CircleShape)
           .background(Color.White)
-          .border(4.dp, PinkContainer, CircleShape),
+          .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), CircleShape),
         contentAlignment = Alignment.Center
       ) {
         Image(
@@ -109,38 +100,66 @@ fun WelcomeScreen(
         )
       }
 
-      Spacer(modifier = Modifier.height(24.dp))
+      Spacer(modifier = Modifier.height(20.dp))
 
       Text(
         text = "RAMISA",
-        style = MaterialTheme.typography.displaySmall.copy(
+        style = MaterialTheme.typography.headlineLarge.copy(
           fontWeight = FontWeight.Black,
-          letterSpacing = 4.sp
+          letterSpacing = 2.sp
         ),
-        color = PinkPrimaryDark
+        color = MaterialTheme.colorScheme.onBackground
       )
 
-      Spacer(modifier = Modifier.height(8.dp))
-
       Text(
-        text = "Personal Safety & Rapid Response\nfor Women & Children",
-        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-        color = TextSecondaryLight,
+        text = "Personal Safety & Rapid Response for Women & Children",
+        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(horizontal = 16.dp)
       )
 
-      Spacer(modifier = Modifier.height(48.dp))
+      Spacer(modifier = Modifier.height(24.dp))
+
+      // Inspirational Quote Highlight
+      Surface(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+      ) {
+        Column(
+          modifier = Modifier.padding(16.dp),
+          horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+          Text(
+            text = "\"Please don't stop flying, fly freely to your desired sky\"",
+            style = MaterialTheme.typography.titleMedium.copy(
+              fontWeight = FontWeight.Bold,
+              fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+              letterSpacing = 0.5.sp
+            ),
+            color = MaterialTheme.colorScheme.primary,
+            textAlign = TextAlign.Center
+          )
+        }
+      }
+
+      Spacer(modifier = Modifier.height(28.dp))
+
+
 
       // Action Buttons
       Button(
         onClick = onNavigateToRegister,
         modifier = Modifier
           .fillMaxWidth()
-          .height(56.dp)
+          .height(52.dp)
           .testTag("btn_welcome_register"),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = PinkPrimary, contentColor = Color.White)
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
       ) {
         Text(
           text = "CREATE SAFETY ACCOUNT",
@@ -148,39 +167,107 @@ fun WelcomeScreen(
         )
       }
 
-      Spacer(modifier = Modifier.height(16.dp))
+      Spacer(modifier = Modifier.height(12.dp))
 
       OutlinedButton(
         onClick = onNavigateToLogin,
         modifier = Modifier
           .fillMaxWidth()
-          .height(56.dp)
+          .height(52.dp)
           .testTag("btn_welcome_login"),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(2.dp, PinkPrimary),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = PinkPrimary)
+        shape = RoundedCornerShape(14.dp)
       ) {
         Text(
-          text = "LOG IN",
-          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+          text = "LOG IN (সাইন ইন)",
+          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
         )
       }
 
-      Spacer(modifier = Modifier.height(32.dp))
+      Spacer(modifier = Modifier.height(16.dp))
+
+      Row(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+        Text(
+          text = "  OR  ",
+          style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+          color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.outlineVariant)
+      }
+
+      Spacer(modifier = Modifier.height(16.dp))
 
       // Guest Login Button
-      TextButton(
+      Button(
         onClick = onContinueAsGuest,
-        modifier = Modifier.testTag("btn_welcome_guest"),
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(50.dp)
+          .testTag("btn_welcome_guest"),
+        shape = RoundedCornerShape(14.dp),
+        colors = ButtonDefaults.buttonColors(
+          containerColor = MaterialTheme.colorScheme.secondaryContainer,
+          contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        )
       ) {
+        Icon(
+          imageVector = Icons.Default.Person,
+          contentDescription = null,
+          modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
-          text = "Continue as Guest",
-          style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-          color = TextSecondaryLight
+          text = "CONTINUE AS GUEST (অতিথি প্রবেশ)",
+          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
         )
       }
 
       Spacer(modifier = Modifier.height(24.dp))
+    }
+  }
+}
+
+@Composable
+private fun FeatureHighlightRow(
+  icon: androidx.compose.ui.graphics.vector.ImageVector,
+  title: String,
+  subtitle: String
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically
+  ) {
+    Surface(
+      shape = CircleShape,
+      color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+      modifier = Modifier.size(36.dp)
+    ) {
+      Box(contentAlignment = Alignment.Center) {
+        Icon(
+          imageVector = icon,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.size(18.dp)
+        )
+      }
+    }
+    Spacer(modifier = Modifier.width(12.dp))
+    Column {
+      Text(
+        text = title,
+        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+        color = MaterialTheme.colorScheme.onSurface
+      )
+      Text(
+        text = subtitle,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
     }
   }
 }

@@ -2,6 +2,7 @@ package com.example.features.places
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.core.location.EmergencyLocationManager
 import com.example.data.repository.SafePlacesRepositoryImpl
 import com.example.domain.model.PlaceType
 import com.example.domain.model.SafePlace
@@ -19,7 +20,8 @@ data class SafePlacesUiState(
   val isLoading: Boolean = false,
   val userLatitude: Double = 23.7465,
   val userLongitude: Double = 90.3750,
-  val dialIntentNumber: String? = null
+  val dialIntentNumber: String? = null,
+  val isGpsActive: Boolean = false
 )
 
 class SafePlacesViewModel : ViewModel() {
@@ -30,6 +32,20 @@ class SafePlacesViewModel : ViewModel() {
 
   init {
     loadPlaces()
+    viewModelScope.launch {
+      EmergencyLocationManager.latestLocation.collect { loc ->
+        if (loc != null) {
+          _uiState.update { 
+            it.copy(
+              userLatitude = loc.latitude, 
+              userLongitude = loc.longitude,
+              isGpsActive = true
+            ) 
+          }
+          loadPlaces()
+        }
+      }
+    }
   }
 
   fun onSearchQueryChanged(query: String) {

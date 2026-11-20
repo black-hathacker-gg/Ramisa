@@ -46,7 +46,20 @@ class MainActivity : ComponentActivity() {
   private val requestPermissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestMultiplePermissions()
   ) { permissions ->
-    // Permissions handled
+    val fine = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+    val coarse = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+    if (fine || coarse) {
+      com.example.core.location.EmergencyLocationManager.startBackgroundLocationUpdates(this)
+      FusedLocationBackgroundService.startLocationService(this)
+    }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    if (com.example.core.location.EmergencyLocationManager.hasLocationPermission(this)) {
+      com.example.core.location.EmergencyLocationManager.startBackgroundLocationUpdates(this)
+      FusedLocationBackgroundService.startLocationService(this)
+    }
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {

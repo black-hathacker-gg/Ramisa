@@ -25,7 +25,6 @@ data class JourneyUiState(
   val notes: String = "",
   val activeJourney: Journey? = null,
   val isJourneyActive: Boolean = false,
-  val isJourneyCompleted: Boolean = false,
   val elapsedMinutes: Int = 0,
   val elapsedSeconds: Int = 0,
   val isSafetyPromptVisible: Boolean = false,
@@ -56,6 +55,21 @@ class JourneyViewModel(
           )
         }
       }
+    }
+
+    viewModelScope.launch {
+      com.example.core.location.EmergencyLocationManager.latestLocation.collect { loc ->
+        if (loc != null && !_uiState.value.isJourneyActive && _uiState.value.startLocation == "Mirpur 10, Dhaka") {
+          _uiState.update { it.copy(startLocation = loc.addressName) }
+        }
+      }
+    }
+  }
+
+  fun useCurrentGpsLocation() {
+    viewModelScope.launch {
+      val loc = com.example.core.location.EmergencyLocationManager.getAccurateEmergencyCoordinates(getApplication())
+      _uiState.update { it.copy(startLocation = loc.addressName) }
     }
   }
 
@@ -127,16 +141,10 @@ class JourneyViewModel(
         it.copy(
           isJourneyActive = false,
           isSafetyPromptVisible = false,
-          isDeviationAlertTriggered = false,
-          isJourneyCompleted = true,
           statusMessage = confirmationMsg
         )
       }
     }
-  }
-
-  fun dismissCompletedJourney() {
-    _uiState.update { it.copy(isJourneyCompleted = false, statusMessage = null) }
   }
 
   fun cancelJourney() {
